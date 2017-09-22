@@ -34,7 +34,6 @@ extern "C" {
 #include "pecoff.h"
 }
 
-
 using namespace std;
 
 static void
@@ -66,22 +65,7 @@ windows_error(const char* syscall,
 
 typedef int (WINAPI *fptr_t)(void*);
 
-static fptr_t find_fn_ptr(const char* function_name)  {
-   fptr_t p;
 
-   p = (fptr_t) GetProcAddress(
-                   GetModuleHandle(TEXT("kernel32.dll")),
-                   function_name);
-   return p;
-}
-
-static int find_wow64_redir(fptr_t* disable, fptr_t* revert) {
-   *disable = find_fn_ptr("Wow64DisableWow64FsRedirection");
-   *revert  = find_fn_ptr("Wow64RevertWow64FsRedirection");
-   if (*disable && *revert)
-       return 1; // success
-   return 0;
-}
 
 class pecoff_reader_t
 {
@@ -162,16 +146,6 @@ public:
   {
     okay_ = false;
 
-#if defined(XED_MSVC8_OR_LATER) && !defined(XED_64B)
-    printf("here\n\n");
-    bool disabled_redirection = false;
-    void* old=0;
-    fptr_t disable, revert;
-    if (find_wow64_redir(&disable, &revert))
-        if ( (*disable)(&old) )
-            disabled_redirection = true;
-#endif
-
     file_handle_ = CreateFile(input_file_name,
                               GENERIC_READ,
                               FILE_SHARE_READ,
@@ -180,14 +154,6 @@ public:
                               FILE_FLAG_NO_BUFFERING + FILE_ATTRIBUTE_READONLY,
                               NULL);
 
-#if defined(XED_MSVC8_OR_LATER) && !defined(XED_64B)
-    if (disabled_redirection) {
-      if (! (*revert)(old)) {
-          fprintf(stderr,"Could not re-enable wow64 redirection. Dying...\n");
-          exit(1);
-      }
-    }
-#endif
     if (file_handle_ == INVALID_HANDLE_VALUE)  {
       windows_error("CreateFile", input_file_name);
     }
@@ -220,7 +186,6 @@ public:
 
   }
 
-
   xed_bool_t read_header() {
     if (! parse_nt_file_header(&nsections, &image_base, &hdr)) {
       printf("Could not read nt file header");
@@ -232,80 +197,7 @@ public:
   }
 
 
-  void read_coff_symbols() {
-      xed_uint32_t i;
-      xed_uint32_t sym_offset = ifh->PointerToSymbolTable;
-      xed_uint32_t nsym = ifh->NumberOfSymbols;
-      PIMAGE_SYMBOL p = (PIMAGE_SYMBOL)((char*)base() + sym_offset);
-      char* string_table_base = (char*)(p+nsym);
-      for(i=0;i<nsym;i++) {
-          printf("%5d: ", (int)i);
-          printf(" Value: %08x", (int) p[i].Value);
-          printf(" Section: %4d", p[i].SectionNumber);
-          printf(" Type: %04x", p[i].Type);
-          printf(" StgCls: %02x ", p[i].StorageClass);
-          if (p[i].N.Name.Short == 0) {
-              int k=0;
-              char* str = string_table_base + p[i].N.LongName[1];
 
-              //FIXME: not handling BIG string tables
-              if (sizeof(void*) == 4)
-                  assert( p[i].N.LongName[0] == 0);
-
-              printf("[");
-              while(*str && k < 100) {
-                  printf("%c",*str);
-                  str++;
-                  k++;
-              }
-              printf("]");
-          }
-          else {
-              int j;
-              printf("[");
-              for(j=0;j<8;j++) {
-                  char c = p[i].N.ShortName[j];
-                  if (c)
-                      printf("%c", c);
-                  else
-                      break;
-              }
-              printf("]");
-          }
-
-          printf("\n");
-          i += p[i].NumberOfAuxSymbols;
-      }
-  }
-
-
-  void print_section_headers() {
-    const IMAGE_SECTION_HEADER* jhdr = orig_hdr;
-    for (unsigned int j = 0; j < nsections; j++, jhdr++)   {
-        printf("# SECNAME  %u",j);
-        printf(XED_FMT_X, (unsigned int) jhdr->Characteristics);
-        if ((jhdr->Characteristics & IMAGE_SCN_CNT_CODE) == IMAGE_SCN_CNT_CODE)
-        {
-            printf(" CODE");
-            xed_uint8_t* section_start;
-            xed_uint32_t section_size;
-            xed_uint64_t virtual_addr;
-
-            virtual_addr  = jhdr->VirtualAddress  + image_base;
-            section_size = (jhdr->Misc.VirtualSize > 0 ?
-                            jhdr->Misc.VirtualSize
-                            : jhdr->SizeOfRawData);
-            section_start = (xed_uint8_t*)ptr_add(base_,
-                                                  jhdr->PointerToRawData);
-
-            printf(" VAddr    " XED_FMT_LX16, virtual_addr);
-            printf(" SecStart %p" , section_start);
-            printf(" %016I64x" , (xed_uint64_t)jhdr->PointerToRawData);
-            printf(" SecSize  " XED_FMT_08X,section_size);
-        }
-        printf("\n");
-    }
-  }
 
   xed_bool_t
   module_section_info(
@@ -378,6 +270,7 @@ private:
     return static_cast<const char*>(ptr)+n;
   }
 
+
   xed_bool_t
   is_valid_module()  {
     // Point to the DOS header and check it.
@@ -394,6 +287,7 @@ private:
 
     return true;
   }
+
   xed_bool_t
   parse_nt_file_header(unsigned int* pnsections,
                        xed_uint64_t* pimage_base,
@@ -462,73 +356,7 @@ private:
 };
 
 ////////////////////////////////////////////////////////////////////////////
-#if defined(XED_USING_DEBUG_HELP)
-static dbg_help_client_t dbg_help;
 
-extern "C" void
-print_file_and_line(xed_uint64_t addr)
-{
-    char* filename;
-    xed_uint32_t line, column;
-
-    if (dbg_help.get_file_and_line(addr, &filename, &line, &column))
-    {
-        if (column)
-            printf( " # %s:%d.%d", filename, line, column);
-        else
-            printf( " # %s:%d", filename, line);
-        free(filename);
-    }
-}
-
-char* windows_symbols_callback(xed_uint64_t addr, void* closure) {
-    dbg_help_client_t* p = (dbg_help_client_t*)closure;
-    char buffer[2000];
-    int r = p->get_symbol(addr, buffer, sizeof(char)*2000);
-    if (r == 0) {
-        int n = (int)strlen(buffer)+1;
-        char* symbol = new char[n];
-        symbol[0]=0;
-        xed_strncat(symbol, buffer, n);
-        return symbol;
-    }
-    else {
-        return 0;
-    }
-}
-
-int xed_pecoff_callback_function(
-    xed_uint64_t address,
-    char* symbol_buffer,
-    xed_uint32_t buffer_length,
-    xed_uint64_t* offset,
-    void* caller_data)
-{
-    dbg_help_client_t* p = (dbg_help_client_t*)caller_data;
-    int r = p->get_symbol(address, symbol_buffer, buffer_length, offset);
-    if (r == 0)
-        return 1;
-    return 0;
-}
-#endif
-
-void xed_disas_pecoff_init() {
-#if defined(XED_USING_DEBUG_HELP)
-    if (dbg_help.valid()) {
-        //xed_register_disassembly_callback(xed_pecoff_callback_function);
-        xed_register_disassembly_callback(xed_disassembly_callback_function);
-    }
-#endif
-}
-
-bool dot_obj(const char* s) {
-    int len = (int)strlen(s);
-    const char* p = s + len - 4;
-    if (strcmp(p,".obj") == 0 ||
-        strcmp(p,".OBJ") == 0)
-        return true;
-    return false;
-}
 
 void
 process_pecoff(xed_uint8_t* start,
@@ -544,7 +372,6 @@ process_pecoff(xed_uint8_t* start,
   xed_bool_t okay = true;
   xed_bool_t found = false;
 
-  xed_disas_pecoff_init();
 
   while(okay) {
 
@@ -565,28 +392,12 @@ process_pecoff(xed_uint8_t* start,
           decode_info.runtime_vaddr_disas_start = decode_info.addr_start;
           decode_info.runtime_vaddr_disas_end = decode_info.addr_end;
 
-#if defined(XED_USING_DEBUG_HELP)
-          if (dbg_help.valid()) {
-              decode_info.line_number_info_fn = print_file_and_line;
-
-              // This version is slow
-              //decode_info.symfn = windows_symbols_callback;
-              //decode_info.caller_symbol_data = &dbg_help;
-
-              // This version is faster
-              decode_info.symfn = get_symbol;
-              decode_info.caller_symbol_data = &(dbg_help.sym_tab);
-          }
-#endif
           xed_disas_test(&decode_info);
       }
   }
   if (!found)
       printf("text section not found");
-#if defined(XED_USING_DEBUG_HELP)
-  if (dbg_help.valid())
-      dbg_help.cleanup();
-#endif
+
   (void) length;
 }
 
@@ -606,9 +417,7 @@ xed_disas_pecoff(xed_disas_info_t* fi)
   if (!okay)
     printf("image read failed");
   image_reader.read_header();
-  //image_reader.print_section_headers();
 
-  //image_reader.read_coff_symbols();
   region = XED_REINTERPRET_CAST(xed_uint8_t*,vregion);
 
   if (image_reader.sixty_four_bit() &&
