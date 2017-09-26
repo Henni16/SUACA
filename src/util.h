@@ -3,6 +3,7 @@
 
 #include "..\xed\kits\xed-install-base-2017-09-07-win-x86-64\include\xed\xed-interface.h"
 #include <stdio.h>
+#include "inst_list.h"
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -95,6 +96,6 @@ void disassemble(xed_disas_info_t* di,
                  void* caller_data);
 
 
-void xed_disas_test(xed_disas_info_t* di);
+inst_list_t* xed_disas_test(xed_disas_info_t* di);
 
 #endif

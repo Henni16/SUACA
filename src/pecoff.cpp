@@ -358,7 +358,7 @@ private:
 ////////////////////////////////////////////////////////////////////////////
 
 
-void
+inst_list_t*
 process_pecoff(xed_uint8_t* start,
                unsigned int length,
                xed_disas_info_t decode_info,
@@ -392,7 +392,7 @@ process_pecoff(xed_uint8_t* start,
           decode_info.runtime_vaddr_disas_start = decode_info.addr_start;
           decode_info.runtime_vaddr_disas_end = decode_info.addr_end;
 
-          xed_disas_test(&decode_info);
+          return xed_disas_test(&decode_info);
       }
   }
   if (!found)
@@ -404,7 +404,7 @@ process_pecoff(xed_uint8_t* start,
 
 
 
-extern "C" void
+extern "C" inst_list_t*
 xed_disas_pecoff(xed_disas_info_t* fi)
 {
   xed_uint8_t* region = 0;
@@ -429,5 +429,5 @@ xed_disas_pecoff(xed_disas_info_t* fi)
       fi->dstate.mmode = XED_MACHINE_MODE_LONG_64;
   }
 
-  process_pecoff(region, len,  *fi, image_reader);
+  return process_pecoff(region, len,  *fi, image_reader);
 }

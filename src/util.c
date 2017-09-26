@@ -1,5 +1,8 @@
 #include "util.h"
 
+void printInsts(xed_disas_info_t* di, inst_list_t* instructions,
+                xed_uint64_t runtime_instruction_address);
+
 
 void xed_disas_info_init(xed_disas_info_t* p)
 {
@@ -127,7 +130,7 @@ void disassemble(xed_disas_info_t* di,
 }
 
 
-void xed_disas_test(xed_disas_info_t* di)
+inst_list_t* xed_disas_test(xed_disas_info_t* di)
 {
     // this decodes are region defined by the input structure.
 
@@ -144,6 +147,9 @@ void xed_disas_test(xed_disas_info_t* di)
     xed_uint64_t runtime_instruction_address;
     xed_bool_t graph_empty = 1;
     unsigned int resync;
+    int checkNext = 0;
+    int analyse = 0;
+    inst_list_t* instructions = newList(10);
 
 
     m = di->ninst; // number of things to decode
@@ -160,17 +166,15 @@ void xed_disas_test(xed_disas_info_t* di)
             zlimit = (di->runtime_vaddr_disas_end - di->runtime_vaddr) +
                      di->a;
         else  /* end address is before start of this region -- skip it */
-            return;
+            return NULL;
     }
 
     if (z >= di->q)   /* start pointer  is after end of section */
-        return;
+        return NULL;
 
     // for skipping long strings of zeros
     skipping = 0;
     last_all_zeros = 0;
-    int checkNext = 0;
-    int analyse = 0;
     for( i=0; i<m;i++)
     {
         int ilim,elim;
@@ -246,10 +250,11 @@ void xed_disas_test(xed_disas_info_t* di)
                 dec_len = xed_decoded_inst_get_length(&xedd);
                 xed_print_hex_line(buffer, (xed_uint8_t*) z,
                                  dec_len, XED_HEX_BUFLEN);
-                if (!strcmp(buffer, "646790"))
+                if (!strcmp(buffer, "646790")) {
                   analyse = !analyse;
+                  if (!analyse) set_breakpoint(instructions);
+                }
             }
-            checkNext = checkNext == 2 ? 1 : 0;
 
             okay = (xed_error == XED_ERROR_NONE);
 
@@ -264,19 +269,21 @@ void xed_disas_test(xed_disas_info_t* di)
                 continue;
             }
 
-            if ((okay || xed_error == XED_ERROR_INVALID_FOR_CHIP)&&analyse)
+            if (okay && analyse && !checkNext)
             {
                 // we still print it out if it is invalid for the chip.
                 // so that people can see the problematic instruction
                 /*emit_disasm(di, &xedd,
                             runtime_instruction_address,
                             z, gs, xed_error);*/
-                char buffer[XED_TMP_BUF_LEN];
+                add_to_list(instructions, xedd);
+                /*char buffer[XED_TMP_BUF_LEN];
                 disassemble(di, buffer, XED_TMP_BUF_LEN, &xedd,
                              runtime_instruction_address,
                              di->caller_symbol_data);
-                printf("%s\n", buffer);
+                printf("%s\n", buffer);*/
             }
+            checkNext = checkNext == 2 ? 1 : 0;
 
             if (okay == 0 && analyse)
             {
@@ -295,5 +302,23 @@ void xed_disas_test(xed_disas_info_t* di)
             }  // okay == 0
         z = z + length;
     }
+    printInsts(di, instructions, runtime_instruction_address);
+    return instructions;
+}
 
+
+void printInsts(xed_disas_info_t* di, inst_list_t* instructions,
+                xed_uint64_t runtime_instruction_address) {
+  int breaks = 0;
+  for (int i = 0; i < instructions->size; i++) {
+    if (instructions->breakpoints[breaks] == i) {
+      breaks++;
+      printf("\nNew block!\n\n");
+    }
+    char buffer[XED_TMP_BUF_LEN];
+    disassemble(di, buffer, XED_TMP_BUF_LEN, &instructions->array[i],
+                 runtime_instruction_address,
+                 di->caller_symbol_data);
+    printf("%s\n", buffer);
+  }
 }

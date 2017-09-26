@@ -5,6 +5,6 @@
 #include "util.h"
 
 
-void xed_disas_pecoff(xed_disas_info_t* fi);
+inst_list_t* xed_disas_pecoff(xed_disas_info_t* fi);
 
 #endif
