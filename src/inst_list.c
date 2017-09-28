@@ -11,8 +11,8 @@ void resize(inst_list_t* list) {
 inst_list_t* newList(int initLength) {
   xed_decoded_inst_t* arr = (xed_decoded_inst_t*)
                               malloc(initLength * sizeof(xed_decoded_inst_t));
-  inst_list_t* list = (inst_list_t*) malloc(sizeof(inst_list_t*));
-  list->breakpoints = (int*) malloc(5 * sizeof(int));
+  inst_list_t* list = (inst_list_t*) malloc(sizeof(inst_list_t));
+  list->breakpoints = (int*) malloc(5 * sizeof(int));;
   list->numBreaks = 0;
   list->array = arr;
   list->cap = initLength;
@@ -27,12 +27,20 @@ void add_to_list(inst_list_t* list, xed_decoded_inst_t elem) {
   list->array[list->size++] = elem;
 }
 
+
 void set_breakpoint(inst_list_t* list) {
   if (!list->size)
     return;
-  if (list->numBreaks > 0 && list->numBreaks%5 == 0) {
+  if (list->numBreaks > 0 && list->numBreaks % 5 == 0) {
     list->breakpoints = (int*) realloc(list->breakpoints,
-                        list->numBreaks + 5);
+                                (list->numBreaks+5)*sizeof(int));
   }
   list->breakpoints[list->numBreaks++] = list->size;
+}
+
+
+void free_list(inst_list_t* list) {
+  free(list->array);
+  free(list->breakpoints);
+  free(list);
 }

@@ -40,6 +40,7 @@ int main(int argc, char** argv) {
 #if defined(XED_LINUX)
   char *prefix = NULL;
 #endif
+  inst_list_t* instructions;
 
   xed_decoded_inst_t xedd;
   xed_uint_t retval_okay = 1;
@@ -120,11 +121,12 @@ int main(int argc, char** argv) {
 #elif defined(XED_ELF_READER)
           xed_disas_elf(&decode_info);
 #elif defined(_WIN32)
-          xed_disas_pecoff(&decode_info);
+          instructions = xed_disas_pecoff(&decode_info);
 #else
           xedex_derror("No PECOFF, ELF or MACHO support compiled in");
 #endif
 
+  free_list(instructions);
   return 0;
   (void) obytes;
 }

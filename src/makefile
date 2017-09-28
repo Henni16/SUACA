@@ -1,11 +1,11 @@
 CC=gcc
 CFLAGS=-I..\xed\kits\xed-install-base-2017-09-20-win-x86-64\include -lstdc++
-DEPS = util.h pecoff.h inst_list.h
+DEPS = util.h pecoff.h inst_list.h reg_map.h
 LIBS = ..\xed\kits\xed-install-base-2017-09-20-win-x86-64\lib\xed.lib
-OBJ = disas.o util.o pecoff.o inst_list.o
+OBJ = disas.o util.o pecoff.o inst_list.o reg_map.o
 
 %.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 disas: $(OBJ)
-	gcc -o $@ $^ $(CFLAGS) $(LIBS)
+	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
