@@ -1,11 +1,6 @@
-#include "..\xed\kits\xed-install-base-2017-09-20-win-x86-64\include\xed\xed-interface.h"
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include "util.h"
-#include "pecoff.h"
+#include "disas.h"
 
-int main(int argc, char** argv) {
+inst_list_t* build_inst_list(int argc, char** argv) {
   xed_bool_t sixty_four_bit = 0;
   unsigned int mpx_mode = 0;
   xed_bool_t decode_only = 1;
@@ -69,10 +64,8 @@ int main(int argc, char** argv) {
 
   resync = 1;
 
-  if (argc < 2) {
-    printf("Please give me a file to work on\n");
-    return 0;
-  }
+  if (argc < 2)
+    return NULL;
   else {
       input_file_name = argv[1];
   }
@@ -117,16 +110,15 @@ int main(int argc, char** argv) {
 
 
 #if defined(__APPLE__)
-          xed_disas_macho(&decode_info);
+          instructions = xed_disas_macho(&decode_info);
 #elif defined(XED_ELF_READER)
-          xed_disas_elf(&decode_info);
+          instructions = xed_disas_elf(&decode_info);
 #elif defined(_WIN32)
           instructions = xed_disas_pecoff(&decode_info);
 #else
           xedex_derror("No PECOFF, ELF or MACHO support compiled in");
 #endif
 
-  free_list(instructions);
-  return 0;
+  return instructions;
   (void) obytes;
 }
