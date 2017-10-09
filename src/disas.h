@@ -2,10 +2,10 @@
 #define DISAS_H
 
 
-#include "..\xed\kits\xed-install-base-2017-09-20-win-x86-64\include\xed\xed-interface.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include "headers.h"
 #include "util.h"
 #include "pecoff.h"
 #include "macho.h"

@@ -2,8 +2,7 @@
 #define REG_MAP_H
 
 #include <stdio.h>
-#include "..\xed\kits\xed-install-base-2017-09-20-win-x86-64\include\xed\xed-interface.h"
-
+#include "headers.h"
 
 typedef enum {
   WRITE,
