@@ -96,6 +96,6 @@ void disassemble(xed_disas_info_t* di,
                  void* caller_data);
 
 
-inst_list_t* xed_disas_test(xed_disas_info_t* di);
+void xed_disas_test(xed_disas_info_t* di, inst_list_t* instructions);
 
 #endif

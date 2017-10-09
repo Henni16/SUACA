@@ -130,7 +130,7 @@ void disassemble(xed_disas_info_t* di,
 }
 
 
-inst_list_t* xed_disas_test(xed_disas_info_t* di)
+void xed_disas_test(xed_disas_info_t* di, inst_list_t* instructions)
 {
     // this decodes are region defined by the input structure.
 
@@ -149,7 +149,6 @@ inst_list_t* xed_disas_test(xed_disas_info_t* di)
     unsigned int resync;
     int checkNext = 0;
     int analyse = 0;
-    inst_list_t* instructions = newList(10);
 
 
     m = di->ninst; // number of things to decode
@@ -303,7 +302,6 @@ inst_list_t* xed_disas_test(xed_disas_info_t* di)
         z = z + length;
     }
     printInsts(di, instructions, runtime_instruction_address);
-    return instructions;
 }
 
 
@@ -319,6 +317,6 @@ void printInsts(xed_disas_info_t* di, inst_list_t* instructions,
     disassemble(di, buffer, XED_TMP_BUF_LEN, &instructions->array[i],
                  runtime_instruction_address,
                  di->caller_symbol_data);
-    printf("%s\n", buffer);
+    printf("%i: %s\n", i, buffer);
   }
 }

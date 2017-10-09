@@ -8,7 +8,7 @@ int main(int argc, char *argv[]) {
     return 0;
   }
   reg_map_t* map = compute_dependencies(instructions);
-  //print_map(map);
+  print_map(map);
   free_map(map);
   free_list(instructions);
   return 0;

@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include "util.h"
 #include "pecoff.h"
+#include "macho.h"
 
 inst_list_t* build_inst_list(int argc, char** argv);
 

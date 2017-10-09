@@ -358,11 +358,12 @@ private:
 ////////////////////////////////////////////////////////////////////////////
 
 
-inst_list_t*
+void
 process_pecoff(xed_uint8_t* start,
                unsigned int length,
                xed_disas_info_t decode_info,
-               pecoff_reader_t reader)
+               pecoff_reader_t reader,
+               inst_list_t* instructions)
 {
 
   xed_uint8_t* section_start = 0;
@@ -392,7 +393,7 @@ process_pecoff(xed_uint8_t* start,
           decode_info.runtime_vaddr_disas_start = decode_info.addr_start;
           decode_info.runtime_vaddr_disas_end = decode_info.addr_end;
 
-          return xed_disas_test(&decode_info);
+          xed_disas_test(&decode_info, instructions);
       }
   }
   if (!found)
@@ -404,8 +405,8 @@ process_pecoff(xed_uint8_t* start,
 
 
 
-extern "C" inst_list_t*
-xed_disas_pecoff(xed_disas_info_t* fi)
+extern "C" void
+xed_disas_pecoff(xed_disas_info_t* fi, inst_list_t* instructions)
 {
   xed_uint8_t* region = 0;
   void* vregion = 0;
@@ -429,5 +430,5 @@ xed_disas_pecoff(xed_disas_info_t* fi)
       fi->dstate.mmode = XED_MACHINE_MODE_LONG_64;
   }
 
-  return process_pecoff(region, len,  *fi, image_reader);
+  process_pecoff(region, len,  *fi, image_reader, instructions);
 }

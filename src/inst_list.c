@@ -12,7 +12,7 @@ inst_list_t* newList(int initLength) {
   xed_decoded_inst_t* arr = (xed_decoded_inst_t*)
                               malloc(initLength * sizeof(xed_decoded_inst_t));
   inst_list_t* list = (inst_list_t*) malloc(sizeof(inst_list_t));
-  list->breakpoints = (int*) malloc(5 * sizeof(int));;
+  list->breakpoints = (int*) malloc(5 * sizeof(int));
   list->numBreaks = 0;
   list->array = arr;
   list->cap = initLength;

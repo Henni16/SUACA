@@ -107,14 +107,15 @@ inst_list_t* build_inst_list(int argc, char** argv) {
   decode_info.operand_value    = operand_value;
 
   init_xedd(&xedd, &decode_info);
+  instructions = newList(10);
 
 
 #if defined(__APPLE__)
-          instructions = xed_disas_macho(&decode_info);
+          xed_disas_macho(&decode_info, instructions);
 #elif defined(XED_ELF_READER)
-          instructions = xed_disas_elf(&decode_info);
+          xed_disas_elf(&decode_info, instructions);
 #elif defined(_WIN32)
-          instructions = xed_disas_pecoff(&decode_info);
+          xed_disas_pecoff(&decode_info, instructions);
 #else
           xedex_derror("No PECOFF, ELF or MACHO support compiled in");
 #endif
