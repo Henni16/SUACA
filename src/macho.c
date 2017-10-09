@@ -16,8 +16,7 @@ Copyright (c) 2016 Intel Corporation
 
 END_LEGAL */
 /// @file xed-disas-macho.cpp
-#include "..\xed\kits\xed-install-base-2017-09-20-win-x86-64\include\xed\xed-interface.h"
-#if defined(__APPLE__) && defined(XED_DECODER)
+#if defined(__APPLE__)
 
 // mac specific headers
 #include <mach-o/fat.h>
@@ -27,6 +26,7 @@ END_LEGAL */
 
 #include "macho.h"
 #include "util.h"
+#include "symbol_table.h"
 
 #include <string.h>
 
@@ -324,8 +324,6 @@ void process64(xed_disas_info_t* decode_info,
 
     xed_uint_t i, sectoff=0;
     xed_symbol_table_t symbol_table;
-    if (CLIENT_VERBOSE2)
-        printf("Number of load command sections = %d\n", mh->ncmds);
     // load commands point to segments which contain sections.
     xed_uint8_t* tmp_current_position = current_position;
     xed_symbol_table_init(&symbol_table);
@@ -366,7 +364,7 @@ void process64(xed_disas_info_t* decode_info,
 }
 
 
-inst_list_t*
+void
 process_macho(xed_uint8_t* start,
               unsigned int length,
               xed_disas_info_t* decode_info,

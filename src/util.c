@@ -165,11 +165,11 @@ void xed_disas_test(xed_disas_info_t* di, inst_list_t* instructions)
             zlimit = (di->runtime_vaddr_disas_end - di->runtime_vaddr) +
                      di->a;
         else  /* end address is before start of this region -- skip it */
-            return NULL;
+            return;
     }
 
     if (z >= di->q)   /* start pointer  is after end of section */
-        return NULL;
+        return;
 
     // for skipping long strings of zeros
     skipping = 0;
