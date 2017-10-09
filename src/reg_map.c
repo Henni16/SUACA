@@ -18,6 +18,7 @@ access_t* new_access_t(access_enum_t e, int line) {
   ret->line = line;
   ret->next = NULL;
   ret->read_write = e;
+  return ret;
 }
 
 

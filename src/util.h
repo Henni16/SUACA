@@ -2,6 +2,10 @@
 #define UTIL_H
 
 #include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/mman.h>
 #include "headers.h"
 #include "inst_list.h"
 #include <string.h>
