@@ -62,8 +62,14 @@ typedef struct {
 
 void xed_disas_info_init(xed_disas_info_t* p);
 
+void xed_map_region(const char* path,
+                    void** start,
+                    unsigned int* length);
+
 void init_xedd(xed_decoded_inst_t* xedd,
                xed_disas_info_t* di);
+
+
 
 static int
 all_zeros(xed_uint8_t* p, unsigned int len);

@@ -90,6 +90,91 @@ check_resync(xed_disas_info_t* di,
     return 0;
 }
 
+void
+xed_map_region(const char* path,
+               void** start,
+               unsigned int* length)
+{
+#if defined(_WIN32)
+    FILE* f;
+    size_t t,ilen;
+    xed_uint8_t* p;
+#if defined(XED_MSVC8_OR_LATER) && !defined(PIN_CRT)
+    errno_t err;
+    fprintf(stderr,"#Opening %s\n", path);
+    err = fopen_s(&f,path,"rb");
+#else
+    int err=0;
+    fprintf(stderr,"#Opening %s\n", path);
+    f = fopen(path,"rb");
+    err = (f==0);
+#endif
+    if (err != 0) {
+        fprintf(stderr,"ERROR: Could not open %s\n", path);
+        exit(1);
+    }
+    err =  fseek(f, 0, SEEK_END);
+    if (err != 0) {
+        fprintf(stderr,"ERROR: Could not fseek %s\n", path);
+        exit(1);
+    }
+    ilen = ftell(f);
+    fprintf(stderr,"#Trying to read " XED_FMT_SIZET "\n", ilen);
+    p = (xed_uint8_t*)malloc(ilen);
+    t=0;
+    err = fseek(f,0, SEEK_SET);
+    if (err != 0) {
+        fprintf(stderr,"ERROR: Could not fseek to start of file %s\n", path);
+        exit(1);
+    }
+
+    while(t < ilen) {
+        size_t n;
+        if (feof(f)) {
+            fprintf(stderr, "#Read EOF. Stopping.\n");
+            break;
+        }
+        n = fread(p+t, 1, ilen-t,f);
+        t = t+n;
+        fprintf(stderr,"#Read " XED_FMT_SIZET " of " XED_FMT_SIZET " bytes\n",
+                t, ilen);
+        if (ferror(f)) {
+            fprintf(stderr, "Error in file read. Stopping.\n");
+            break;
+        }
+    }
+    fclose(f);
+    *start = p;
+    *length = (unsigned int)ilen;
+
+#else
+    int ilen,fd;
+    fd = open(path, O_RDONLY);
+    if (fd == -1)   {
+        printf("Could not open file: %s\n" , path);
+        exit(1);
+    }
+    ilen = lseek(fd, 0, SEEK_END); // find the size.
+    if (ilen == -1)
+        xedex_derror("lseek failed");
+    else
+        *length = (unsigned int) ilen;
+
+    lseek(fd, 0, SEEK_SET); // go to the beginning
+    *start = mmap(0,
+                  *length,
+                  PROT_READ|PROT_WRITE,
+                  MAP_PRIVATE,
+                  fd,
+                  0);
+    if (*start == (void*) -1)
+        xedex_derror("could not map region");
+#endif
+    if (CLIENT_VERBOSE1)
+        printf("Mapped " XED_FMT_U " bytes!\n", *length);
+}
+
+
 void disassemble(xed_disas_info_t* di,
                  char* buf,
                  int buflen,
