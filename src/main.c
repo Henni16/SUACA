@@ -7,8 +7,9 @@ int main(int argc, char *argv[]) {
     printf("Please give me a file to work on\n");
     return 0;
   }
+  print_list(instructions);
   reg_map_t* map = compute_dependencies(instructions);
-  print_map(map);
+  //print_map(map);
   free_map(map);
   free_list(instructions);
   return 0;

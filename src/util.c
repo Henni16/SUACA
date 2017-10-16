@@ -170,49 +170,9 @@ xed_map_region(const char* path,
     if (*start == (void*) -1)
         xedex_derror("could not map region");
 #endif
-    if (CLIENT_VERBOSE1)
-        printf("Mapped " XED_FMT_U " bytes!\n", *length);
 }
 
 
-void disassemble(xed_disas_info_t* di,
-                 char* buf,
-                 int buflen,
-                 xed_decoded_inst_t* xedd,
-                 xed_uint64_t runtime_instruction_address,
-                 void* caller_data)
-{
-    int ok;
-    xed_print_info_t pi;
-    xed_init_print_info(&pi);
-    pi.p = xedd;
-    pi.blen = buflen;
-    pi.buf = buf;
-
-    // passed back to symbolic disassembly function
-    pi.context = caller_data;
-
-    // 0=use the default symbolic disassembly function registered via
-    // xed_register_disassembly_callback(). If nonzero, it would be a
-    // function pointer to a disassembly callback routine. See xed-disas.h
-    pi.disassembly_callback = 0;
-
-    pi.runtime_address = runtime_instruction_address;
-    pi.syntax = XED_SYNTAX_INTEL;
-    pi.format_options_valid = 1;
-    pi.format_options = di->format_options;
-    pi.buf[0]=0; //allow use of strcat
-
-    ok = xed_format_generic(&pi);
-    if (!ok)
-    {
-        pi.blen = xed_strncpy(pi.buf,"Error disassembling ",pi.blen);
-        pi.blen = xed_strncat(pi.buf,
-                               xed_syntax_enum_t2str(pi.syntax),
-                               pi.blen);
-        pi.blen = xed_strncat(pi.buf," syntax.",pi.blen);
-    }
-}
 
 
 void xed_disas_test(xed_disas_info_t* di, inst_list_t* instructions)
@@ -360,7 +320,7 @@ void xed_disas_test(xed_disas_info_t* di, inst_list_t* instructions)
                 /*emit_disasm(di, &xedd,
                             runtime_instruction_address,
                             z, gs, xed_error);*/
-                add_to_list(instructions, xedd);
+                add_to_list(instructions, xedd, runtime_instruction_address);
                 /*char buffer[XED_TMP_BUF_LEN];
                 disassemble(di, buffer, XED_TMP_BUF_LEN, &xedd,
                              runtime_instruction_address,
@@ -386,22 +346,4 @@ void xed_disas_test(xed_disas_info_t* di, inst_list_t* instructions)
             }  // okay == 0
         z = z + length;
     }
-    printInsts(di, instructions, runtime_instruction_address);
-}
-
-
-void printInsts(xed_disas_info_t* di, inst_list_t* instructions,
-                xed_uint64_t runtime_instruction_address) {
-  int breaks = 0;
-  for (int i = 0; i < instructions->size; i++) {
-    if (instructions->breakpoints[breaks] == i) {
-      breaks++;
-      printf("\nNew block!\n\n");
-    }
-    char buffer[XED_TMP_BUF_LEN];
-    disassemble(di, buffer, XED_TMP_BUF_LEN, &instructions->array[i],
-                 runtime_instruction_address,
-                 di->caller_symbol_data);
-    printf("%i: %s\n", i, buffer);
-  }
 }

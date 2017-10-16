@@ -5,14 +5,15 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/types.h>
+#if defined(__APPLE__)
 #include <sys/mman.h>
+#endif
 #include "headers.h"
 #include "inst_list.h"
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
 #define XED_HEX_BUFLEN 200
-#define XED_TMP_BUF_LEN (1024*4)
 
 typedef struct {
     xed_state_t dstate;
@@ -98,12 +99,6 @@ check_resync(xed_disas_info_t* di,
              unsigned int length,
              unsigned char* z);
 
-void disassemble(xed_disas_info_t* di,
-                 char* buf,
-                 int buflen,
-                 xed_decoded_inst_t* xedd,
-                 xed_uint64_t runtime_instruction_address,
-                 void* caller_data);
 
 
 void xed_disas_test(xed_disas_info_t* di, inst_list_t* instructions);
