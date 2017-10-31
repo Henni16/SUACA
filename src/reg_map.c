@@ -22,12 +22,12 @@ access_t* new_access_t(access_enum_t e, int line) {
 }
 
 
-void add_to_map(reg_map_t* map, int reg, int line, access_enum_t read_write) {
+void add_to_map(reg_map_t* map, xed_reg_enum_t reg, int line, access_enum_t read_write) {
   assert(reg < map->size);
   access_t* elem = new_access_t(read_write, line);
-  access_t* cur = map->map[reg];
+  access_t* cur = map->map[compute_register(reg)];
   if (cur == NULL) {
-    map->map[reg] = elem;
+    map->map[compute_register(reg)] = elem;
   }
   else {
     while (cur->next != NULL) cur = cur->next;
@@ -74,5 +74,45 @@ char* access_enum_t2str(access_enum_t e) {
   switch (e) {
     case WRITE: return "write";
     case READ: return "read";
+  }
+}
+
+
+xed_reg_enum_t compute_register(xed_reg_enum_t reg){
+  switch (reg) {
+    case XED_REG_EAX:
+    case XED_REG_AX:
+    case XED_REG_AH:
+    case XED_REG_AL:
+      return XED_REG_RAX;
+    case XED_REG_ECX:
+    case XED_REG_CX:
+    case XED_REG_CH:
+    case XED_REG_CL:
+      return XED_REG_RCX;
+    case XED_REG_EDX:
+    case XED_REG_DX:
+    case XED_REG_DH:
+    case XED_REG_DL:
+      return XED_REG_RDX;
+    case XED_REG_EBX:
+    case XED_REG_BX:
+    case XED_REG_BH:
+    case XED_REG_BL:
+      return XED_REG_RBX;
+    case XED_REG_ESP:
+    case XED_REG_SP:
+      return XED_REG_RSP;
+    case XED_REG_EBP:
+    case XED_REG_BP:
+      return XED_REG_RBP;
+    case XED_REG_ESI:
+    case XED_REG_SI:
+      return XED_REG_RSI;
+    case XED_REG_EDI:
+    case XED_REG_DI:
+      return XED_REG_RDI;
+    default:
+      return reg;
   }
 }

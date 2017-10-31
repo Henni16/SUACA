@@ -22,7 +22,9 @@ typedef struct {
 
 reg_map_t* newMap(int size);
 
-void add_to_map(reg_map_t* map, int reg, int line, access_enum_t read_write);
+xed_reg_enum_t compute_register(xed_reg_enum_t reg);
+
+void add_to_map(reg_map_t* map, xed_reg_enum_t reg, int line, access_enum_t read_write);
 
 void free_map(reg_map_t* map);
 
