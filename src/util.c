@@ -172,6 +172,51 @@ xed_map_region(const char* path,
 #endif
 }
 
+void disassemble(char* buf,
+                 int buflen,
+                 xed_decoded_inst_t* xedd,
+                 xed_uint64_t runtime_instruction_address)
+{
+    int ok;
+    xed_print_info_t pi;
+    xed_init_print_info(&pi);
+    pi.p = xedd;
+    pi.blen = buflen;
+    pi.buf = buf;
+
+
+    // 0=use the default symbolic disassembly function registered via
+    // xed_register_disassembly_callback(). If nonzero, it would be a
+    // function pointer to a disassembly callback routine. See xed-disas.h
+    pi.disassembly_callback = 0;
+
+    pi.runtime_address = runtime_instruction_address;
+    pi.syntax = XED_SYNTAX_INTEL;
+    pi.format_options_valid = 1;
+
+    xed_format_options_t format_options;
+    memset(&format_options,0,sizeof(xed_format_options_t));
+  #if defined(XED_NO_HEX_BEFORE_SYMBOLIC_NAMES)
+    format_options.hex_address_before_symbolic_name=0;
+  #else
+    format_options.hex_address_before_symbolic_name=1;
+  #endif
+    format_options.write_mask_curly_k0 = 1;
+    format_options.lowercase_hex = 1;
+    pi.format_options = format_options;
+
+    pi.buf[0]=0; //allow use of strcat
+
+    ok = xed_format_generic(&pi);
+    if (!ok)
+    {
+        pi.blen = xed_strncpy(pi.buf,"Error disassembling ",pi.blen);
+        pi.blen = xed_strncat(pi.buf,
+                               xed_syntax_enum_t2str(pi.syntax),
+                               pi.blen);
+        pi.blen = xed_strncat(pi.buf," syntax.",pi.blen);
+    }
+}
 
 
 
@@ -194,6 +239,7 @@ void xed_disas_test(xed_disas_info_t* di, inst_list_t* instructions)
     unsigned int resync;
     int checkNext = 0;
     int analyse = 0;
+    int first = 1;
 
 
     m = di->ninst; // number of things to decode
@@ -296,7 +342,8 @@ void xed_disas_test(xed_disas_info_t* di, inst_list_t* instructions)
                                  dec_len, XED_HEX_BUFLEN);
                 if (!strcmp(buffer, "646790")) {
                   analyse = !analyse;
-                  if (!analyse) set_breakpoint(instructions);
+                  if (!first && analyse) add_new_list(instructions);
+                  first = 0;
                 }
             }
 

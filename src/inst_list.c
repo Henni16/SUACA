@@ -1,116 +1,86 @@
 #include "inst_list.h"
 
 
-void resize(inst_list_t* list) {
-  list->cap *= 2;
-  list->array = (xed_decoded_inst_t*) realloc(list->array,
-                                      list->cap * sizeof(xed_decoded_inst_t));
-  list->printinfo = (xed_uint64_t*) realloc(list->printinfo,
-                                    list->cap * sizeof(xed_uint64_t));
+single_list_t* newSingleList();
+
+void add_new_list(inst_list_t* list){
+  list->lists = (single_list_t**) realloc(list->lists, ++list->numLists *
+                                         sizeof(single_list_t*));
+  list->lists[++list->curList] = newSingleList();
 }
 
 
-inst_list_t* newList(int initLength) {
+void resize(inst_list_t* list) {
+  single_list_t* cur = list->lists[list->curList];
+  cur->cap *= 2;
+  cur->array = (xed_decoded_inst_t*) realloc(cur->array,
+                                      cur->cap * sizeof(xed_decoded_inst_t));
+  cur->printinfo = (xed_uint64_t*) realloc(cur->printinfo,
+                                    cur->cap * sizeof(xed_uint64_t));
+}
+
+single_list_t* newSingleList() {
   xed_decoded_inst_t* arr = (xed_decoded_inst_t*)
-                              malloc(initLength * sizeof(xed_decoded_inst_t));
-  xed_uint64_t* printinfo = (xed_uint64_t*) malloc(initLength * sizeof(xed_uint64_t));
-  inst_list_t* list = (inst_list_t*) malloc(sizeof(inst_list_t));
-  list->breakpoints = (int*) malloc(5 * sizeof(int));
-  list->numBreaks = 0;
+                            malloc(INITIAL_LIST_LENGTH * sizeof(xed_decoded_inst_t));
+  xed_uint64_t* printinfo = (xed_uint64_t*)
+                            malloc(INITIAL_LIST_LENGTH * sizeof(xed_uint64_t));
+  single_list_t* list = (single_list_t*) malloc(sizeof(single_list_t));
   list->array = arr;
-  list->cap = initLength;
+  list->cap = INITIAL_LIST_LENGTH;
   list->size = 0;
   list->printinfo = printinfo;
   return list;
 }
 
+
+inst_list_t* newList() {
+  single_list_t** arr = (single_list_t**)
+                              malloc(sizeof(single_list_t*));
+  inst_list_t* list = (inst_list_t*) malloc(sizeof(inst_list_t));
+  single_list_t* first = newSingleList();
+  list->lists = arr;
+  list->lists[0] = first;
+  list->numLists = 1;
+  list->curList = 0;
+  return list;
+}
+
 void add_to_list(inst_list_t* list, xed_decoded_inst_t elem,
                  xed_uint64_t runtime_instruction_address) {
-  if (list->cap == list->size) {
+  single_list_t* cur = list->lists[list->curList];
+  if (cur->cap == cur->size) {
     resize(list);
   }
-  list->printinfo[list->size] = runtime_instruction_address;
-  list->array[list->size++] = elem;
+  cur->printinfo[cur->size] = runtime_instruction_address;
+  cur->array[cur->size++] = elem;
 }
 
-
-void set_breakpoint(inst_list_t* list) {
-  if (!list->size)
-    return;
-  if (list->numBreaks > 0 && list->numBreaks % 5 == 0) {
-    list->breakpoints = (int*) realloc(list->breakpoints,
-                                (list->numBreaks+5)*sizeof(int));
-  }
-  list->breakpoints[list->numBreaks++] = list->size;
-}
-
-
-void disassemble(char* buf,
-                 int buflen,
-                 xed_decoded_inst_t* xedd,
-                 xed_uint64_t runtime_instruction_address)
-{
-    int ok;
-    xed_print_info_t pi;
-    xed_init_print_info(&pi);
-    pi.p = xedd;
-    pi.blen = buflen;
-    pi.buf = buf;
-
-
-    // 0=use the default symbolic disassembly function registered via
-    // xed_register_disassembly_callback(). If nonzero, it would be a
-    // function pointer to a disassembly callback routine. See xed-disas.h
-    pi.disassembly_callback = 0;
-
-    pi.runtime_address = runtime_instruction_address;
-    pi.syntax = XED_SYNTAX_INTEL;
-    pi.format_options_valid = 1;
-
-    xed_format_options_t format_options;
-    memset(&format_options,0,sizeof(xed_format_options_t));
-  #if defined(XED_NO_HEX_BEFORE_SYMBOLIC_NAMES)
-    format_options.hex_address_before_symbolic_name=0;
-  #else
-    format_options.hex_address_before_symbolic_name=1;
-  #endif
-    format_options.write_mask_curly_k0 = 1;
-    format_options.lowercase_hex = 1;
-    pi.format_options = format_options;
-
-    pi.buf[0]=0; //allow use of strcat
-
-    ok = xed_format_generic(&pi);
-    if (!ok)
-    {
-        pi.blen = xed_strncpy(pi.buf,"Error disassembling ",pi.blen);
-        pi.blen = xed_strncat(pi.buf,
-                               xed_syntax_enum_t2str(pi.syntax),
-                               pi.blen);
-        pi.blen = xed_strncat(pi.buf," syntax.",pi.blen);
-    }
-}
 
 
 void print_list(inst_list_t* list) {
-  int breaks = 0;
-  int line = 1;
-  for (int i = 0; i < list->size; i++) {
-    if (list->breakpoints[breaks] == i) {
-      breaks++;
-      line = 1;
-      printf("\nNew block!\n\n");
+  for (int i = 0; i < list->numLists; i++) {
+    single_list_t* cur = list->lists[i];
+    for (size_t j = 0; j < cur->size; j++) {
+      char buffer[XED_TMP_BUF_LEN];
+      disassemble(buffer, XED_TMP_BUF_LEN, &cur->array[j],
+                   cur->printinfo[j]);
+      printf("%i: %s\n", j+1, buffer);
     }
-    char buffer[XED_TMP_BUF_LEN];
-    disassemble(buffer, XED_TMP_BUF_LEN, &list->array[i],
-                 list->printinfo[i]);
-    printf("%i: %s\n", line++, buffer);
+    if (i+1 < list->numLists)
+      printf("\n\n================================================\n\n\n");
   }
 }
 
+void free_single_list(single_list_t* list) {
+  free(list->array);
+  free(list->printinfo);
+  free(list);
+}
 
 void free_list(inst_list_t* list) {
-  free(list->array);
-  free(list->breakpoints);
+  for (size_t i = 0; i < list->numLists; i++) {
+    free_single_list(list->lists[i]);
+  }
+  free(list->lists);
   free(list);
 }

@@ -8,9 +8,13 @@ int main(int argc, char *argv[]) {
     return 0;
   }
   print_list(instructions);
-  reg_map_t* map = compute_dependencies(instructions);
-  print_map(map);
-  free_map(map);
+  for (size_t i = 0; i < instructions->numLists; i++) {
+    reg_map_t* map = compute_dependencies(instructions->lists[i]);
+    print_map(map);
+    free_map(map);
+    if (i+1 < instructions->numLists)
+      printf("\n\n================================================\n\n\n");
+  }
   free_list(instructions);
   return 0;
 }

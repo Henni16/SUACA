@@ -5,11 +5,11 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include "inst_list.h"
 #if defined(__APPLE__)
 #include <sys/mman.h>
 #endif
 #include "headers.h"
-#include "inst_list.h"
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -64,6 +64,10 @@ typedef struct {
 
 
 
+void disassemble(char* buf,
+                 int buflen,
+                 xed_decoded_inst_t* xedd,
+                 xed_uint64_t runtime_instruction_address);
 
 void xed_disas_info_init(xed_disas_info_t* p);
 

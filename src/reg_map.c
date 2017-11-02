@@ -55,7 +55,6 @@ void free_map(reg_map_t* map) {
 
 
 void print_map(reg_map_t* map) {
-  printf("\n\n Print Map!\n\n");
   access_t* cur;
   access_t* prev;
   for (size_t i = 0; i < map->size; i++) {

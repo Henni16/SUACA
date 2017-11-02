@@ -1,4 +1,5 @@
 #include "disas.h"
+#include <limits.h>
 
 inst_list_t* build_inst_list(int argc, char** argv) {
   xed_bool_t sixty_four_bit = 0;
@@ -8,7 +9,7 @@ inst_list_t* build_inst_list(int argc, char** argv) {
   char* symbol_search_path = 0;
   xed_state_t dstate;
   xed_bool_t encode = 0;
-  unsigned int ninst = 100*1000*1000; // FIXME: should use maxint...
+  unsigned int ninst = INT_MAX; // FIXME: should use maxint...
   //perf_tail is for skipping first insts in performance measure mode
   unsigned int perf_tail = 0;
   xed_bool_t decode_encode = 0;
@@ -107,7 +108,7 @@ inst_list_t* build_inst_list(int argc, char** argv) {
   decode_info.operand_value    = operand_value;
 
   init_xedd(&xedd, &decode_info);
-  instructions = newList(10);
+  instructions = newList();
 
 
 #if defined(__APPLE__)

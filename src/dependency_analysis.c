@@ -7,7 +7,7 @@ void put_operand_in_map(const xed_operand_t* op, xed_decoded_inst_t* xedd,
 void compute_instruction(reg_map_t* map, xed_decoded_inst_t* xedd,
                           const xed_inst_t* xi, int line);
 
-reg_map_t* compute_dependencies(inst_list_t* list) {
+reg_map_t* compute_dependencies(single_list_t* list) {
   reg_map_t* map = newMap(xed_reg_enum_t_last());
   xed_decoded_inst_t* instructions = list->array;
   xed_decoded_inst_t xedd;

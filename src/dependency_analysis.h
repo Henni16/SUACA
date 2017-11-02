@@ -7,7 +7,7 @@
 #include "disas.h"
 #include "inst_list.h"
 
-reg_map_t* compute_dependencies(inst_list_t* instructions);
+reg_map_t* compute_dependencies(single_list_t* instructions);
 
 
 #endif
