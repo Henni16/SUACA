@@ -10,10 +10,12 @@ int main(int argc, char *argv[]) {
   print_list(instructions);
   for (size_t i = 0; i < instructions->numLists; i++) {
     reg_map_t* map = compute_dependencies(instructions->lists[i]);
-    print_map(map);
+    graph_t g = build_controlflowgraph(instructions->lists[i]);
+    build_graphviz(g, instructions->lists[i], "controlflow");
+    //print_map(map);
     free_map(map);
-    if (i+1 < instructions->numLists)
-      printf("\n\n================================================\n\n\n");
+    //if (i+1 < instructions->numLists)
+      //printf("\n\n================================================\n\n\n");
   }
   free_list(instructions);
   return 0;

@@ -1,11 +1,5 @@
 #include "dependency_analysis.h"
 
-void put_operand_in_map(const xed_operand_t* op, xed_decoded_inst_t* xedd,
-                        reg_map_t* map, int line);
-
-
-void compute_instruction(reg_map_t* map, xed_decoded_inst_t* xedd,
-                          const xed_inst_t* xi, int line);
 
 reg_map_t* compute_dependencies(single_list_t* list) {
   reg_map_t* map = newMap(xed_reg_enum_t_last());
@@ -62,4 +56,36 @@ void put_operand_in_map(const xed_operand_t* op, xed_decoded_inst_t* xedd,
         add_to_map(map, reg, line, WRITE);
     }
     }
+}
+
+
+
+
+graph_t build_controlflowgraph(single_list_t* instructions){
+  graph_t graph = newGraph(instructions->size);
+  for (size_t i = 0; i < instructions->size-1; i++) {
+    if (is_branch_instruction(&instructions->array[i]))
+      compute_branch_flow(instructions, graph, i);
+    else
+      add_graph_dependency(i, i+1, graph);
+  }
+  return graph;
+}
+
+
+void compute_branch_flow(single_list_t* instructions, graph_t graph, int line){
+  xed_decoded_inst_t* xedd = &instructions->array[line];
+  xed_iform_enum_t iform = xed_decoded_inst_get_iform_enum(xedd);
+  if (!branch_is_unconditional(iform))
+    add_graph_dependency(line, line+1, graph);
+  int displacement = xed_decoded_inst_get_branch_displacement(xedd);
+  int toLine = line+1;
+  while (displacement != 0) {
+    displacement -= xed_decoded_inst_get_length(&instructions->array[toLine++]);
+  }
+  add_graph_dependency(line, toLine, graph);
+}
+
+int branch_is_unconditional(xed_iform_enum_t iform){
+  return iform >= 636 && iform <= 638 || iform >= 656 && iform <= 658;
 }

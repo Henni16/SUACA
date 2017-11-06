@@ -172,11 +172,43 @@ xed_map_region(const char* path,
 #endif
 }
 
+int is_branch_instruction(xed_decoded_inst_t* xedd) {
+  const xed_inst_t*      xi = xed_decoded_inst_inst(xedd);
+  const xed_operand_t*   op = xed_inst_operand(xi,0);
+  xed_operand_enum_t     op_name = xed_operand_name(op);
+  return op_name == XED_OPERAND_RELBR;
+}
+
+void disassemble_branch(char* buf,
+                 int buflen,
+                 xed_decoded_inst_t* xedd)
+{
+  xed_iform_enum_t iform = xed_decoded_inst_get_iform_enum(xedd);
+  const char* inst = xed_iform_to_iclass_string_intel(iform);
+  char inst_low[strlen(inst)];
+  for (size_t i = 0; i < strlen(inst); i++) {
+      inst_low[i] = tolower(inst[i]);
+  }
+  strcpy(buf, inst_low);
+  strcat(buf, " 0x");
+  int displacement = xed_decoded_inst_get_branch_displacement(xedd);
+  xed_itoa_hex_ul(buf+strlen(buf), displacement+2, 64, 0, buflen, 1);
+}
+
+
 void disassemble(char* buf,
                  int buflen,
                  xed_decoded_inst_t* xedd,
                  xed_uint64_t runtime_instruction_address)
 {
+
+    //we need to compute branches ourselves
+    const xed_inst_t*           xi = xed_decoded_inst_inst(xedd);
+    const xed_operand_t*        op = xed_inst_operand(xi,0);
+    xed_operand_enum_t     op_name = xed_operand_name(op);
+    if (op_name == XED_OPERAND_RELBR)
+      return disassemble_branch(buf, buflen, xedd);
+
     int ok;
     xed_print_info_t pi;
     xed_init_print_info(&pi);

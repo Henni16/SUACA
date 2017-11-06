@@ -13,6 +13,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <ctype.h>
 #define XED_HEX_BUFLEN 200
 
 typedef struct {
@@ -62,7 +63,7 @@ typedef struct {
 
 } xed_disas_info_t;
 
-
+int is_branch_instruction(xed_decoded_inst_t* xedd);
 
 void disassemble(char* buf,
                  int buflen,
