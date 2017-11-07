@@ -1,2 +1,10 @@
 *.exe
 *.o
+*.graphviz
+loop.c
+test.c
+BFS.c
+PerformanceModelling/
+Seminar/
+mbuild/
+xed/
