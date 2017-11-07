@@ -61,9 +61,9 @@ void put_operand_in_map(const xed_operand_t* op, xed_decoded_inst_t* xedd,
 
 
 
-graph_t build_controlflowgraph(single_list_t* instructions){
-  graph_t graph = newGraph(instructions->size);
-  for (size_t i = 0; i < instructions->size-1; i++) {
+graph_t* build_controlflowgraph(single_list_t* instructions){
+  graph_t* graph = newGraph(instructions->size);
+  for (size_t i = 0; i < instructions->size; i++) {
     if (is_branch_instruction(&instructions->array[i]))
       compute_branch_flow(instructions, graph, i);
     else
@@ -73,19 +73,61 @@ graph_t build_controlflowgraph(single_list_t* instructions){
 }
 
 
-void compute_branch_flow(single_list_t* instructions, graph_t graph, int line){
+void compute_branch_flow(single_list_t* instructions, graph_t* graph, int line){
   xed_decoded_inst_t* xedd = &instructions->array[line];
   xed_iform_enum_t iform = xed_decoded_inst_get_iform_enum(xedd);
+
   if (!branch_is_unconditional(iform))
     add_graph_dependency(line, line+1, graph);
+
   int displacement = xed_decoded_inst_get_branch_displacement(xedd);
-  int toLine = line+1;
-  while (displacement != 0) {
-    displacement -= xed_decoded_inst_get_length(&instructions->array[toLine++]);
+  //for backbranches
+  int toLine = displacement > 0 ? line + 1 : line;
+  if (displacement < 0) {
+    while (displacement < 0 && toLine >= 0) {
+      displacement += xed_decoded_inst_get_length(&instructions->array[toLine--]);
+    }
+    displacement == 0 ? toLine++ : 0;
+  }
+  //normal branches
+  else {
+    while (displacement > 0 && toLine < graph->size) {
+      displacement -= xed_decoded_inst_get_length(&instructions->array[toLine++]);
+    }
   }
   add_graph_dependency(line, toLine, graph);
 }
 
 int branch_is_unconditional(xed_iform_enum_t iform){
   return iform >= 636 && iform <= 638 || iform >= 656 && iform <= 658;
+}
+
+
+
+
+
+graph_t* build_dependencygraph(single_list_t* instructions, reg_map_t* map,
+                              graph_t* flowgraph) {
+
+}
+
+
+
+int is_successor(int from, int to, graph_t* graph) {
+  int seen[graph->size];
+  for (size_t i = 0; i < graph->size; i++) seen[i] = 0;
+  return is_successor_seen(from, to, graph, seen);
+}
+
+int is_successor_seen(int from, int to, graph_t* graph, int* seen) {
+  int cur_succ;
+  for (size_t i = 0; i < graph->nodes[from]->num_successors; i++) {
+    cur_succ = graph->nodes[from]->successors[i];
+    if (cur_succ == to) return 1;
+    if (!seen[cur_succ]) {
+      seen[cur_succ] = 1;
+      if (is_successor_seen(cur_succ, to, graph, seen)) return 1;
+    }
+  }
+  return 0;
 }
