@@ -12,7 +12,9 @@ int main(int argc, char *argv[]) {
     reg_map_t* map = compute_dependencies(instructions->lists[i]);
     graph_t* g = build_controlflowgraph(instructions->lists[i]);
     build_graphviz(g, instructions->lists[i], "controlflow");
-    //print_map(map);
+    graph_t* dg = build_dependencygraph(map, g);
+    build_graphviz(dg, instructions->lists[i], "dependency");
+    print_map(map);
     free_map(map);
     free_graph(g);
     //if (i+1 < instructions->numLists)

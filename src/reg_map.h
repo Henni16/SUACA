@@ -30,5 +30,7 @@ void free_map(reg_map_t* map);
 
 void print_map(reg_map_t* map);
 
+void order_map(reg_map_t* map);
+
 
 #endif

@@ -10,8 +10,9 @@ reg_map_t* compute_dependencies(single_list_t* list) {
     xedd = instructions[i];
     const xed_inst_t* xi = xed_decoded_inst_inst(&xedd);
     if (xed_inst_noperands(xi) > 0)
-      compute_instruction(map, &xedd, xi, i+1);
+      compute_instruction(map, &xedd, xi, i);
   }
+  order_map(map);
   return map;
 }
 
@@ -106,12 +107,34 @@ int branch_is_unconditional(xed_iform_enum_t iform){
 
 
 
-graph_t* build_dependencygraph(single_list_t* instructions, reg_map_t* map,
-                              graph_t* flowgraph) {
-
+graph_t* build_dependencygraph(reg_map_t* map, graph_t* flowgraph) {
+  graph_t* dep_graph = newGraph(flowgraph->size);
+  access_t* cur;
+  for (size_t i = 0; i < map->size; i++) {
+    cur = map->map[i];
+    if (cur != NULL)
+      build_single_depency(cur, flowgraph, dep_graph);
+  }
+  return dep_graph;
 }
 
 
+void build_single_depency(access_t* first, graph_t* flowgraph, graph_t* dep_graph){
+  int fromLine;
+  while (first != NULL) {
+    if (first->read_write == WRITE) {
+      fromLine = first->line;
+      first = first->next;
+      while (first != NULL && first->read_write == READ) {
+        if (is_successor(fromLine, first->line, flowgraph))
+          add_graph_dependency(fromLine, first->line, dep_graph);
+        first = first->next;
+      }
+    }
+    else
+      first = first->next;
+  }
+}
 
 int is_successor(int from, int to, graph_t* graph) {
   int seen[graph->size];

@@ -12,8 +12,7 @@ reg_map_t* compute_dependencies(single_list_t* instructions);
 
 graph_t* build_controlflowgraph(single_list_t* instructions);
 
-graph_t* build_dependencygraph(single_list_t* instructions, reg_map_t* map,
-                              graph_t* flowgraph);
+graph_t* build_dependencygraph(reg_map_t* map, graph_t* flowgraph);
 
 
 //"private" functions
@@ -29,6 +28,8 @@ void compute_instruction(reg_map_t* map, xed_decoded_inst_t* xedd,
 void compute_branch_flow(single_list_t* instructions, graph_t* graph, int line);
 
 int branch_is_unconditional(xed_iform_enum_t iform);
+
+void build_single_depency(access_t* first, graph_t* flowgraph, graph_t* dep_graph);
 
 int is_successor(int from, int to, graph_t* graph);
 

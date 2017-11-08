@@ -52,18 +52,46 @@ void free_map(reg_map_t* map) {
   free(map);
 }
 
+void swap(access_t* cur, access_t* prev) {
+  if (prev != NULL) {
+    prev->next = cur->next;
+  }
+  access_t* after = cur->next->next;
+  cur->next->next = cur;
+  cur->next = after;
+}
 
-
-void print_map(reg_map_t* map) {
+void order_map(reg_map_t* map) {
   access_t* cur;
   access_t* prev;
   for (size_t i = 0; i < map->size; i++) {
     cur = map->map[i];
     if (cur == NULL) continue;
+    prev = NULL;
+    while (cur != NULL) {
+      if (cur->next != NULL) {
+        if (cur->line == cur->next->line) {
+          if (cur->read_write == WRITE && cur->next->read_write == READ)
+            swap(cur, prev);
+          }
+      }
+      prev = cur;
+      cur = cur->next;
+    }
+  }
+}
+
+
+
+void print_map(reg_map_t* map) {
+  access_t* cur;
+  for (size_t i = 0; i < map->size; i++) {
+    cur = map->map[i];
+    if (cur == NULL) continue;
     printf("\nRegister: %s\n", xed_reg_enum_t2str(i));
     while (cur != NULL) {
-      printf("Used in line: %i with %s access\n", cur->line,
-        access_enum_t2str(cur->read_write));
+      printf("Used in line: %i with %s access\n", cur->line+1,
+              access_enum_t2str(cur->read_write));
       cur = cur->next;
     }
   }
