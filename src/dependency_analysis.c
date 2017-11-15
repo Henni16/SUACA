@@ -112,7 +112,7 @@ graph_t* build_dependencygraph(reg_map_t* map, graph_t* flowgraph) {
   access_t* cur;
   for (size_t i = 0; i < map->size; i++) {
     cur = map->map[i];
-    if (cur != NULL)
+    if (cur != NULL && i != XED_REG_RIP)
       build_single_depency(cur, flowgraph, dep_graph);
   }
   return dep_graph;

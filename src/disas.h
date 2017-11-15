@@ -10,6 +10,6 @@
 #include "pecoff.h"
 #include "macho.h"
 
-inst_list_t* build_inst_list(int argc, char** argv);
+inst_list_t* build_inst_list(char* file_name);
 
 #endif

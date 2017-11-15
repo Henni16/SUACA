@@ -1,15 +1,15 @@
 #include "disas.h"
 #include <limits.h>
 
-inst_list_t* build_inst_list(int argc, char** argv) {
+inst_list_t* build_inst_list(char* file_name) {
   xed_bool_t sixty_four_bit = 0;
   unsigned int mpx_mode = 0;
   xed_bool_t decode_only = 1;
-  char* input_file_name = 0;
+  char* input_file_name = file_name;
   char* symbol_search_path = 0;
   xed_state_t dstate;
   xed_bool_t encode = 0;
-  unsigned int ninst = INT_MAX; // FIXME: should use maxint...
+  unsigned int ninst = INT_MAX;
   //perf_tail is for skipping first insts in performance measure mode
   unsigned int perf_tail = 0;
   xed_bool_t decode_encode = 0;
@@ -64,12 +64,6 @@ inst_list_t* build_inst_list(int argc, char** argv) {
                  XED_ADDRESS_WIDTH_32b);
 
   resync = 1;
-
-  if (argc < 2)
-    return NULL;
-  else {
-      input_file_name = argv[1];
-  }
 
   xed_tables_init();
 

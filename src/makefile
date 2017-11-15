@@ -9,3 +9,8 @@ OBJ = main.o disas.o util.o pecoff.o inst_list.o reg_map.o dependency_analysis.o
 
 disas: $(OBJ)
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
+
+.PHONY : clean
+clean:
+	rm *.graphviz
+	rm *.o

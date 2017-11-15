@@ -30,7 +30,7 @@ void add_graph_dependency(int source_line, int destination_line, graph_t* graph)
   requires single_list_t for the node names
   assumes that list and graph have same size
 */
-void build_graphviz(graph_t* graph, single_list_t* list, char* name);
+void build_graphviz(graph_t* graph, single_list_t* list, char* name, int index);
 
 
 #endif

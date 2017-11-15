@@ -48,9 +48,9 @@ void free_graph(graph_t* graph) {
   free(graph);
 }
 
-void build_graphviz(graph_t* graph, single_list_t* list, char* name){
+void build_graphviz(graph_t* graph, single_list_t* list, char* name, int index){
   char buf[0x100];
-  snprintf(buf, sizeof(buf), "%s.graphviz", name);
+  snprintf(buf, sizeof(buf), "%s_%i.graphviz", name, index);
   FILE *f = fopen(buf, "w");
   fprintf(f, "digraph %s{\n", name);
   for (size_t i = 0; i < list->size; i++) {
