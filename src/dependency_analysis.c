@@ -121,14 +121,24 @@ graph_t* build_dependencygraph(reg_map_t* map, graph_t* flowgraph) {
 
 void build_single_depency(access_t* first, graph_t* flowgraph, graph_t* dep_graph){
   int fromLine;
+  access_t* back = NULL;
   while (first != NULL) {
     if (first->read_write == WRITE) {
       fromLine = first->line;
       first = first->next;
-      while (first != NULL && first->read_write == READ) {
+      while (1) {
+        if (first == NULL) break;
+        if (first->read_write == WRITE) {
+          if (is_successor(fromLine, first->line, flowgraph)) break;
+          if (back == NULL) back = first;
+        }
         if (is_successor(fromLine, first->line, flowgraph))
           add_graph_dependency(fromLine, first->line, dep_graph);
         first = first->next;
+      }
+      if (back != NULL) {
+        first = back;
+        back = NULL;
       }
     }
     else
