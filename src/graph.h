@@ -9,6 +9,8 @@
 typedef struct node_s{
   int num_successors;
   int* successors;
+  int* fathers;
+  int num_fathers;
 } node_t;
 
 
@@ -23,7 +25,16 @@ graph_t* newGraph(int size);
 
 void free_graph(graph_t* graph);
 
+int is_root(node_t* node);
+
+node_t* get_node(graph_t* graph, int line);
+
 void add_graph_dependency(int source_line, int destination_line, graph_t* graph);
+
+int is_successor(int from, int to, graph_t* graph);
+
+int is_successor_seen(int from, int to, graph_t* graph, int* seen);
+
 
 /*
   print graphviz representation of graph

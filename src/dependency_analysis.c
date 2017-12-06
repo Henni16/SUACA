@@ -145,22 +145,3 @@ void build_single_depency(access_t* first, graph_t* flowgraph, graph_t* dep_grap
       first = first->next;
   }
 }
-
-int is_successor(int from, int to, graph_t* graph) {
-  int seen[graph->size];
-  for (size_t i = 0; i < graph->size; i++) seen[i] = 0;
-  return is_successor_seen(from, to, graph, seen);
-}
-
-int is_successor_seen(int from, int to, graph_t* graph, int* seen) {
-  int cur_succ;
-  for (size_t i = 0; i < graph->nodes[from]->num_successors; i++) {
-    cur_succ = graph->nodes[from]->successors[i];
-    if (cur_succ == to) return 1;
-    if (!seen[cur_succ]) {
-      seen[cur_succ] = 1;
-      if (is_successor_seen(cur_succ, to, graph, seen)) return 1;
-    }
-  }
-  return 0;
-}

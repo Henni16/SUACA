@@ -31,8 +31,5 @@ int branch_is_unconditional(xed_iform_enum_t iform);
 
 void build_single_depency(access_t* first, graph_t* flowgraph, graph_t* dep_graph);
 
-int is_successor(int from, int to, graph_t* graph);
-
-int is_successor_seen(int from, int to, graph_t* graph, int* seen);
 
 #endif
