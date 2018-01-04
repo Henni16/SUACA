@@ -125,3 +125,41 @@ void inform_children_im_done(sim_inst_t* inst) {
     inst->dep_children[i]->fathers_todo--;
   }
 }
+
+
+void printStation(station_t* s) {
+  printf("wait queue:\n");
+  sim_inst_t* cur = s->wait_queue;
+  while (cur) {
+    printf("line: %i loaded: %i processed: %i\n",
+            cur->line, cur->micro_ops_loaded, cur->micro_ops_processed);
+    cur = cur->next;
+  }
+  cur = s->station_queue;
+  printf("station queue:\n");
+  while (cur && cur->micro_ops_loaded>0) {
+    printf("line: %i loaded: %i processed: %i\n",
+            cur->line, cur->micro_ops_loaded, cur->micro_ops_processed);
+    cur = cur->next;
+  }
+  printf("done list:\n");
+  for (size_t i = 0; i < s->done_insts->size; i++) {
+    if (s->done_insts->arr[i])
+      printf("%i, ", i);
+  }
+  printf("\n");
+  for (size_t i = 0; i < s->num_ports; i++) {
+    printf("port %s: ", i);
+    printPort(s->ports[i]);
+    printf("\n");
+  }
+}
+
+
+void printPort(port_t* p) {
+  printf("line: %i cycles in port: %i", p->inst->line, p->num_cycles_in_port);
+  if (p->next) {
+    printf(" -> ");
+    printPort(p->next);
+  }
+}

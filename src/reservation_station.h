@@ -63,5 +63,9 @@ void freePort(port_t* port);
 
 void inform_children_im_done(sim_inst_t* inst);
 
+void printStation(station_t* s);
+
+void printPort(port_t* p);
+
 
 #endif
