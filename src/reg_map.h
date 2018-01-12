@@ -12,6 +12,7 @@ typedef enum {
 typedef struct access_s{
   access_enum_t read_write;
   int line;
+  xed_reg_enum_t used_reg;
   struct access_s* next;
 } access_t;
 

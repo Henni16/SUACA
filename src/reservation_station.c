@@ -1,9 +1,18 @@
 #include "reservation_station.h"
+#include "xmlParser.h"
 
 
+
+station_t* create_initial_state(graph_t* dependencies, single_list_t* insts) {
+  //inst_info_t** table_info = parse_xml_file(TABLE);
+  //TODO create station
+  station_t* station;
+  for (size_t i = 0; i < insts->size; i++) {
+    //xed_decoded_inst_get_iform_enum(insts->array[i]);
+  }
+}
 
 void perform_cycle(station_t* station) {
-  //TODO before or after selection of executions??
   load_instruction_into_station(station);
   put_executables_into_ports(station);
   execute_instructions_in_ports(station);
@@ -15,7 +24,7 @@ void execute_instructions_in_ports(station_t* station) {
   port_t* prev = NULL;
   for (size_t i = 0; i < station->num_ports; i++) {
     port = station->ports[i];
-    while (port != NULL) {
+    while (port->inst->line >= 0) {
       port->availiable = true;
       if (++port->num_cycles_in_port == port->inst->latency) {
         if (prev != NULL)
@@ -37,7 +46,7 @@ void execute_instructions_in_ports(station_t* station) {
 }
 
 void put_executables_into_ports(station_t* station) {
-  sim_inst_t* cur = station->sation_queue;
+  sim_inst_t* cur = station->station_queue;
   while (cur != NULL && cur->micro_ops_loaded > 0) {
     //would like to process micro_op but it isn't loaded
     if (cur->micro_ops_loaded < cur->being_processed) {

@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
     return 0;
   }
   if (file_name == NULL) {
-    printf("Please give me a file to work on\n");
+    printf("Please give me a file to work on\n Use --help to see options");
     return 0;
   }
 
@@ -67,13 +67,13 @@ void graphs_and_map(single_list_t* list, int index) {
 
 void clp(int argc, char *argv[]) {
   for (int i = 1; i < argc; i++) {
-        if (!strcmp(argv[i], "-cfg")) {
+        if (!strcmp(argv[i], "--cfg")) {
             build_cfg = 1;
-        }else if (!strcmp(argv[i], "-dg")) {
+        }else if (!strcmp(argv[i], "--dg")) {
             build_dep_graph = 1;
-        }else if (!strcmp(argv[i], "-map")) {
+        }else if (!strcmp(argv[i], "--map")) {
             print_map_flag = 1;
-        }else if (!strcmp(argv[i], "-help")) {
+        }else if (!strcmp(argv[i], "--help")) {
             print_help = 1;
         }else if (*argv[i] == '-') {
             invalid_flag = argv[i];

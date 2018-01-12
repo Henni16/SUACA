@@ -13,10 +13,11 @@ reg_map_t* newMap(int size) {
 }
 
 
-access_t* new_access_t(access_enum_t e, int line) {
+access_t* new_access_t(access_enum_t e, int line, xed_reg_enum_t reg) {
   access_t* ret = (access_t*) malloc(sizeof(access_t));
   ret->line = line;
   ret->next = NULL;
+  ret->used_reg = reg;
   ret->read_write = e;
   return ret;
 }
@@ -24,7 +25,7 @@ access_t* new_access_t(access_enum_t e, int line) {
 
 void add_to_map(reg_map_t* map, xed_reg_enum_t reg, int line, access_enum_t read_write) {
   assert(reg < map->size);
-  access_t* elem = new_access_t(read_write, line);
+  access_t* elem = new_access_t(read_write, line, reg);
   access_t* cur = map->map[compute_register(reg)];
   if (cur == NULL) {
     map->map[compute_register(reg)] = elem;

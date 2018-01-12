@@ -6,10 +6,15 @@
 #include "util.h"
 #define TMP_BUF_LEN (1024*4)
 
+typedef struct int_reg_tuple_s {
+  int line;
+  xed_reg_enum_t reg;
+} int_reg_tuple_t;
+
 typedef struct node_s{
   int num_successors;
-  int* successors;
-  int* fathers;
+  int_reg_tuple_t* successors;
+  int_reg_tuple_t* fathers;
   int num_fathers;
 } node_t;
 
@@ -29,7 +34,8 @@ int is_root(node_t* node);
 
 node_t* get_node(graph_t* graph, int line);
 
-void add_graph_dependency(int source_line, int destination_line, graph_t* graph);
+void add_graph_dependency(int source_line, int destination_line, graph_t* graph,
+                          xed_reg_enum_t reg);
 
 int is_successor(int from, int to, graph_t* graph);
 

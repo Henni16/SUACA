@@ -68,7 +68,7 @@ graph_t* build_controlflowgraph(single_list_t* instructions){
     if (is_branch_instruction(&instructions->array[i]))
       compute_branch_flow(instructions, graph, i);
     else
-      add_graph_dependency(i, i+1, graph);
+      add_graph_dependency(i, i+1, graph, XED_REG_INVALID);
   }
   return graph;
 }
@@ -79,7 +79,7 @@ void compute_branch_flow(single_list_t* instructions, graph_t* graph, int line){
   xed_iform_enum_t iform = xed_decoded_inst_get_iform_enum(xedd);
 
   if (!branch_is_unconditional(iform))
-    add_graph_dependency(line, line+1, graph);
+    add_graph_dependency(line, line+1, graph, XED_REG_INVALID);
 
   int displacement = xed_decoded_inst_get_branch_displacement(xedd);
   //for backbranches
@@ -96,7 +96,7 @@ void compute_branch_flow(single_list_t* instructions, graph_t* graph, int line){
       displacement -= xed_decoded_inst_get_length(&instructions->array[toLine++]);
     }
   }
-  add_graph_dependency(line, toLine, graph);
+  add_graph_dependency(line, toLine, graph, XED_REG_INVALID);
 }
 
 int branch_is_unconditional(xed_iform_enum_t iform){
@@ -133,7 +133,7 @@ void build_single_depency(access_t* first, graph_t* flowgraph, graph_t* dep_grap
           if (back == NULL) back = first;
         }
         if (is_successor(fromLine, first->line, flowgraph))
-          add_graph_dependency(fromLine, first->line, dep_graph);
+          add_graph_dependency(fromLine, first->line, dep_graph, first->used_reg);
         first = first->next;
       }
       if (back != NULL) {

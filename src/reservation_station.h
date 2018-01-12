@@ -7,6 +7,14 @@
 #include <stdbool.h>
 #include "sim_inst.h"
 
+
+typedef struct port_s {
+  sim_inst_t* inst;
+  int num_cycles_in_port;
+  bool availiable;
+  struct port_s* next;
+} port_t;
+
 typedef struct station_s {
   int size;
   int cap;
@@ -18,18 +26,10 @@ typedef struct station_s {
   sim_inst_list_t* done_insts;
 } station_t;
 
-typedef struct port_s {
-  sim_inst_t* inst;
-  int num_cycles_in_port;
-  bool availiable;
-  struct port_s* next;
-} port_t;
-
-
 /*
   parses file to create station
 */
-station_t* create_initial_state(graph_t* dependencies);
+station_t* create_initial_state(graph_t* dependencies, single_list_t* insts);
 
 
 /*

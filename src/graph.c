@@ -30,7 +30,7 @@ graph_t* newGraph(int size) {
 }
 
 
-void add_graph_dependency(int source_line, int destination_line, graph_t* graph){
+void add_graph_dependency(int source_line, int destination_line, graph_t* graph, xed_reg_enum_t dep_reg){
   //check if last line is reached
   if (destination_line >= graph->size || destination_line < 0) return;
 
@@ -39,21 +39,21 @@ void add_graph_dependency(int source_line, int destination_line, graph_t* graph)
   source->num_successors++;
   dest->num_fathers++;
   if (source->num_successors > 1) {
-    source->successors = (int*) realloc(source->successors,
-                                        source->num_successors * sizeof(int));
+    source->successors = (int_reg_tuple_t*) realloc(source->successors,
+                                        source->num_successors * sizeof(int_reg_tuple_t));
   }
   else {
-    source->successors = (int*) malloc(sizeof(int));
+    source->successors = (int_reg_tuple_t*) malloc(sizeof(int_reg_tuple_t));
   }
   if (dest->num_fathers > 1) {
-    dest->fathers = (int*) realloc(dest->fathers,
-                                   dest->num_fathers * sizeof(int));
+    dest->fathers = (int_reg_tuple_t*) realloc(dest->fathers,
+                                   dest->num_fathers * sizeof(int_reg_tuple_t));
   }
   else {
-    dest->fathers = (int*) malloc(sizeof(int));
+    dest->fathers = (int_reg_tuple_t*) malloc(sizeof(int_reg_tuple_t));
   }
-  source->successors[source->num_successors-1] = destination_line;
-  dest->fathers[dest->num_fathers-1] = source_line;
+  source->successors[source->num_successors-1] = (int_reg_tuple_t){destination_line, dep_reg};
+  dest->fathers[dest->num_fathers-1] = (int_reg_tuple_t){source_line, dep_reg};
 }
 
 
@@ -82,7 +82,11 @@ void build_graphviz(graph_t* graph, single_list_t* list, char* name, int index){
   for (size_t i = 0; i < list->size; i++) {
     node_t* cur = graph->nodes[i];
     for (size_t j = 0; j < cur->num_successors; j++) {
-      fprintf(f, "%i -> %i\n", i, cur->successors[j]);
+      if (cur->successors[j].reg != XED_REG_INVALID)
+        fprintf(f, "%i -> %i [ label = \"%s\" ]\n", i, cur->successors[j].line,
+                                    xed_reg_enum_t2str(cur->successors[j].reg));
+      else
+        fprintf(f, "%i -> %i\n", i, cur->successors[j].line);
     }
   }
   fprintf(f, "}");
@@ -99,7 +103,7 @@ int is_successor(int from, int to, graph_t* graph) {
 int is_successor_seen(int from, int to, graph_t* graph, int* seen) {
   int cur_succ;
   for (size_t i = 0; i < graph->nodes[from]->num_successors; i++) {
-    cur_succ = graph->nodes[from]->successors[i];
+    cur_succ = graph->nodes[from]->successors[i].line;
     if (cur_succ == to) return 1;
     if (!seen[cur_succ]) {
       seen[cur_succ] = 1;

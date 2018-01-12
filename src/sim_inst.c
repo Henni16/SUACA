@@ -5,7 +5,7 @@ sim_inst_t* newSimInst(int line, bool* ports, int micro_ops, int num_fathers,
   sim_inst_t* ret = (sim_inst_t*) malloc(sizeof(sim_inst_t));
   ret->num_micro_ops = micro_ops;
   ret->micro_ops_loaded = 0;
-  ret->micro_ops_processed 0;
+  ret->micro_ops_processed = 0;
   ret->being_processed = 0;
   ret->usable_ports = ports;
   ret->line = line;
@@ -14,9 +14,9 @@ sim_inst_t* newSimInst(int line, bool* ports, int micro_ops, int num_fathers,
   ret->cycles_delayed = 0;
   ret->delayed_cycles = 0;
   ret->latency = latency;
-  ret->num_children = num_children;
-  ret->children = (sim_inst_t**) malloc(num_children * sizeof(sim_inst_t*));
-  ret->cur_num_children = 0;
+  ret->num_dep_children = num_children;
+  ret->dep_children = (sim_inst_t**) malloc(num_children * sizeof(sim_inst_t*));
+  ret->cur_num_dep_children = 0;
   return ret;
 }
 
@@ -36,8 +36,7 @@ bool instruction_done(sim_inst_t* si) {
 }
 
 void free_sim_inst(sim_inst_t* si) {
-  free(si->used_ports);
-  free(si->micro_ops_processed);
+  free(si->usable_ports);
   free(si);
 }
 
