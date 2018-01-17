@@ -11,34 +11,57 @@
 #define MY_BUFF_SIZE 255
 
 typedef struct latency_reg_s {
-  int latency;
-    xed_reg_enum_t reg;
+    int latency;
+    //just for parsing
+    int id;
+    int numregs;
+    xed_reg_enum_t *reg;
     struct latency_reg_s *next;
 } latency_reg_t;
 
 typedef struct inst_info_s {
     latency_reg_t *latencies;
-  bool* usable_ports;
-  int num_micro_ops;
+    bool *usable_ports;
+    int num_micro_ops;
 } inst_info_t;
 
 typedef struct attribute_value_s {
-  char* attribute;
-  char* value;
+    char *attribute;
+    char *value;
+    char *rest;
 } attribute_value_t;
 
-int main(void);
 
-inst_info_t **parse_instruction_file(char *file_name);
+inst_info_t *parse_instruction_file(char *file_name);
 
-void skip_cur_element(FILE* f);
+void parse_single_instruction(inst_info_t *info, FILE *file);
 
-void split_attribute(char* attribute, attribute_value_t* a);
+/*
+ * reads item until it's finished
+ * returns true if item is also closed
+ */
+bool search_end_of_item(FILE *file);
+
+void parse_operands(FILE *file, inst_info_t *info);
+
+void parse_registers(char *line, latency_reg_t *latreg);
+
+void skip_cur_element(FILE *f);
+
+void split_attribute(char *attribute, attribute_value_t *a);
 
 station_t *parse_station_file(char *file_name);
 
 int get_max_latency(latency_reg_t *l);
 
+/*
+ * searches for the latency of a specific register
+ * returns the maximum latency if register couldn't be found
+ */
 int get_latency_for_register(latency_reg_t *l, xed_reg_enum_t reg);
+
+latency_reg_t *newLatReg();
+
+void extract_registers(FILE *file, latency_reg_t *latreg);
 
 #endif
