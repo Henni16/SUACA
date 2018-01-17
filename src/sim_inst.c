@@ -1,12 +1,12 @@
 #include "sim_inst.h"
 
 sim_inst_t* newSimInst(int line, bool* ports, int micro_ops, int num_fathers,
-                       int num_ports, int latency, int num_children) {
+                       int latency, int num_children) {
   sim_inst_t* ret = (sim_inst_t*) malloc(sizeof(sim_inst_t));
   ret->num_micro_ops = micro_ops;
   ret->micro_ops_loaded = 0;
-  ret->micro_ops_processed = 0;
-  ret->being_processed = 0;
+    //ret->micro_ops_processed = 0;
+    //ret->being_processed = 0;
   ret->usable_ports = ports;
   ret->line = line;
   ret->fathers_todo = num_fathers;
@@ -15,8 +15,7 @@ sim_inst_t* newSimInst(int line, bool* ports, int micro_ops, int num_fathers,
   ret->delayed_cycles = 0;
   ret->latency = latency;
   ret->num_dep_children = num_children;
-  ret->dep_children = (sim_inst_t**) malloc(num_children * sizeof(sim_inst_t*));
-  ret->cur_num_dep_children = 0;
+    ret->dep_children = (reg_sim_inst_t *) malloc(num_children * sizeof(reg_sim_inst_t));
   return ret;
 }
 
@@ -30,10 +29,6 @@ int get_loadable_micro_ops(sim_inst_t* inst) {
   return inst->num_micro_ops - inst->micro_ops_loaded;
 }
 
-
-bool instruction_done(sim_inst_t* si) {
-  return si->micro_ops_processed == si->num_micro_ops;
-}
 
 void free_sim_inst(sim_inst_t* si) {
   free(si->usable_ports);

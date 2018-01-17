@@ -1,15 +1,42 @@
 #include "reservation_station.h"
 #include "xmlParser.h"
-
+#include "inst_list.h"
+#include "graph.h"
 
 
 station_t* create_initial_state(graph_t* dependencies, single_list_t* insts) {
-  //inst_info_t** table_info = parse_xml_file(TABLE);
-  //TODO create station
-  station_t* station;
-  for (size_t i = 0; i < insts->size; i++) {
-    //xed_decoded_inst_get_iform_enum(insts->array[i]);
-  }
+    inst_info_t **table_info = parse_instruction_file(TABLE);
+    station_t *station = parse_station_file(STATION_FILE);
+    sim_inst_t *cur;
+    sim_inst_t *prev = NULL;
+    sim_inst_t *all[insts->size];
+    //build all sim insts
+    for (int i = 0; i < insts->size; i++) {
+        int index = xed_decoded_inst_get_iform_enum(&insts->array[i]);
+        inst_info_t *info = table_info[index];
+        cur = newSimInst(i, info->usable_ports, info->num_micro_ops, dependencies->nodes[i]->num_fathers,
+                         get_max_latency(info->latencies), dependencies->nodes[i]->num_successors);
+        all[i] = cur;
+        cur->previous = prev;
+        if (prev != NULL)
+            prev->next = cur;
+        else {
+            station->station_queue = cur;
+            station->wait_queue = cur;
+        }
+        prev = cur;
+    }
+    //build dependencies
+    for (int j = 0; j < insts->size; ++j) {
+        int index = xed_decoded_inst_get_iform_enum(&insts->array[j]);
+        inst_info_t *info = table_info[index];
+        cur = all[j];
+        for (int i = 0; i < cur->num_dep_children; ++i) {
+            int_reg_tuple_t intreg = dependencies->nodes[j]->successors[i];
+            cur->dep_children[i] = (reg_sim_inst_t) {all[intreg.line],
+                                                     get_latency_for_register(info->latencies, intreg.reg)};
+        }
+    }
 }
 
 void perform_cycle(station_t* station) {
@@ -29,13 +56,16 @@ void execute_instructions_in_ports(station_t* station) {
       if (++port->num_cycles_in_port == port->inst->latency) {
         if (prev != NULL)
           prev->next = port->next;
-        port->inst->micro_ops_processed++;
+          //port->inst->micro_ops_processed++;
+          //TODO await andreas
+          /*
         if (instruction_done(port->inst)) {
-          inform_children_im_done(port->inst);
+          inform_children_im_done(port->inst, port->num_cycles_in_port);
           delete_inst_from_queue(port->inst);
           add_to_sim_list(station->done_insts, port->inst);
           freePort(port);
         }
+           */
       }
       else {
         prev = port;
@@ -47,16 +77,18 @@ void execute_instructions_in_ports(station_t* station) {
 
 void put_executables_into_ports(station_t* station) {
   sim_inst_t* cur = station->station_queue;
-  while (cur != NULL && cur->micro_ops_loaded > 0) {
-    //would like to process micro_op but it isn't loaded
-    if (cur->micro_ops_loaded < cur->being_processed) {
-      //all remaining micro_ops are being processed
-      if (cur->being_processed > cur->num_micro_ops) continue;
-      //we reached the end of the station and not everything is loaded
-      else break;
-    }
-    //there currently is a micro_op in a port
-    if (cur->being_processed > cur->micro_ops_processed) continue;
+    while (cur != NULL && cur->micro_ops_loaded == cur->num_micro_ops) {
+        /*
+        //would like to process micro_op but it isn't loaded
+        if (cur->micro_ops_loaded < cur->being_processed) {
+          //all remaining micro_ops are being processed
+          if (cur->being_processed > cur->num_micro_ops) continue;
+          //we reached the end of the station and not everything is loaded
+          else break;
+        }
+        //there currently is a micro_op in a port
+        if (cur->being_processed > cur->micro_ops_processed) continue;
+         */
     if (!all_fathers_done(cur)) {
       cur->cycles_delayed++;
     }
@@ -73,7 +105,8 @@ void put_executables_into_ports(station_t* station) {
       if (!fits) {
         cur->cycles_delayed++;
         for (size_t i = 0; i < station->num_ports; i++) {
-          station->ports[i]->inst->delayed_cycles++;
+            if (cur->usable_ports[i])
+                station->ports[i]->inst->delayed_cycles++;
         }
       }
     }
@@ -129,9 +162,10 @@ void freeStation(station_t* station) {
   free(station);
 }
 
-void inform_children_im_done(sim_inst_t* inst) {
+void inform_children_im_done(sim_inst_t *inst, int cycles_done) {
   for (size_t i = 0; i < inst->num_dep_children; i++) {
-    inst->dep_children[i]->fathers_todo--;
+      if (inst->dep_children[i].cycles == cycles_done)
+          inst->dep_children[i].child->fathers_todo--;
   }
 }
 
@@ -140,15 +174,15 @@ void printStation(station_t* s) {
   printf("wait queue:\n");
   sim_inst_t* cur = s->wait_queue;
   while (cur) {
-    printf("line: %i loaded: %i processed: %i\n",
-            cur->line, cur->micro_ops_loaded, cur->micro_ops_processed);
+      printf("line: %i loaded: %i\n",
+             cur->line, cur->micro_ops_loaded);
     cur = cur->next;
   }
   cur = s->station_queue;
   printf("station queue:\n");
   while (cur && cur->micro_ops_loaded>0) {
-    printf("line: %i loaded: %i processed: %i\n",
-            cur->line, cur->micro_ops_loaded, cur->micro_ops_processed);
+      printf("line: %i loaded: %ii\n",
+             cur->line, cur->micro_ops_loaded);
     cur = cur->next;
   }
   printf("done list:\n");

@@ -3,6 +3,7 @@
 
 //TODO set table file here
 #define TABLE ""
+#define STATION_FILE ""
 
 #include <stdbool.h>
 #include "sim_inst.h"
@@ -61,7 +62,7 @@ port_t* newPort(sim_inst_t* inst, port_t* next);
 
 void freePort(port_t* port);
 
-void inform_children_im_done(sim_inst_t* inst);
+void inform_children_im_done(sim_inst_t *inst, int cycles_done);
 
 void printStation(station_t* s);
 

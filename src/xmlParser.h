@@ -2,6 +2,7 @@
 #define XML_PARSER_H
 
 #include "headers.h"
+#include "reservation_station.h"
 #include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
@@ -9,9 +10,14 @@
 
 #define MY_BUFF_SIZE 255
 
-typedef struct inst_info_s {
+typedef struct latency_reg_s {
   int latency;
-  int num_ports;
+    xed_reg_enum_t reg;
+    struct latency_reg_s *next;
+} latency_reg_t;
+
+typedef struct inst_info_s {
+    latency_reg_t *latencies;
   bool* usable_ports;
   int num_micro_ops;
 } inst_info_t;
@@ -23,11 +29,16 @@ typedef struct attribute_value_s {
 
 int main(void);
 
-inst_info_t** parse_xml_file(char* file_name);
+inst_info_t **parse_instruction_file(char *file_name);
 
 void skip_cur_element(FILE* f);
 
 void split_attribute(char* attribute, attribute_value_t* a);
 
+station_t *parse_station_file(char *file_name);
+
+int get_max_latency(latency_reg_t *l);
+
+int get_latency_for_register(latency_reg_t *l, xed_reg_enum_t reg);
 
 #endif
