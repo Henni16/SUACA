@@ -4,6 +4,7 @@
 //TODO set table file here
 #define TABLE ""
 #define STATION_FILE ""
+#define ARCHITECTURE_NAME "NHM"
 
 #include <stdbool.h>
 #include "sim_inst.h"

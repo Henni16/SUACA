@@ -15,6 +15,7 @@ typedef struct latency_reg_s {
     //just for parsing
     int id;
     int numregs;
+    int cap;
     xed_reg_enum_t *reg;
     struct latency_reg_s *next;
 } latency_reg_t;
@@ -32,9 +33,9 @@ typedef struct attribute_value_s {
 } attribute_value_t;
 
 
-inst_info_t *parse_instruction_file(char *file_name);
+inst_info_t **parse_instruction_file(char *file_name, char *architecture_name);
 
-void parse_single_instruction(inst_info_t *info, FILE *file);
+void parse_single_instruction(inst_info_t **info, FILE *file, char *architecture_name);
 
 /*
  * reads item until it's finished
@@ -45,6 +46,8 @@ bool search_end_of_item(FILE *file);
 void parse_operands(FILE *file, inst_info_t *info);
 
 void parse_registers(char *line, latency_reg_t *latreg);
+
+void parse_architecture(FILE *file, inst_info_t *info);
 
 void skip_cur_element(FILE *f);
 
@@ -62,6 +65,10 @@ int get_latency_for_register(latency_reg_t *l, xed_reg_enum_t reg);
 
 latency_reg_t *newLatReg();
 
+void add_reg_to_lat_reg(xed_reg_enum_t reg, latency_reg_t *latreg);
+
 void extract_registers(FILE *file, latency_reg_t *latreg);
+
+void free_info_array(inst_info_t **array);
 
 #endif

@@ -18,8 +18,10 @@ void help();
 
 int main(int argc, char *argv[]) {
     clock_t start = clock();
-    parse_instruction_file("../../tables/intel.xml");
-    //parse_instruction_file("../tables/intel.xml");
+    //inst_info_t** a = parse_instruction_file("test.xml", "NHM");
+    inst_info_t **a = parse_instruction_file("../../tables/intel.xml", "NHM");
+    free_info_array(a);
+    //parse_instruction_file("../../tables/intel.xml");
     printf("time: %f", (clock() - start) / (double) CLOCKS_PER_SEC);
     /*
     clp(argc, argv);

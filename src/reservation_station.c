@@ -5,7 +5,7 @@
 
 
 station_t *create_initial_state(graph_t *dependencies, single_list_t *insts) {
-    inst_info_t **table_info = parse_instruction_file(TABLE);
+    inst_info_t **table_info = parse_instruction_file(TABLE, ARCHITECTURE_NAME);
     station_t *station = parse_station_file(STATION_FILE);
     sim_inst_t *cur;
     sim_inst_t *prev = NULL;
@@ -37,6 +37,7 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts) {
                                                      get_latency_for_register(info->latencies, intreg.reg)};
         }
     }
+    free_info_array(table_info);
 }
 
 void perform_cycle(station_t *station) {
