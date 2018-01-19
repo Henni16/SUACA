@@ -9,6 +9,7 @@
 #include <stdlib.h>
 
 #define MY_BUFF_SIZE 255
+#define XML_DEBUG 0
 
 typedef struct latency_reg_s {
     int latency;
@@ -70,5 +71,7 @@ void add_reg_to_lat_reg(xed_reg_enum_t reg, latency_reg_t *latreg);
 void extract_registers(FILE *file, latency_reg_t *latreg);
 
 void free_info_array(inst_info_t **array);
+
+void free_info(inst_info_t *info);
 
 #endif

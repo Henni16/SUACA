@@ -46,14 +46,26 @@ void parse_single_instruction(inst_info_t **info, FILE *file, char *architecture
     fscanf(file, "%s", buff);
     split_attribute(buff, &att);
     if (!strcmp(att.value, architecture_name)) {
+        if (att.rest) {
+#if XML_DEBUG > 0
+            printf("Instruction: %s empty for architecture: %s\n", xed_iform_enum_t2str(iform), ARCHITECTURE_NAME);
+#endif
+            free_info(info[iform]);
+            info[iform] = NULL;
+            skip_cur_element(file);
+            return;
+        }
         parse_architecture(file, my_info);
         skip_cur_element(file);
     } else {
-        skip_cur_element(file);
+        if (!att.rest)
+            skip_cur_element(file);
         while (fscanf(file, "%s", buff)) {
             if (strcmp(buff + 1, "architecture")) {
-                printf("Instruction: %s not found for architecture: %s\n", xed_iform_enum_t2str(iform),
-                       ARCHITECTURE_NAME);
+#if XML_DEBUG > 0
+                printf("Instruction: %s not found for architecture: %s\n", xed_iform_enum_t2str(iform), ARCHITECTURE_NAME);
+#endif
+                free_info(info[iform]);
                 info[iform] = NULL;
                 return;
             }
@@ -62,6 +74,7 @@ void parse_single_instruction(inst_info_t **info, FILE *file, char *architecture
             if (!strcmp(att.value, architecture_name)) {
                 parse_architecture(file, my_info);
                 skip_cur_element(file);
+                return;
             } else {
                 skip_cur_element(file);
             }
@@ -266,17 +279,22 @@ void add_reg_to_lat_reg(xed_reg_enum_t reg, latency_reg_t *latreg) {
     latreg->reg[latreg->numregs++] = reg;
 }
 
+
+void free_info(inst_info_t *info) {
+    latency_reg_t *r = info->latencies;
+    latency_reg_t *r2;
+    while (r != NULL) {
+        r2 = r;
+        r = r->next;
+        free(r2);
+    }
+    free(info);
+}
+
 void free_info_array(inst_info_t **array) {
     for (int i = 0; i < XED_IFORM_LAST; ++i) {
         if (!array[i]) continue;
-        latency_reg_t *r = array[i]->latencies;
-        latency_reg_t *r2;
-        while (r != NULL) {
-            r2 = r;
-            r = r->next;
-            free(r2);
-        }
-        free(array[i]);
+        free_info(array[i]);
     }
     free(array);
 }
