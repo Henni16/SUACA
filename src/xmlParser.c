@@ -1,7 +1,7 @@
 #include "xmlParser.h"
 #include <limits.h>
 
-inst_info_t **parse_instruction_file(char *file_name, char *architecture_name) {
+inst_info_t **parse_instruction_file(char *file_name, char *architecture_name, int num_ports) {
     FILE *file = fopen(file_name, "r");
     if (file == NULL) {
         printf("Xml file not found\n");
@@ -13,7 +13,7 @@ inst_info_t **parse_instruction_file(char *file_name, char *architecture_name) {
     while (fscanf(file, "%s", buff) != EOF) {
         if (*buff == '<') {
             if (!strcmp(buff + 1, "instruction")) {
-                parse_single_instruction(info_array, file, architecture_name);
+                parse_single_instruction(info_array, file, architecture_name, num_ports);
             }
         }
     }
@@ -21,11 +21,10 @@ inst_info_t **parse_instruction_file(char *file_name, char *architecture_name) {
     return info_array;
 }
 
-void parse_single_instruction(inst_info_t **info, FILE *file, char *architecture_name) {
+void parse_single_instruction(inst_info_t **info, FILE *file, char *architecture_name, int num_ports) {
     xed_iform_enum_t iform = xed_iform_enum_t_last();
     attribute_value_t att;
-    inst_info_t *my_info = malloc(sizeof(inst_info_t));
-    my_info->latencies = NULL;
+    inst_info_t *my_info = newInstInfo(num_ports);
     char buff[MY_BUFF_SIZE];
     //get iform enum
     while (fscanf(file, "%s", buff) != EOF) {
@@ -33,7 +32,9 @@ void parse_single_instruction(inst_info_t **info, FILE *file, char *architecture
         if (!strcmp(att.attribute, "iform")) {
             iform = str2xed_iform_enum_t(att.value);
             if (iform == XED_IFORM_INVALID) {
-                //printf("Invalid iform: %s\n", att.value);
+#if XML_DEBUG > 0
+                printf("Invalid iform: %s\n", att.value);
+#endif
                 skip_cur_element(file);
                 return;
             }
@@ -50,33 +51,46 @@ void parse_single_instruction(inst_info_t **info, FILE *file, char *architecture
 #if XML_DEBUG > 0
             printf("Instruction: %s empty for architecture: %s\n", xed_iform_enum_t2str(iform), ARCHITECTURE_NAME);
 #endif
-            free_info(info[iform]);
+            free_info(my_info);
             info[iform] = NULL;
             skip_cur_element(file);
             return;
         }
-        parse_architecture(file, my_info);
+        if (!parse_architecture(file, my_info, iform))
+            info[iform] = NULL;
         skip_cur_element(file);
+        return;
     } else {
         if (!att.rest)
             skip_cur_element(file);
-        while (fscanf(file, "%s", buff)) {
+        while (fscanf(file, "%s", buff) != EOF) {
             if (strcmp(buff + 1, "architecture")) {
 #if XML_DEBUG > 0
                 printf("Instruction: %s not found for architecture: %s\n", xed_iform_enum_t2str(iform), ARCHITECTURE_NAME);
 #endif
-                free_info(info[iform]);
+                free_info(my_info);
                 info[iform] = NULL;
                 return;
             }
             fscanf(file, "%s", buff);
             split_attribute(buff, &att);
             if (!strcmp(att.value, architecture_name)) {
-                parse_architecture(file, my_info);
+                if (att.rest) {
+#if XML_DEBUG > 0
+                    printf("Instruction: %s empty for architecture: %s\n", xed_iform_enum_t2str(iform), ARCHITECTURE_NAME);
+#endif
+                    free_info(my_info);
+                    info[iform] = NULL;
+                    skip_cur_element(file);
+                    return;
+                }
+                if (!parse_architecture(file, my_info, iform))
+                    info[iform] = NULL;
                 skip_cur_element(file);
                 return;
             } else {
-                skip_cur_element(file);
+                if (!att.rest)
+                    skip_cur_element(file);
             }
         }
     }
@@ -161,11 +175,90 @@ void parse_registers(char *line, latency_reg_t *latreg) {
 }
 
 
-void parse_architecture(FILE *file, inst_info_t *info) {
+bool parse_architecture(FILE *file, inst_info_t *info, xed_iform_enum_t iform) {
     //printf("architecture found\n");
-    skip_cur_element(file);
+    char buff[MY_BUFF_SIZE];
+    attribute_value_t att = (attribute_value_t) {NULL, NULL, NULL};
+    while (fscanf(file, "%s", buff) != EOF) {
+        if (strcmp(buff+1, "measurement")) {
+            if (!strcmp(buff+2, "architecture>")) {
+#if XML_DEBUG > 0
+                printf("No measurement for Instruction: %s on architecture: %s\n", xed_iform_enum_t2str(iform), ARCHITECTURE_NAME);
+#endif
+                free_info(info);
+                return false;
+            }
+            skip_cur_element(file);
+            continue;
+        }
+        while (fscanf(file, "%s", buff) != EOF) {
+            if (*buff == 'p') {
+                parse_ports(buff, info);
+            } else {
+                split_attribute(buff, &att);
+                if (!strcmp(att.attribute, "total_uops"))
+                    info->num_micro_ops = atoi(att.value);
+                else if (!strcmp(att.attribute, "version")) {
+                    if (att.rest) {
+#if XML_DEBUG > 0
+                        printf("No measurement for Instruction: %s on architecture: %s\n", xed_iform_enum_t2str(iform), ARCHITECTURE_NAME);
+#endif
+                        free_info(info);
+                        skip_cur_element(file);
+                        return false;
+                    }
+                    goto Latencies;
+                }
+            }
+        }
+    }
+    Latencies:
+    while (fscanf(file, "%s", buff) != EOF) {
+        int cycles = -1;
+        if (strcmp(buff+1, "latency")) {
+            skip_cur_element(file);
+            if (!strcmp(buff+2, "measurement>")) {
+                break;
+            }
+            continue;
+        }
+        while (fscanf(file, "%s", buff) != EOF) {
+            split_attribute(buff, &att);
+            if (!strcmp(att.attribute, "cycles")) {
+                cycles = atoi(att.value);
+            } else if (!strcmp(att.attribute, "targetOp")) {
+                set_cycles(info, cycles, atoi(att.value));
+                break;
+            }
+        }
+    }
+    return true;
 }
 
+
+void set_cycles(inst_info_t *info, int cycles, int id) {
+    latency_reg_t* latreg = info->latencies;
+    while (latreg != NULL) {
+        if (latreg->id == id) {
+            latreg->latency = cycles;
+            return;
+        }
+        latreg = latreg->next;
+    }
+}
+
+
+void parse_ports(char* buff, inst_info_t *info) {
+    buff += 4;
+    char digit[2];
+    digit[1] = '\0';
+    while (*buff != '=') {
+        digit[0] = *buff;
+        int test = atoi(digit);
+        info->usable_ports[atoi(digit)] = true;
+        buff++;
+    }
+}
 
 bool search_end_of_item(FILE *file) {
     int cur = ' ';
@@ -245,6 +338,10 @@ int get_max_latency(latency_reg_t *l) {
 int get_latency_for_register(latency_reg_t *l, xed_reg_enum_t reg) {
     int max = -1;
     while (l != NULL) {
+        if (l->latency == -1) {
+            l = l->next;
+            continue;
+        }
         if (l->latency > max)
             max = l->latency;
         for (int i = 0; i < l->numregs; ++i) {
@@ -260,6 +357,7 @@ int get_latency_for_register(latency_reg_t *l, xed_reg_enum_t reg) {
 latency_reg_t *newLatReg() {
     latency_reg_t *ret = malloc(sizeof(latency_reg_t));
     ret->id = -1;
+    ret->latency = -1;
     ret->numregs = 0;
     ret->cap = 1;
     ret->next = NULL;
@@ -297,4 +395,13 @@ void free_info_array(inst_info_t **array) {
         free_info(array[i]);
     }
     free(array);
+}
+
+
+inst_info_t *newInstInfo(int num_ports) {
+    inst_info_t* info = malloc(sizeof(inst_info_t));
+    info->latencies = NULL;
+    info->usable_ports = malloc(num_ports * sizeof(bool));
+    info->num_micro_ops = -1;
+    return info;
 }

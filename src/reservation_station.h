@@ -2,7 +2,7 @@
 #define RESERVATION_STATION_H
 
 //TODO set table file here
-#define TABLE ""
+#define TABLE "../tables/intel.xml"
 #define STATION_FILE ""
 #define ARCHITECTURE_NAME "NHM"
 

@@ -1,6 +1,7 @@
 *.exe
 *.o
 *.graphviz
+*.xml
 loop.c
 test.c
 BFS.c
@@ -8,3 +9,5 @@ PerformanceModelling/
 Seminar/
 mbuild/
 xed/
+cmake-build-debug/
+.idea/

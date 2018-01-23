@@ -5,8 +5,15 @@
 
 
 station_t *create_initial_state(graph_t *dependencies, single_list_t *insts) {
-    inst_info_t **table_info = parse_instruction_file(TABLE, ARCHITECTURE_NAME);
     station_t *station = parse_station_file(STATION_FILE);
+    bool fail = false;
+    if (station == NULL) {
+        return NULL;
+    }
+    inst_info_t **table_info = parse_instruction_file(TABLE, ARCHITECTURE_NAME, station->num_ports);
+    if (table_info == NULL) {
+        return NULL;
+    }
     sim_inst_t *cur;
     sim_inst_t *prev = NULL;
     sim_inst_t *all[insts->size];
@@ -14,6 +21,12 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts) {
     for (int i = 0; i < insts->size; i++) {
         int index = xed_decoded_inst_get_iform_enum(&insts->array[i]);
         inst_info_t *info = table_info[index];
+        if (info == NULL) {
+            fail = true;
+            printf("Unsupported instruction found in line: %i  instruction was: %s\n", i+1, xed_iform_enum_t2str(index));
+            continue;
+            //return NULL;
+        }
         cur = newSimInst(i, info->usable_ports, info->num_micro_ops, dependencies->nodes[i]->num_fathers,
                          get_max_latency(info->latencies), dependencies->nodes[i]->num_successors);
         all[i] = cur;
@@ -26,6 +39,8 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts) {
         }
         prev = cur;
     }
+    if (fail)
+        return NULL;
     //build dependencies
     for (int j = 0; j < insts->size; ++j) {
         int index = xed_decoded_inst_get_iform_enum(&insts->array[j]);
@@ -38,6 +53,7 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts) {
         }
     }
     free_info_array(table_info);
+    return station;
 }
 
 void perform_cycle(station_t *station) {
