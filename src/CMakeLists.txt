@@ -35,7 +35,7 @@ add_executable(src
         xed-symbol-table.c
         xed-symbol-table.h
         xmlParser.c
-        xmlParser.h)
+        xmlParser.h hashmap.c hashmap.h)
 
 
 

@@ -3,6 +3,7 @@
 #include "xmlParser.h"
 #include <time.h>
 #include "reservation_station.h"
+#include "hashmap.h"
 
 int build_cfg;
 int build_dep_graph;
@@ -18,15 +19,14 @@ void graphs_and_map(single_list_t *list, int index);
 void help();
 
 int main(int argc, char *argv[]) {
-    /*
     clock_t start = clock();
     station_t *station = parse_station_file("none");
     //inst_info_t** a = parse_instruction_file("test.xml", "NHM", station->num_ports);
-    //inst_info_t **a = parse_instruction_file("../../tables/intel.xml", "NHM", station->num_ports);
-    inst_info_t **a = parse_instruction_file("../tables/intel.xml", "NHM", station->num_ports);
+    inst_info_t **a = parse_instruction_file("../../tables/intel.xml", "NHM", station->num_ports);
+    //inst_info_t **a = parse_instruction_file("../tables/intel.xml", "NHM", station->num_ports);
     free_info_array(a);
     printf("time: %f", (clock() - start) / (double) CLOCKS_PER_SEC);
-    */
+    /*
     clp(argc, argv);
     if (print_help) {
         help();
@@ -51,6 +51,7 @@ int main(int argc, char *argv[]) {
             printf("\n\n================================================\n\n\n");
     }
     free_list(instructions);
+    */
     return 0;
 }
 

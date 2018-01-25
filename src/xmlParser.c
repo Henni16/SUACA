@@ -1,5 +1,6 @@
 #include "xmlParser.h"
 #include <limits.h>
+#include "hashmap.h"
 
 inst_info_t **parse_instruction_file(char *file_name, char *architecture_name, int num_ports) {
     FILE *file = fopen(file_name, "r");
@@ -7,21 +8,23 @@ inst_info_t **parse_instruction_file(char *file_name, char *architecture_name, i
         printf("Xml file not found\n");
         return NULL;
     }
+    hashmap_t *iform_hashmap = hashmap_init();
     char buff[MY_BUFF_SIZE];
-    attribute_value_t a;
     inst_info_t **info_array = calloc(XED_IFORM_LAST, sizeof(inst_info_t));
     while (fscanf(file, "%s", buff) != EOF) {
         if (*buff == '<') {
             if (!strcmp(buff + 1, "instruction")) {
-                parse_single_instruction(info_array, file, architecture_name, num_ports);
+                parse_single_instruction(info_array, file, architecture_name, num_ports, iform_hashmap);
             }
         }
     }
+    hashmap_free(iform_hashmap);
     fclose(file);
     return info_array;
 }
 
-void parse_single_instruction(inst_info_t **info, FILE *file, char *architecture_name, int num_ports) {
+void parse_single_instruction(inst_info_t **info, FILE *file, char *architecture_name, int num_ports,
+                              hashmap_t *iform_hashmap) {
     xed_iform_enum_t iform = xed_iform_enum_t_last();
     attribute_value_t att;
     inst_info_t *my_info = newInstInfo(num_ports);
@@ -35,6 +38,15 @@ void parse_single_instruction(inst_info_t **info, FILE *file, char *architecture
 #if XML_DEBUG > 0
                 printf("Invalid iform: %s\n", att.value);
 #endif
+                collision_list_t *c = hashmap_lookup(iform_hashmap, att.value);
+                if (c == NULL) {
+                    //printf("could not find: %s\n", att.value);
+                } else {
+                    printf("\n\nnow found: %s\n", att.value);
+                    for (int i = 0; i < c->count; ++i) {
+                        printf("iform: %s\n", xed_iform_enum_t2str(c->iforms[i]));
+                    }
+                }
                 skip_cur_element(file);
                 return;
             }
@@ -404,4 +416,9 @@ inst_info_t *newInstInfo(int num_ports) {
     info->usable_ports = malloc(num_ports * sizeof(bool));
     info->num_micro_ops = -1;
     return info;
+}
+
+
+void counter() {
+
 }

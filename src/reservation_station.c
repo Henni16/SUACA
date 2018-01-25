@@ -18,6 +18,7 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts) {
     sim_inst_t *prev = NULL;
     sim_inst_t *all[insts->size];
     //build all sim insts
+    printf("test: %s\n", xed_iform_enum_t2str(str2xed_iform_enum_t("SHL_GPRv_IMMb_C1r4")));
     for (int i = 0; i < insts->size; i++) {
         int index = xed_decoded_inst_get_iform_enum(&insts->array[i]);
         inst_info_t *info = table_info[index];
