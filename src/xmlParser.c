@@ -38,17 +38,25 @@ void parse_single_instruction(inst_info_t **info, FILE *file, char *architecture
 #if XML_DEBUG > 0
                 printf("Invalid iform: %s\n", att.value);
 #endif
+                //check if iform of xml file is just incomplete
                 collision_list_t *c = hashmap_lookup(iform_hashmap, att.value);
                 if (c == NULL) {
-                    //printf("could not find: %s\n", att.value);
+#if XML_DEBUG > 0
+                    printf("could not find: %s\n", att.value);
+#endif
+                    free_info(my_info);
+                    skip_cur_element(file);
+                    return;
                 } else {
-                    printf("\n\nnow found: %s\n", att.value);
+#if XML_DEBUG > 0
+                    printf("found in hashmap: %s\n", att.value);
                     for (int i = 0; i < c->count; ++i) {
                         printf("iform: %s\n", xed_iform_enum_t2str(c->iforms[i]));
                     }
+#endif
+                    //we'll take the first one here, maybe change that later
+                    iform = c->iforms[0];
                 }
-                skip_cur_element(file);
-                return;
             }
             info[iform] = my_info;
             search_end_of_item(file);
@@ -416,9 +424,4 @@ inst_info_t *newInstInfo(int num_ports) {
     info->usable_ports = malloc(num_ports * sizeof(bool));
     info->num_micro_ops = -1;
     return info;
-}
-
-
-void counter() {
-
 }

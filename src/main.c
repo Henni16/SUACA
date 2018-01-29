@@ -20,13 +20,6 @@ void help();
 
 int main(int argc, char *argv[]) {
     clock_t start = clock();
-    station_t *station = parse_station_file("none");
-    //inst_info_t** a = parse_instruction_file("test.xml", "NHM", station->num_ports);
-    inst_info_t **a = parse_instruction_file("../../tables/intel.xml", "NHM", station->num_ports);
-    //inst_info_t **a = parse_instruction_file("../tables/intel.xml", "NHM", station->num_ports);
-    free_info_array(a);
-    printf("time: %f", (clock() - start) / (double) CLOCKS_PER_SEC);
-    /*
     clp(argc, argv);
     if (print_help) {
         help();
@@ -51,7 +44,7 @@ int main(int argc, char *argv[]) {
             printf("\n\n================================================\n\n\n");
     }
     free_list(instructions);
-    */
+    printf("time: %f", (clock() - start) / (double) CLOCKS_PER_SEC);
     return 0;
 }
 
@@ -75,13 +68,16 @@ void graphs_and_map(single_list_t *list, int index) {
     }
     station_t* station = create_initial_state(dg, list);
     if (station != NULL) {
-        int input = '\n';
+        printStation(station);
+        int input = getchar();
         while (input != ' ') {
             perform_cycle(station);
             printStation(station);
             input = getchar();
         }
         freeStation(station);
+    } else {
+        printf("Couldn't create station!\n");
     }
     free_map(map);
     free_graph(g);

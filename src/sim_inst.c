@@ -37,7 +37,7 @@ void free_sim_inst(sim_inst_t *si) {
 
 sim_inst_list_t *newSimInstList(int length) {
     sim_inst_list_t *list = malloc(sizeof(sim_inst_list_t));
-    list->arr = malloc(length * sizeof(sim_inst_t *));
+    list->arr = calloc(length, sizeof(sim_inst_t *));
     list->size = length;
     return list;
 }
