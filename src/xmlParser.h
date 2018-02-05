@@ -11,6 +11,7 @@
 
 #define MY_BUFF_SIZE 255
 #define XML_DEBUG 0
+#define WARNINGS 0
 
 typedef struct latency_reg_s {
     int latency;
@@ -26,6 +27,8 @@ typedef struct inst_info_s {
     latency_reg_t *latencies;
     bool *usable_ports;
     int num_micro_ops;
+    //iform that is allowed to free me, needed because of incomplete iforms in xml file
+    int freeme;
 } inst_info_t;
 
 typedef struct attribute_value_s {
@@ -68,7 +71,7 @@ void split_attribute(char *attribute, attribute_value_t *a);
 
 station_t *parse_station_file(char *file_name);
 
-int get_max_latency(latency_reg_t *l);
+int get_max_latency(latency_reg_t *l, xed_iform_enum_t iform);
 
 /*
  * searches for the latency of a specific register
@@ -86,8 +89,6 @@ void extract_registers(FILE *file, latency_reg_t *latreg);
 
 void free_info_array(inst_info_t **array);
 
-void free_info(inst_info_t *info);
-
-void counter();
+void free_info(inst_info_t *info, int freeme);
 
 #endif

@@ -68,13 +68,14 @@ void graphs_and_map(single_list_t *list, int index) {
     }
     station_t* station = create_initial_state(dg, list);
     if (station != NULL) {
-        printStation(station);
-        int input = getchar();
-        while (input != ' ') {
+        //printStation(station);
+        //int input = getchar();
+        while (station->wait_queue || station->station_queue/*input != ' '*/) {
             perform_cycle(station);
-            printStation(station);
-            input = getchar();
+            //printStation(station);
+            //input = getchar();
         }
+        print_sim_inst_list(station->done_insts);
         freeStation(station);
     } else {
         printf("Couldn't create station!\n");

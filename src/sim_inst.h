@@ -30,6 +30,8 @@ typedef struct sim_inst_s {
     //nodes that rely on this one to be finished
     int num_dep_children;
     struct reg_sim_inst_s *dep_children;
+    //port that was used to execute this
+    int used_port;
 } sim_inst_t;
 
 typedef struct reg_sim_inst_s {
@@ -56,6 +58,8 @@ sim_inst_list_t *newSimInstList(int length);
 void add_to_sim_list(sim_inst_list_t *list, sim_inst_t *elem);
 
 void free_sim_inst_list(sim_inst_list_t *list);
+
+void print_sim_inst_list(sim_inst_list_t *list);
 
 
 #endif

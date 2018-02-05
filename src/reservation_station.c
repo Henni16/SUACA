@@ -28,7 +28,7 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts) {
             //return NULL;
         }
         cur = newSimInst(i, info->usable_ports, info->num_micro_ops, dependencies->nodes[i]->num_fathers,
-                         get_max_latency(info->latencies), dependencies->nodes[i]->num_successors);
+                         get_max_latency(info->latencies, index), dependencies->nodes[i]->num_successors);
         all[i] = cur;
         cur->previous = prev;
         if (prev != NULL)
@@ -69,6 +69,7 @@ void execute_instructions_in_ports(station_t *station) {
     port_t *prev = NULL;
     for (size_t i = 0; i < station->num_ports; i++) {
         port = station->ports[i];
+        prev = NULL;
         while (port->inst->line >= 0) {
             port->availiable = true;
             port->num_cycles_in_port++;
@@ -76,12 +77,16 @@ void execute_instructions_in_ports(station_t *station) {
             if (port->num_cycles_in_port == port->inst->latency) {
                 if (prev != NULL)
                     prev->next = port->next;
+                else
+                    station->ports[i] = port->next;
                 add_to_sim_list(station->done_insts, port->inst);
-                freePort(port);
+                port_t *todel = port;
+                port = port->next;
+                freePort(todel);
             } else {
                 prev = port;
+                port = port->next;
             }
-            port = port->next;
         }
     }
 }
@@ -97,8 +102,10 @@ void put_executables_into_ports(station_t *station) {
                 if (cur->usable_ports[i]) {
                     if (station->ports[i]->availiable) {
                         station->ports[i] = newPort(cur, station->ports[i]);
+                        station->size -= cur->num_micro_ops;
+                        cur->used_port = (int) i;
                         fits = true;
-                        delete_inst_from_queue(cur);
+                        delete_inst_from_queue(cur, station);
                     }
                 }
             }
@@ -121,7 +128,8 @@ void load_instruction_into_station(station_t *station) {
     else
         loadable = station->load_per_cycle;
     sim_inst_t *next = station->wait_queue;
-    while (loadable > 0) {
+    station->size += loadable;
+    while (loadable > 0 && next) {
         //all instruct of next can be loaded
         if (get_loadable_micro_ops(next) <= loadable) {
             loadable -= get_loadable_micro_ops(next);
@@ -137,9 +145,18 @@ void load_instruction_into_station(station_t *station) {
     }
 }
 
-void delete_inst_from_queue(sim_inst_t *inst) {
-    inst->previous->next = inst->next;
-    inst->next->previous = inst->previous;
+void delete_inst_from_queue(sim_inst_t *inst, station_t *station) {
+    if (!inst->next && !inst->previous) {
+        station->station_queue = NULL;
+    } else if (!inst->previous) {
+        inst->next->previous = NULL;
+        station->station_queue = inst->next;
+    } else if (!inst->next) {
+        inst->previous->next = NULL;
+    } else {
+        inst->previous->next = inst->next;
+        inst->next->previous = inst->previous;
+    }
 }
 
 port_t *newPort(sim_inst_t *inst, port_t *next) {
@@ -185,7 +202,7 @@ void printStation(station_t *s) {
     cur = s->station_queue;
     printf("station queue:\n");
     while (cur && cur->micro_ops_loaded > 0) {
-        printf("line: %i loaded: %ii\n",
+        printf("line: %i loaded: %i\n",
                cur->line, cur->micro_ops_loaded);
         cur = cur->next;
     }
@@ -200,6 +217,7 @@ void printStation(station_t *s) {
         printPort(s->ports[i]);
         printf("\n");
     }
+    printf("\n\n================================================\n\n\n");
 }
 
 

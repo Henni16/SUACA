@@ -4,7 +4,7 @@
 //TODO set table file here
 #define TABLE "../../tables/intel.xml"
 #define STATION_FILE ""
-#define ARCHITECTURE_NAME "NHM"
+#define ARCHITECTURE_NAME "SNB"
 
 #include <stdbool.h>
 #include "sim_inst.h"
@@ -55,7 +55,7 @@ void put_executables_into_ports(station_t* station);
 */
 void execute_instructions_in_ports(station_t* station);
 
-void delete_inst_from_queue(sim_inst_t* inst);
+void delete_inst_from_queue(sim_inst_t *inst, station_t *station);
 
 void freeStation(station_t* station);
 

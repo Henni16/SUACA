@@ -31,7 +31,9 @@ int get_loadable_micro_ops(sim_inst_t *inst) {
 
 
 void free_sim_inst(sim_inst_t *si) {
-    free(si->usable_ports);
+    if (!si) return;
+    //TODO free shouldn't cause segfault
+    //free(si->usable_ports);
     free(si);
 }
 
@@ -53,4 +55,14 @@ void free_sim_inst_list(sim_inst_list_t *list) {
     }
     free(list->arr);
     free(list);
+}
+
+
+void print_sim_inst_list(sim_inst_list_t *list) {
+    sim_inst_t *inst = NULL;
+    for (int i = 0; i < list->size; ++i) {
+        inst = list->arr[i];
+        printf("line: %i port used: %i had to wait: %i caused to wait: %i numops: %i\n", i + 1,
+               inst->used_port, inst->cycles_delayed, inst->delayed_cycles, inst->num_micro_ops);
+    }
 }

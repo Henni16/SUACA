@@ -7,7 +7,7 @@ INCLUDE_DIRECTORIES(../xed/kits/xed-install-base-2017-09-20-win-x86-64/include/x
 LINK_DIRECTORIES(../xed/kits/xed-install-base-2017-09-20-win-x86-64/lib)
 
 
-add_executable(src
+add_executable(bachelor
         avltree.c
         avltree.h
         dependency_analysis.c
@@ -38,6 +38,4 @@ add_executable(src
         xmlParser.h hashmap.c hashmap.h)
 
 
-
-
-TARGET_LINK_LIBRARIES(src xed)
+TARGET_LINK_LIBRARIES(bachelor xed)
