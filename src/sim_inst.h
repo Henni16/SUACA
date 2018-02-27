@@ -6,6 +6,9 @@
 
 struct reg_sim_inst_s;
 
+//forward declaration
+typedef struct port_ops_s port_ops_t;
+
 typedef struct sim_inst_s {
     int line;
     int latency;
@@ -13,7 +16,7 @@ typedef struct sim_inst_s {
     int micro_ops_loaded;
     //int micro_ops_processed;
     //int being_processed;
-    bool *usable_ports;
+    port_ops_t *micro_ops;
     int fathers_todo;
     /*
       number of cycles the instruction had to wait
@@ -44,7 +47,7 @@ typedef struct sim_inst_list_s {
     int size;
 } sim_inst_list_t;
 
-sim_inst_t *newSimInst(int line, bool *ports, int micro_ops, int num_fathers,
+sim_inst_t *newSimInst(int line, port_ops_t *micro_ops, int num_micro_ops, int num_fathers,
                        int latency, int num_children);
 
 bool all_fathers_done(sim_inst_t *si);

@@ -1,13 +1,14 @@
 #include "sim_inst.h"
+#include "xmlParser.h"
 
-sim_inst_t *newSimInst(int line, bool *ports, int micro_ops, int num_fathers,
+sim_inst_t *newSimInst(int line, port_ops_t *micro_ops, int num_micro_ops, int num_fathers,
                        int latency, int num_children) {
     sim_inst_t *ret = (sim_inst_t *) malloc(sizeof(sim_inst_t));
-    ret->num_micro_ops = micro_ops;
+    ret->num_micro_ops = num_micro_ops;
     ret->micro_ops_loaded = 0;
     //ret->micro_ops_processed = 0;
     //ret->being_processed = 0;
-    ret->usable_ports = ports;
+    ret->micro_ops = micro_ops;
     ret->line = line;
     ret->fathers_todo = num_fathers;
     ret->next = NULL;
@@ -32,8 +33,7 @@ int get_loadable_micro_ops(sim_inst_t *inst) {
 
 void free_sim_inst(sim_inst_t *si) {
     if (!si) return;
-    //TODO free shouldn't cause segfault
-    //free(si->usable_ports);
+    free_port_op(si->micro_ops);
     free(si);
 }
 

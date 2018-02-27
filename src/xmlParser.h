@@ -23,12 +23,21 @@ typedef struct latency_reg_s {
     struct latency_reg_s *next;
 } latency_reg_t;
 
+typedef struct port_ops_s {
+    bool *usable_ports;
+    int numops;
+    //needed because several sim_insts can reference this (same instruction mainly)
+    int numrefs;
+    struct port_ops_s *next;
+} port_ops_t;
+
 typedef struct inst_info_s {
     latency_reg_t *latencies;
-    bool *usable_ports;
+    port_ops_t *micro_ops;
     int num_micro_ops;
-    //iform that is allowed to free me, needed because of incomplete iforms in xml file
-    int freeme;
+    //number of references to this struct, needed because of incomplete iforms in xml file
+    //when it hits 0 this can be freed
+    int numrefs;
 } inst_info_t;
 
 typedef struct attribute_value_s {
@@ -56,14 +65,14 @@ void parse_registers(char *line, latency_reg_t *latreg);
 /*
  * return true if measurement was found for architecture
  */
-bool parse_architecture(FILE *file, inst_info_t *info, xed_iform_enum_t iform);
+bool parse_architecture(FILE *file, inst_info_t *info, int numports);
 
 /*
  * sets the latency for the operand of the id
  */
 void set_cycles(inst_info_t *info, int cycles, int id);
 
-void parse_ports(char* buff, inst_info_t *info);
+void parse_ports(attribute_value_t *att, port_ops_t *po);
 
 void skip_cur_element(FILE *f);
 
@@ -81,7 +90,9 @@ int get_latency_for_register(latency_reg_t *l, xed_reg_enum_t reg);
 
 latency_reg_t *newLatReg();
 
-inst_info_t *newInstInfo(int num_ports);
+inst_info_t *newInstInfo();
+
+port_ops_t *newPortOp(int numports, int numops);
 
 void add_reg_to_lat_reg(xed_reg_enum_t reg, latency_reg_t *latreg);
 
@@ -89,6 +100,8 @@ void extract_registers(FILE *file, latency_reg_t *latreg);
 
 void free_info_array(inst_info_t **array);
 
-void free_info(inst_info_t *info, int freeme);
+void free_info(inst_info_t *info);
+
+void free_port_op(port_ops_t *po);
 
 #endif

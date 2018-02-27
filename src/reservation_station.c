@@ -27,7 +27,9 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts) {
             continue;
             //return NULL;
         }
-        cur = newSimInst(i, info->usable_ports, info->num_micro_ops, dependencies->nodes[i]->num_fathers,
+        //needs to be incremented because we create a new reference to this struct
+        info->micro_ops->numrefs++;
+        cur = newSimInst(i, info->micro_ops, info->num_micro_ops, dependencies->nodes[i]->num_fathers,
                          get_max_latency(info->latencies, index), dependencies->nodes[i]->num_successors);
         all[i] = cur;
         cur->previous = prev;
@@ -93,13 +95,13 @@ void execute_instructions_in_ports(station_t *station) {
 
 void put_executables_into_ports(station_t *station) {
     sim_inst_t *cur = station->station_queue;
-    while (cur != NULL && cur->micro_ops_loaded == cur->num_micro_ops) {
+    while (cur != NULL && cur->micro_ops_loaded == 0) {
         if (!all_fathers_done(cur)) {
             cur->cycles_delayed++;
         } else {
             bool fits = false;
             for (size_t i = 0; i < station->num_ports && !fits; i++) {
-                if (cur->usable_ports[i]) {
+                if (cur->micro_ops->usable_ports[i]) {
                     if (station->ports[i]->availiable) {
                         station->ports[i] = newPort(cur, station->ports[i]);
                         station->size -= cur->num_micro_ops;
@@ -112,7 +114,7 @@ void put_executables_into_ports(station_t *station) {
             if (!fits) {
                 cur->cycles_delayed++;
                 for (size_t i = 0; i < station->num_ports; i++) {
-                    if (cur->usable_ports[i])
+                    if (cur->micro_ops->usable_ports[i])
                         station->ports[i]->inst->delayed_cycles++;
                 }
             }
