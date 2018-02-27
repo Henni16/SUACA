@@ -95,7 +95,7 @@ void execute_instructions_in_ports(station_t *station) {
 
 void put_executables_into_ports(station_t *station) {
     sim_inst_t *cur = station->station_queue;
-    while (cur != NULL && cur->micro_ops_loaded == 0) {
+    while (cur != NULL && cur->micro_ops_loaded == cur->num_micro_ops) {
         if (!all_fathers_done(cur)) {
             cur->cycles_delayed++;
         } else {
