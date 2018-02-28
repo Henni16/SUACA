@@ -22,6 +22,8 @@ add_executable(bachelor
         macho.c
         macho.h
         main.c
+        xed-disas-elf.h
+        xed-disas-elf.c
         pecoff.cpp
         pecoff.h
         reg_map.c
