@@ -75,7 +75,7 @@ void graphs_and_map(single_list_t *list, int index) {
             //printStation(station);
             //input = getchar();
         }
-        print_sim_inst_list(station->done_insts);
+        print_sim_inst_list(station->done_insts, list);
         freeStation(station);
     } else {
         printf("Couldn't create station!\n");

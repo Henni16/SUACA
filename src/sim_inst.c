@@ -58,11 +58,14 @@ void free_sim_inst_list(sim_inst_list_t *list) {
 }
 
 
-void print_sim_inst_list(sim_inst_list_t *list) {
+void print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list) {
     sim_inst_t *inst = NULL;
+    char buffer[XED_TMP_BUF_LEN];
     for (int i = 0; i < list->size; ++i) {
         inst = list->arr[i];
-        printf("line: %i port used: %i had to wait: %i caused to wait: %i numops: %i\n", i + 1,
+        disassemble(buffer, XED_TMP_BUF_LEN, &inst_list->array[i],
+                    inst_list->printinfo[i]);
+        printf("%s: port used: %i had to wait: %i caused to wait: %i numops: %i\n", buffer,
                inst->used_port, inst->cycles_delayed, inst->delayed_cycles, inst->num_micro_ops);
     }
 }
