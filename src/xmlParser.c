@@ -70,11 +70,9 @@ void parse_single_instruction(inst_info_t **info, FILE *file, char *architecture
                 //there are doublicate infos in the xml file!!!
                 //we'll take the last
                 //TODO expand existing one instead of overriding
-                if (info[iform]) {
-                    free_info(my_info);
-                    my_info = info[iform];
-                } else
-                    info[iform] = my_info;
+                if (info[iform])
+                    free_info(info[iform]);
+                info[iform] = my_info;
             }
             search_end_of_item(file);
             break;
@@ -138,10 +136,7 @@ void parse_operands(FILE *file, inst_info_t *info) {
     char buff[MY_BUFF_SIZE];
     attribute_value_t att;
     int id = -1;
-    latency_reg_t *latreg = info->latencies;
-    while (latreg) {
-        latreg = latreg->next;
-    }
+    latency_reg_t *latreg = NULL;
     while (fscanf(file, "%s", buff) != EOF) {
         if (strcmp(buff + 1, "operand")) break;
         int tofind = 2;

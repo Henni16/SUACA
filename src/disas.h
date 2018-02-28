@@ -9,6 +9,7 @@
 #include "util.h"
 #include "pecoff.h"
 #include "macho.h"
+#include "xed-disas-elf.h"
 
 inst_list_t* build_inst_list(char* file_name);
 

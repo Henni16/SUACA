@@ -31,8 +31,6 @@ END_LEGAL */
 #  include <libelf.h>
 #endif
 
-#include "xed/xed-interface.h"
-#include "xed-examples-util.h"
 #include "xed-symbol-table.h"
 #include "avltree.h"
 
@@ -235,11 +233,6 @@ lookup64(Elf64_Word stoffset,
   return q;
 }
 
-void xed_disas_elf_init(void) {
-    xed_register_disassembly_callback(xed_disassembly_callback_function);
-}
-
-
 
 void
 disas_test32(xed_disas_info_t* fi,
@@ -414,8 +407,7 @@ process_elf64(xed_disas_info_t* fi,
     Elf64_Half nsect = elf_hdr->e_shnum;
     unsigned char* hard_limit = (unsigned char*)start + length;
 
-    if (CLIENT_VERBOSE1) 
-        printf("# sections %d\n" , nsect);
+
     unsigned int i;
     xed_bool_t text = 0;
     for( i=0;i<nsect;i++)  {
@@ -515,8 +507,6 @@ symbols_elf64(xed_disas_info_t* fi,
     Elf64_Off shoff = elf_hdr->e_shoff;  // section hdr table offset
     Elf64_Shdr* shp = (Elf64_Shdr*) ((char*)start + shoff);
     Elf64_Half nsect = elf_hdr->e_shnum;
-    if (CLIENT_VERBOSE1) 
-        printf("# sections %d\n" , nsect);
     unsigned int i;
     Elf64_Half sect_strings  = elf_hdr->e_shstrndx;
     Elf64_Off string_table_offset=0;
@@ -616,8 +606,7 @@ symbols_elf32(xed_disas_info_t* fi,
     Elf32_Off shoff = elf_hdr->e_shoff;  // section hdr table offset
     Elf32_Shdr* shp = (Elf32_Shdr*) ((char*)start + shoff);
     Elf32_Half nsect = elf_hdr->e_shnum;
-    if (CLIENT_VERBOSE1) 
-        printf("# sections %d\n" , nsect);
+
     unsigned int i;
     Elf32_Off string_table_offset=0;
     Elf32_Off dynamic_string_table_offset=0;
@@ -678,8 +667,7 @@ xed_disas_elf(xed_disas_info_t* fi, inst_list_t* instructions)
     void* region = 0;
     unsigned int len = 0;
     xed_symbol_table_t symbol_table;
-    
-    xed_disas_elf_init();
+
     xed_map_region(fi->input_file_name, &region, &len);
     xed_symbol_table_init(&symbol_table);
 
@@ -705,10 +693,6 @@ xed_disas_elf(xed_disas_info_t* fi, inst_list_t* instructions)
     else {
         fprintf(stderr,"Not a recognized 32b or 64b ELF binary.\n");
         exit(1);
-    }
-    if (fi->xml_format == 0){
-        xed_print_decode_stats(fi);
-        xed_print_encode_stats(fi);
     }
 }
  
