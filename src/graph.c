@@ -112,3 +112,8 @@ int is_successor_seen(int from, int to, graph_t* graph, int* seen) {
   }
   return 0;
 }
+
+
+int get_num_children(int line, graph_t *graph) {
+  return graph->nodes[line]->num_successors;
+}

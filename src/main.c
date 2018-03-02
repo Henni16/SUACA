@@ -66,7 +66,10 @@ void graphs_and_map(single_list_t *list, int index) {
     if (print_map_flag) {
         print_map(map);
     }
+    free_map(map);
+    free_graph(g);
     station_t* station = create_initial_state(dg, list);
+    free_graph(dg);
     if (station != NULL) {
         //printStation(station);
         //int input = getchar();
@@ -80,9 +83,6 @@ void graphs_and_map(single_list_t *list, int index) {
     } else {
         printf("Couldn't create station!\n");
     }
-    free_map(map);
-    free_graph(g);
-    free_graph(dg);
 }
 
 

@@ -42,6 +42,8 @@ int is_successor(int from, int to, graph_t *graph);
 
 int is_successor_seen(int from, int to, graph_t *graph, int *seen);
 
+int get_num_children(int line, graph_t *graph);
+
 
 /*
   print graphviz representation of graph

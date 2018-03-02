@@ -31,7 +31,12 @@ void add_to_map(reg_map_t* map, xed_reg_enum_t reg, int line, access_enum_t read
     map->map[compute_register(reg)] = elem;
   }
   else {
-    while (cur->next != NULL) cur = cur->next;
+      while (cur->next != NULL) {
+          if (cur->line == line && cur->used_reg == reg && cur->read_write == read_write) {
+              return;
+          }
+          cur = cur->next;
+      }
     cur->next = elem;
   }
 }
