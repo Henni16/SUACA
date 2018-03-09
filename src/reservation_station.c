@@ -2,6 +2,7 @@
 #include "xmlParser.h"
 #include "inst_list.h"
 #include "graph.h"
+#include "hashset.h"
 
 
 station_t *create_initial_state(graph_t *dependencies, single_list_t *insts) {
@@ -10,7 +11,8 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts) {
     if (station == NULL) {
         return NULL;
     }
-    inst_info_t **table_info = parse_instruction_file(TABLE, ARCHITECTURE_NAME, station->num_ports);
+    hashset_t *set = create_hashset(insts);
+    inst_info_t **table_info = parse_instruction_file(TABLE, ARCHITECTURE_NAME, station->num_ports, set);
     if (table_info == NULL) {
         return NULL;
     }

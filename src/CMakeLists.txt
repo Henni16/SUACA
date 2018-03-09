@@ -37,7 +37,7 @@ add_executable(bachelor
         xed-symbol-table.c
         xed-symbol-table.h
         xmlParser.c
-        xmlParser.h hashmap.c hashmap.h)
+        xmlParser.h hashmap.c hashmap.h hashset.c hashset.h)
 
 
 TARGET_LINK_LIBRARIES(bachelor xed)

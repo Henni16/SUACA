@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "hashmap.h"
+#include "hashset.h"
 
 #define MY_BUFF_SIZE 255
 #define XML_DEBUG 0
@@ -47,10 +48,10 @@ typedef struct attribute_value_s {
 } attribute_value_t;
 
 
-inst_info_t **parse_instruction_file(char *file_name, char *architecture_name, int num_ports);
+inst_info_t **parse_instruction_file(char *file_name, char *architecture_name, int num_ports, hashset_t *to_parse);
 
 void parse_single_instruction(inst_info_t **info, FILE *file, char *architecture_name, int num_ports,
-                              hashmap_t *iform_hashmap);
+                              hashmap_t *iform_hashmap, hashset_t *to_parse);
 
 /*
  * reads item until it's finished

@@ -3,7 +3,7 @@
 #include "hashmap.h"
 #include <stdio.h>
 
-inst_info_t **parse_instruction_file(char *file_name, char *architecture_name, int num_ports) {
+inst_info_t **parse_instruction_file(char *file_name, char *architecture_name, int num_ports, hashset_t *to_parse) {
     FILE *file = fopen(file_name, "r");
     if (file == NULL) {
         printf("Xml file not found\n");
@@ -11,11 +11,11 @@ inst_info_t **parse_instruction_file(char *file_name, char *architecture_name, i
     }
     hashmap_t *iform_hashmap = hashmap_init();
     char buff[MY_BUFF_SIZE];
-    inst_info_t **info_array = calloc(XED_IFORM_LAST, sizeof(inst_info_t));
+    inst_info_t **info_array = calloc(XED_IFORM_LAST, sizeof(inst_info_t *));
     while (fscanf(file, "%s", buff) != EOF) {
         if (*buff == '<') {
             if (!strcmp(buff + 1, "instruction")) {
-                parse_single_instruction(info_array, file, architecture_name, num_ports, iform_hashmap);
+                parse_single_instruction(info_array, file, architecture_name, num_ports, iform_hashmap, to_parse);
             }
         }
     }
@@ -25,7 +25,7 @@ inst_info_t **parse_instruction_file(char *file_name, char *architecture_name, i
 }
 
 void parse_single_instruction(inst_info_t **info, FILE *file, char *architecture_name, int num_ports,
-                              hashmap_t *iform_hashmap) {
+                              hashmap_t *iform_hashmap, hashset_t *to_parse) {
     xed_iform_enum_t iform = xed_iform_enum_t_last();
     attribute_value_t att;
     collision_list_t *c;
@@ -56,23 +56,48 @@ void parse_single_instruction(inst_info_t **info, FILE *file, char *architecture
                         printf("iform: %s\n", xed_iform_enum_t2str(c->iforms[i]));
                     }
 #endif
-                    my_info->numrefs = c->count;
-                    //we'll take the first one here, maybe change that later
-                    iform = c->iforms[0];
-                    for (int i = 0; i < c->count; ++i) {
-                        if (info[c->iforms[i]]) {
-                            free_info(info[c->iforms[i]]);
+                    bool exists = false;
+                    for (int j = 0; j < c->count; ++j) {
+                        if (info[c->iforms[j]]) {
+                            exists = true;
+                            free_info(my_info);
+                            my_info = info[c->iforms[j]];
                         }
-                        info[c->iforms[i]] = my_info;
+                    }
+                    if (!exists) {
+                        //we'll take the first one here, maybe change that later
+                        //TODO later use all iforms, not just the first
+                        iform = c->iforms[0];
+                        bool needed = false;
+                        for (int i = 0; i < c->count; ++i) {
+                            if (!hashset_contains(to_parse, c->iforms[i])) {
+                                continue;
+                            }
+                            needed = true;
+                            if (info[c->iforms[i]]) {
+                                free_info(info[c->iforms[i]]);
+                            }
+                            info[c->iforms[i]] = my_info;
+                        }
+                        if (!needed) {
+                            free_info(my_info);
+                            skip_cur_element(file);
+                            return;
+                        }
                     }
                 }
             } else {
-                //there are doublicate infos in the xml file!!!
-                //we'll take the last
-                //TODO expand existing one instead of overriding
-                if (info[iform])
-                    free_info(info[iform]);
-                info[iform] = my_info;
+                if (!hashset_contains(to_parse, iform)) {
+                    free_info(my_info);
+                    skip_cur_element(file);
+                    return;
+                }
+                //check if it already exists, expand in this case
+                if (info[iform]) {
+                    free_info(my_info);
+                    my_info = info[iform];
+                } else
+                    info[iform] = my_info;
             }
             search_end_of_item(file);
             break;
@@ -136,7 +161,9 @@ void parse_operands(FILE *file, inst_info_t *info) {
     char buff[MY_BUFF_SIZE];
     attribute_value_t att;
     int id = -1;
-    latency_reg_t *latreg = NULL;
+    //latency_reg_t *latreg = NULL;
+    latency_reg_t *latreg = info->latencies;
+    while (latreg && latreg->next) latreg = latreg->next;
     while (fscanf(file, "%s", buff) != EOF) {
         if (strcmp(buff + 1, "operand")) break;
         int tofind = 2;
@@ -449,6 +476,7 @@ void free_info(inst_info_t *info) {
 void free_info_array(inst_info_t **array) {
     for (int i = 0; i < XED_IFORM_LAST; ++i) {
         if (!array[i]) continue;
+        xed_iform_enum_t iform = i;
         free_info(array[i]);
     }
     free(array);
@@ -467,7 +495,7 @@ inst_info_t *newInstInfo() {
 
 port_ops_t *newPortOp(int numports, int numops) {
     port_ops_t *ret = malloc(sizeof(port_ops_t));
-    ret->usable_ports = malloc(numports * sizeof(bool));
+    ret->usable_ports = calloc(numports, sizeof(bool));
     ret->numops = numops;
     ret->numrefs = 1;
     ret->next = NULL;
