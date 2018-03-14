@@ -2,6 +2,7 @@
 #define DEPENDENCY_ANALYSIS_H
 
 #include <stdlib.h>
+#include <stdbool.h>
 #include "headers.h"
 #include "reg_map.h"
 #include "disas.h"
@@ -14,8 +15,6 @@ graph_t* build_controlflowgraph(single_list_t* instructions);
 
 graph_t* build_dependencygraph(reg_map_t* map, graph_t* flowgraph);
 
-
-//"private" functions
 
 void put_operand_in_map(const xed_operand_t* op, xed_decoded_inst_t* xedd,
                         reg_map_t* map, int line);
@@ -30,6 +29,21 @@ void compute_branch_flow(single_list_t* instructions, graph_t* graph, int line);
 int branch_is_unconditional(xed_iform_enum_t iform);
 
 void build_single_depency(access_t* first, graph_t* flowgraph, graph_t* dep_graph);
+
+//computes the depency graph in regards to the cfg
+graph_t *build_dependencygraph_cfg(single_list_t *instructions, graph_t *cfg);
+
+
+void branch_analysis_root(graph_t *dg, single_list_t *instructions, graph_t *cfg, int fromline,
+                          xed_reg_enum_t *write_ops, int num_writes, int start);
+
+
+//checks all operands for dependencies and adds them respectively
+//returns the number of remaining writes
+int add_all_dependencies(graph_t *dg, int fromline, int toline, xed_reg_enum_t *write_ops, int num_writes,
+                         xed_decoded_inst_t *xedd);
+
+
 
 
 #endif

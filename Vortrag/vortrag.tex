@@ -17,6 +17,7 @@
         morecomment=[l][\color{magenta}]{\#}
 }
 \usepackage{color}
+\usepackage[font=small,labelfont=bf]{caption}
 \usepackage{tikzsymbols}
 \usepackage{pifont}
 \newcommand{\cmark}{\ding{51}}%
@@ -30,6 +31,7 @@
 \usepackage[scale=2]{ccicons}
 
 
+
 \usepackage{pgfplots}
 \usepgfplotslibrary{dateplot}
 
@@ -38,7 +40,7 @@
 
 \title{IACA Clone}
 \subtitle{Bachelor proposal talk}
-\date{\today}
+\date{March 29, 2018}
 \author{Hendrik Meerkamp}
 \institute{}
 \titlegraphic{\hfill\includegraphics[height=1.5cm]{eule}}
@@ -56,8 +58,16 @@
 
 \begin{frame}{The Nehalem architecture}
 \begin{center}
-\includegraphics[scale=.26, trim={0 0 0 2,35cm}]{Intel_Nehalem_arch}
+\includegraphics[clip, scale=.26, trim=0 0 0 1.7cm]{Intel_Nehalem_arch}
 \end{center}
+\end{frame}
+
+
+\begin{frame}{The Nehalem architecture}
+\begin{tikzpicture}[remember picture,overlay]
+    \node[xshift=-0.4cm,yshift=-0.3cm] at (current page.center) {\includegraphics[clip, trim=0.5cm 2cm 9.78cm 20cm, scale=.65]{Intel_Nehalem_arch}};
+\end{tikzpicture}
+        
 \end{frame}
 
 \section{Introduction to IACA}
@@ -67,8 +77,8 @@
 \begin{itemize}[<+- | alert@+>]
     \item Intel® Architecture Code Analyzer
     \item Static analysing tool for assembly code (usually a loop) on Intel processors
-    \item Performs analysis on x86 instructions
     \item Computes port pressure and critical path
+    \item Allows you to analyze code perfomance on a specific machine!
     \item Provides an estimate of performance\only<6>{, \alert{i.e. no absolute results}}
 \end{itemize}
 
@@ -278,6 +288,13 @@ end:
 \end{frame}
 }
 
+
+\begin{frame}{References}
+
+  \bibliography{zitate}
+  \bibliographystyle{siam}
+
+\end{frame}
 
 
 

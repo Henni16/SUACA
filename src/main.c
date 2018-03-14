@@ -60,7 +60,8 @@ void graphs_and_map(single_list_t *list, int index) {
     graph_t *g = build_controlflowgraph(list);
     if (build_cfg)
         build_graphviz(g, list, "controlflow", index);
-    graph_t *dg = build_dependencygraph(map, g);
+    //graph_t *dg = build_dependencygraph(map, g);
+    graph_t *dg = build_dependencygraph_cfg(list, g);
     if (build_dep_graph)
         build_graphviz(dg, list, "dependency", index);
     if (print_map_flag) {
