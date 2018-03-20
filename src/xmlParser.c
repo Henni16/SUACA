@@ -257,10 +257,10 @@ bool parse_architecture(FILE *file, inst_info_t *info, int numports) {
             if (*buff == 'p') {
                 split_attribute(buff, &att);
                 if (!po) {
-                    po = newPortOp(numports, atoi(att.attribute));
+                    po = newPortOp(numports, atoi(att.value));
                     info->micro_ops = po;
                 } else {
-                    po->next = newPortOp(numports, atoi(att.attribute));
+                    po->next = newPortOp(numports, atoi(att.value));
                     po = po->next;
                 }
                 parse_ports(&att, po);
@@ -325,7 +325,6 @@ void parse_ports(attribute_value_t *att, port_ops_t *po) {
     while (*att->attribute) {
         digit[0] = *att->attribute;
         po->usable_ports[atoi(digit)] = true;
-        po->numops = atoi(att->value);
         att->attribute++;
     }
 }
@@ -497,6 +496,7 @@ port_ops_t *newPortOp(int numports, int numops) {
     port_ops_t *ret = malloc(sizeof(port_ops_t));
     ret->usable_ports = calloc(numports, sizeof(bool));
     ret->numops = numops;
+    ret->loaded_ops = 0;
     ret->numrefs = 1;
     ret->next = NULL;
     return ret;

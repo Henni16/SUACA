@@ -137,6 +137,7 @@ void load_instruction_into_station(station_t *station) {
         //all instruct of next can be loaded
         if (get_loadable_micro_ops(next) <= loadable) {
             loadable -= get_loadable_micro_ops(next);
+            load_num_micro_ops(next, get_loadable_micro_ops(next));
             next->micro_ops_loaded = next->num_micro_ops;
             station->wait_queue = next->next;
             next = next->next;
@@ -144,6 +145,7 @@ void load_instruction_into_station(station_t *station) {
             //instruction can't be fully loaded
         else {
             next->micro_ops_loaded += loadable;
+            load_num_micro_ops(next, loadable);
             loadable = 0;
         }
     }

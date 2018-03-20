@@ -31,6 +31,25 @@ int get_loadable_micro_ops(sim_inst_t *inst) {
 }
 
 
+void load_num_micro_ops(sim_inst_t *inst, int num_ops) {
+    port_ops_t *po = inst->micro_ops;
+    while (num_ops > 0 && po) {
+        //all micro ops can be loaded
+        if (num_ops >= po->numops) {
+            po->loaded_ops += po->numops;
+            num_ops -= po->numops;
+            po->numops = 0;
+            po = po->next;
+        } else {
+            //we have to load partially
+            po->loaded_ops += num_ops;
+            po->numops -= num_ops;
+            num_ops = 0;
+        }
+    }
+}
+
+
 void free_sim_inst(sim_inst_t *si) {
     if (!si) return;
     free_port_op(si->micro_ops);

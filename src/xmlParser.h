@@ -27,6 +27,7 @@ typedef struct latency_reg_s {
 typedef struct port_ops_s {
     bool *usable_ports;
     int numops;
+    int loaded_ops;
     //needed because several sim_insts can reference this (same instruction mainly)
     int numrefs;
     struct port_ops_s *next;

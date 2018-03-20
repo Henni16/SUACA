@@ -266,7 +266,7 @@ int add_all_dependencies(graph_t *dg, int fromline, int toline, xed_reg_enum_t *
     }
     for (int i = 0; i < num_writes; ++i) {
         for (int j = 0; j < num_writen; ++j) {
-            if (write_ops[i] == writen[j]) {
+            if (compute_register(write_ops[i]) == writen[j]) {
                 write_ops[i] = write_ops[num_writes--];
             }
         }

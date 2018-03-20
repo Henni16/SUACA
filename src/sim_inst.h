@@ -56,6 +56,8 @@ void free_sim_inst(sim_inst_t *si);
 
 int get_loadable_micro_ops(sim_inst_t *inst);
 
+void load_num_micro_ops(sim_inst_t *inst, int num_ops);
+
 sim_inst_list_t *newSimInstList(int length);
 
 void add_to_sim_list(sim_inst_list_t *list, sim_inst_t *elem);
