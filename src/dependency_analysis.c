@@ -145,55 +145,32 @@ void build_single_depency(access_t *first, graph_t *flowgraph, graph_t *dep_grap
 
 graph_t *build_dependencygraph_cfg(single_list_t *instructions, graph_t *cfg) {
     graph_t *dg = newGraph(instructions->size);
-    xed_decoded_inst_t xedd;
-    xed_reg_enum_t reg;
-    xed_operand_enum_t op_name;
-    const xed_operand_t *op;
 
-    for (int i = 0; i < instructions->size; ++i) {
-        xedd = instructions->array[i];
-        const xed_inst_t *xi = xed_decoded_inst_inst(&xedd);
-        if (xed_inst_noperands(xi) < 1)
-            continue;
-        xed_reg_enum_t write_ops[xed_inst_noperands(xi)];
-        int num_writes = 0;
-        for (int j = 0; j < xed_inst_noperands(xi); ++j) {
-            op = xed_inst_operand(xi, j);
-            op_name = xed_operand_name(op);
-            if (!xed_operand_is_register(op_name)) {
-                continue;
-            }
-            xed3_get_generic_operand(&xedd, op_name, &reg);
-            if (xed_operand_written(op) && reg != XED_REG_RIP) {
-                write_ops[num_writes++] = reg;
-            }
-        }
-        if (num_writes > 0) {
-            branch_analysis_root(dg, instructions, cfg, i, write_ops, num_writes, i);
-        }
+    int write_ops[xed_reg_enum_t_last()];
+
+    for (int i = 0; i < xed_reg_enum_t_last(); ++i) {
+        write_ops[i] = -1;
     }
+    branch_analysis_root(dg, instructions, cfg, write_ops, 0);
     return dg;
 }
 
-void branch_analysis_root(graph_t *dg, single_list_t *instructions, graph_t *cfg, int fromline,
-                          xed_reg_enum_t *write_ops, int num_writes, int start) {
+
+void branch_analysis_root(graph_t *dg, single_list_t *instructions, graph_t *cfg, int *write_ops, int start) {
     node_t *cur_node = cfg->nodes[start];
     int cur_line = start;
-    while (num_writes > 0) {
-        if (cur_line != fromline)
-            num_writes = add_all_dependencies(dg, fromline, cur_line, write_ops, num_writes,
-                                              &instructions->array[cur_line]);
+    while (true) {
+        add_all_dependencies(dg, cur_line, write_ops, &instructions->array[cur_line]);
         if (cur_node->num_successors > 1) {
-            xed_reg_enum_t write_ops_single[cur_node->num_successors][num_writes];
+            int write_ops_single[xed_reg_enum_t_last()];
             for (int i = 0; i < cur_node->num_successors; ++i) {
-                for (int j = 0; j < num_writes; ++j) {
-                    write_ops_single[i][j] = write_ops[j];
-                }
                 if (cur_line >= cur_node->successors[i].line) {
                     continue;
                 }
-                branch_analysis_root(dg, instructions, cfg, fromline, write_ops_single[i], num_writes,
-                                     cur_node->successors[i].line);
+                for (int j = 0; j < xed_reg_enum_t_last(); ++j) {
+                    write_ops_single[j] = write_ops[j];
+                }
+                branch_analysis_root(dg, instructions, cfg, write_ops_single, cur_node->successors[i].line);
             }
             return;
         } else if (cur_node->num_successors == 0) {
@@ -210,8 +187,7 @@ void branch_analysis_root(graph_t *dg, single_list_t *instructions, graph_t *cfg
 }
 
 
-int add_all_dependencies(graph_t *dg, int fromline, int toline, xed_reg_enum_t *write_ops, int num_writes,
-                         xed_decoded_inst_t *xedd) {
+void add_all_dependencies(graph_t *dg, int toline, int *write_ops, xed_decoded_inst_t *xedd) {
     const xed_inst_t *xi = xed_decoded_inst_inst(xedd);
     int num_writen = 0;
     int num_read = 0;
@@ -224,18 +200,18 @@ int add_all_dependencies(graph_t *dg, int fromline, int toline, xed_reg_enum_t *
             case XED_OPERAND_AGEN:
             case XED_OPERAND_MEM0: {
                 if (xed3_operand_get_base0(xedd) != XED_REG_INVALID)
-                    read[num_read++] = compute_register(xed3_operand_get_base0(xedd));
+                    read[num_read++] = xed3_operand_get_base0(xedd);
                 if (xed3_operand_get_seg0(xedd) != XED_REG_INVALID)
-                    read[num_read++] = compute_register(xed3_operand_get_seg0(xedd));
+                    read[num_read++] = xed3_operand_get_seg0(xedd);
                 if (xed3_operand_get_index(xedd) != XED_REG_INVALID)
-                    read[num_read++] = compute_register(xed3_operand_get_index(xedd));
+                    read[num_read++] = xed3_operand_get_index(xedd);
                 break;
             }
             case XED_OPERAND_MEM1: {
                 if (xed3_operand_get_base0(xedd) != XED_REG_INVALID)
-                    read[num_read++] = compute_register(xed3_operand_get_base0(xedd));
+                    read[num_read++] = xed3_operand_get_base0(xedd);
                 if (xed3_operand_get_seg0(xedd) != XED_REG_INVALID)
-                    read[num_read++] = compute_register(xed3_operand_get_seg0(xedd));
+                    read[num_read++] = xed3_operand_get_seg0(xedd);
                 break;
             }
             default: {
@@ -243,35 +219,30 @@ int add_all_dependencies(graph_t *dg, int fromline, int toline, xed_reg_enum_t *
                 if (!xed_operand_is_register(op_name)) break;
                 xed3_get_generic_operand(xedd, op_name, &reg);
                 if (xed_operand_read(op))
-                    read[num_read++] = compute_register(reg);
-                if (xed_operand_written(op))
+                    read[num_read++] = reg;
+                if (xed_operand_written(op) && reg != XED_REG_RIP)
                     writen[num_writen++] = compute_register(reg);
             }
         }
     }
-    for (int j = 0; j < num_read; ++j) {
-        for (int i = 0; i < num_writes; ++i) {
-            if (compute_register(write_ops[i]) == read[j]) {
-                bool add = true;
-                for (int k = 0; k < dg->nodes[toline]->num_fathers; ++k) {
-                    if (dg->nodes[toline]->fathers[k].line == fromline) {
-                        add = false;
-                        break;
-                    }
+    int fromLine;
+    for (int i = 0; i < num_read; ++i) {
+        fromLine = write_ops[compute_register(read[i])];
+        if (fromLine != -1) {
+            bool exists = false;
+            for (int j = 0; j < dg->nodes[toline]->num_fathers; ++j) {
+                if (dg->nodes[toline]->fathers[j].line == fromLine) {
+                    exists = true;
+                    break;
                 }
-                if (add)
-                    add_graph_dependency(fromline, toline, dg, write_ops[i]);
             }
+            if (!exists)
+                add_graph_dependency(fromLine, toline, dg, read[i]);
         }
     }
-    for (int i = 0; i < num_writes; ++i) {
-        for (int j = 0; j < num_writen; ++j) {
-            if (compute_register(write_ops[i]) == writen[j]) {
-                write_ops[i] = write_ops[num_writes--];
-            }
-        }
+    for (int i = 0; i < num_writen; ++i) {
+        write_ops[writen[i]] = toline;
     }
-    return num_writes;
 }
 
 
