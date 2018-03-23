@@ -14,8 +14,6 @@ typedef struct sim_inst_s {
     int latency;
     int num_micro_ops;
     int micro_ops_loaded;
-    //int micro_ops_processed;
-    //int being_processed;
     port_ops_t *micro_ops;
     int fathers_todo;
     /*
@@ -33,8 +31,12 @@ typedef struct sim_inst_s {
     //nodes that rely on this one to be finished
     int num_dep_children;
     struct reg_sim_inst_s *dep_children;
-    //port that was used to execute this
-    int used_port;
+    //number of cycles that were used on each port
+    int* used_ports;
+    // number of cycles this instruction has been executed
+    int executed_cycles;
+    // number of microops that have been put into a port
+    int executed_microops;
 } sim_inst_t;
 
 typedef struct reg_sim_inst_s {
@@ -48,7 +50,7 @@ typedef struct sim_inst_list_s {
 } sim_inst_list_t;
 
 sim_inst_t *newSimInst(int line, port_ops_t *micro_ops, int num_micro_ops, int num_fathers,
-                       int latency, int num_children);
+                       int latency, int num_children, int numports);
 
 bool all_fathers_done(sim_inst_t *si);
 
@@ -64,7 +66,7 @@ void add_to_sim_list(sim_inst_list_t *list, sim_inst_t *elem);
 
 void free_sim_inst_list(sim_inst_list_t *list);
 
-void print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list);
+void print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int num_ports);
 
 
 #endif

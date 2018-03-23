@@ -26,14 +26,16 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts) {
         inst_info_t *info = table_info[index];
         if (info == NULL) {
             fail = true;
-            printf("Unsupported instruction found in line: %i  instruction was: %s\n", i+1, xed_iform_enum_t2str(index));
+            printf("Unsupported instruction found in line: %i  instruction was: %s\n", i + 1,
+                   xed_iform_enum_t2str(index));
             continue;
             //return NULL;
         }
         //needs to be incremented because we create a new reference to this struct
         info->micro_ops->numrefs++;
         cur = newSimInst(i, info->micro_ops, info->num_micro_ops, dependencies->nodes[i]->num_fathers,
-                         get_max_latency(info->latencies, index), dependencies->nodes[i]->num_successors);
+                         get_max_latency(info->latencies, index), dependencies->nodes[i]->num_successors,
+                         station->num_ports);
         all[i] = cur;
         cur->previous = prev;
         if (prev != NULL)
@@ -44,8 +46,11 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts) {
         }
         prev = cur;
     }
-    if (fail)
+    if (fail) {
+        free_info_array(table_info);
+        freeStation(station);
         return NULL;
+    }
     //build dependencies
     for (int j = 0; j < insts->size; ++j) {
         int index = xed_decoded_inst_get_iform_enum(&insts->array[j]);
@@ -65,12 +70,15 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts) {
 void perform_cycle(station_t *station) {
     load_instruction_into_station(station);
     put_executables_into_ports(station);
-    execute_instructions_in_ports(station);
+    //execute_instructions_in_ports(station);
+    for (int i = 0; i < station->num_ports; ++i) {
+        station->ports[i] = NULL;
+    }
 }
 
 
 void execute_instructions_in_ports(station_t *station) {
-    port_t *port;
+    /*port_t *port;
     port_t *prev = NULL;
     for (size_t i = 0; i < station->num_ports; i++) {
         port = station->ports[i];
@@ -93,32 +101,56 @@ void execute_instructions_in_ports(station_t *station) {
                 port = port->next;
             }
         }
-    }
+    }*/
 }
 
 void put_executables_into_ports(station_t *station) {
     sim_inst_t *cur = station->station_queue;
-    while (cur != NULL && cur->micro_ops_loaded == cur->num_micro_ops) {
+    while (cur != NULL && cur->micro_ops_loaded > 0) {
         if (!all_fathers_done(cur)) {
             cur->cycles_delayed++;
         } else {
-            bool fits = false;
-            for (size_t i = 0; i < station->num_ports && !fits; i++) {
-                if (cur->micro_ops->usable_ports[i]) {
-                    if (station->ports[i]->availiable) {
-                        station->ports[i] = newPort(cur, station->ports[i]);
-                        station->size -= cur->num_micro_ops;
-                        cur->used_port = (int) i;
-                        fits = true;
-                        delete_inst_from_queue(cur, station);
+            bool fits_single;
+            bool fits = true;
+            port_ops_t *po = cur->micro_ops;
+            hashset_t *would_like_to_use = new_hashset(station->num_ports);
+            while (po) {
+                if (!po->loaded_ops) {
+                    po = po->next;
+                    continue;
+                }
+                fits_single = false;
+                for (int i = 0; i < station->num_ports; ++i) {
+                    if (po->usable_ports[i] && !station->ports[i]) {
+                        station->ports[i] = cur;
+                        cur->used_ports[i]++;
+                        fits_single = true;
+                        po->loaded_ops--;
+                        station->size--;
+                        break;
                     }
                 }
+                if (!fits_single) {
+                    fits = false;
+                    for (int i = 0; i < station->num_ports; ++i) {
+                        if (po->usable_ports[i] && station->ports[i]->line != cur->line) {
+                            insert_into_hashset(would_like_to_use, i);
+                        }
+                    }
+                }
+                po = po->next;
             }
-            if (!fits) {
-                cur->cycles_delayed++;
-                for (size_t i = 0; i < station->num_ports; i++) {
-                    if (cur->micro_ops->usable_ports[i])
-                        station->ports[i]->inst->delayed_cycles++;
+            if (fits) {
+                if (++cur->executed_cycles == cur->latency) {
+                    delete_inst_from_queue(cur, station);
+                    add_to_sim_list(station->done_insts, cur);
+                }
+                inform_children_im_done(cur, cur->executed_cycles);
+            } else {
+                for (int i = 0; i < station->num_ports; ++i) {
+                    if (hashset_contains(would_like_to_use, i)) {
+                        station->ports[i]->delayed_cycles++;
+                    }
                 }
             }
         }
@@ -183,9 +215,9 @@ void freePort(port_t *port) {
 
 void freeStation(station_t *station) {
     free_sim_inst_list(station->done_insts);
-    for (int i = 0; i < station->num_ports; ++i) {
+    /*for (int i = 0; i < station->num_ports; ++i) {
         freePort(station->ports[i]);
-    }
+    }*/
     free(station->ports);
     free(station);
 }
@@ -221,7 +253,7 @@ void printStation(station_t *s) {
     printf("\n");
     for (size_t i = 0; i < s->num_ports; i++) {
         printf("port %i: ", i);
-        printPort(s->ports[i]);
+        //printPort(s->ports[i]);
         printf("\n");
     }
     printf("\n\n================================================\n\n\n");
