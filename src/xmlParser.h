@@ -96,6 +96,8 @@ inst_info_t *newInstInfo();
 
 port_ops_t *newPortOp(int numports, int numops);
 
+port_ops_t *copy_port_op(port_ops_t *to_copy, int numports);
+
 void add_reg_to_lat_reg(xed_reg_enum_t reg, latency_reg_t *latreg);
 
 void extract_registers(FILE *file, latency_reg_t *latreg);

@@ -31,8 +31,8 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts) {
             continue;
             //return NULL;
         }
-        //needs to be incremented because we create a new reference to this struct
-        info->micro_ops->numrefs++;
+        //needs to be incremented because we create a new reference to this struct (we'll copy for now)
+        //info->micro_ops->numrefs++;
         cur = newSimInst(i, info->micro_ops, info->num_micro_ops, dependencies->nodes[i]->num_fathers,
                          get_max_latency(info->latencies, index), dependencies->nodes[i]->num_successors,
                          station->num_ports);
@@ -152,6 +152,7 @@ void put_executables_into_ports(station_t *station) {
                         station->ports[i]->delayed_cycles++;
                     }
                 }
+                cur->cycles_delayed++;
             }
         }
         cur = cur->next;

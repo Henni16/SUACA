@@ -6,7 +6,7 @@ sim_inst_t *newSimInst(int line, port_ops_t *micro_ops, int num_micro_ops, int n
     sim_inst_t *ret = (sim_inst_t *) malloc(sizeof(sim_inst_t));
     ret->num_micro_ops = num_micro_ops;
     ret->micro_ops_loaded = 0;
-    ret->micro_ops = micro_ops;
+    ret->micro_ops = copy_port_op(micro_ops, numports);
     ret->line = line;
     ret->fathers_todo = num_fathers;
     ret->next = NULL;

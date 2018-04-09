@@ -242,8 +242,8 @@ bool parse_architecture(FILE *file, inst_info_t *info, int numports) {
     attribute_value_t att = (attribute_value_t) {NULL, NULL, NULL};
     port_ops_t *po = NULL;
     while (fscanf(file, "%s", buff) != EOF) {
-        if (strcmp(buff+1, "measurement")) {
-            if (!strcmp(buff+2, "architecture>")) {
+        if (strcmp(buff + 1, "measurement")) {
+            if (!strcmp(buff + 2, "architecture>")) {
 #if XML_DEBUG > 0
                 printf("No measurement for Instruction: %s on architecture: %s\n", xed_iform_enum_t2str(iform), ARCHITECTURE_NAME);
 #endif
@@ -285,9 +285,9 @@ bool parse_architecture(FILE *file, inst_info_t *info, int numports) {
     Latencies:
     while (fscanf(file, "%s", buff) != EOF) {
         int cycles = -1;
-        if (strcmp(buff+1, "latency")) {
+        if (strcmp(buff + 1, "latency")) {
             skip_cur_element(file);
-            if (!strcmp(buff+2, "measurement>")) {
+            if (!strcmp(buff + 2, "measurement>")) {
                 break;
             }
             continue;
@@ -307,7 +307,7 @@ bool parse_architecture(FILE *file, inst_info_t *info, int numports) {
 
 
 void set_cycles(inst_info_t *info, int cycles, int id) {
-    latency_reg_t* latreg = info->latencies;
+    latency_reg_t *latreg = info->latencies;
     while (latreg != NULL) {
         if (latreg->id == id) {
             latreg->latency = cycles;
@@ -390,7 +390,7 @@ station_t *parse_station_file(char *file_name) {
         s->ports[i]->availiable = true;
     }
     */
-    s->ports = calloc(s->num_ports, sizeof(sim_inst_t*));
+    s->ports = calloc(s->num_ports, sizeof(sim_inst_t *));
     s->wait_queue = NULL;
     s->station_queue = NULL;
     s->done_insts = NULL;
@@ -486,7 +486,7 @@ void free_info_array(inst_info_t **array) {
 
 
 inst_info_t *newInstInfo() {
-    inst_info_t* info = malloc(sizeof(inst_info_t));
+    inst_info_t *info = malloc(sizeof(inst_info_t));
     info->latencies = NULL;
     info->micro_ops = NULL;
     info->num_micro_ops = -1;
@@ -513,4 +513,26 @@ void free_port_op(port_ops_t *po) {
     if (po->next)
         free_port_op(po->next);
     free(po);
+}
+
+
+port_ops_t *copy_port_op(port_ops_t *to_copy, int numports) {
+    port_ops_t *new;
+    port_ops_t *prev = NULL;
+    port_ops_t *ret = NULL;
+    while (to_copy) {
+        new = newPortOp(numports, to_copy->numops);
+        if (prev) {
+            prev->next = new;
+        }
+        if (!ret) {
+            ret = new;
+        }
+        for (int i = 0; i < numports; ++i) {
+            new->usable_ports[i] = to_copy->usable_ports[i];
+        }
+        to_copy = to_copy->next;
+        prev = new;
+    }
+    return ret;
 }

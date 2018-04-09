@@ -156,7 +156,7 @@ xed_map_region(const char* path,
     }
     ilen = lseek(fd, 0, SEEK_END); // find the size.
     if (ilen == -1)
-        xedex_derror("lseek failed");
+        ;
     else
         *length = (unsigned int) ilen;
 
@@ -167,8 +167,6 @@ xed_map_region(const char* path,
                   MAP_PRIVATE,
                   fd,
                   0);
-    if (*start == (void*) -1)
-        xedex_derror("could not map region");
 #endif
 }
 

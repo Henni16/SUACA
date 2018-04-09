@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include "inst_list.h"
-#if defined(__APPLE__)
+#if !defined(_WIN32)
 #include <sys/mman.h>
 #endif
 #include "headers.h"

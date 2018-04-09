@@ -18,6 +18,9 @@ END_LEGAL */
 /// @file xed-disas-pecoff.cpp
 
 //// ONLY COMPILES IF -mno-cygwin is thrown on to GCC compilations
+
+#if defined(_WIN32)
+
 extern "C" {
   #include "headers.h"
 }
@@ -432,3 +435,5 @@ xed_disas_pecoff(xed_disas_info_t* fi, inst_list_t* instructions)
 
   process_pecoff(region, len,  *fi, image_reader, instructions);
 }
+
+#endif

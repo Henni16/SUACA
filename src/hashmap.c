@@ -16,7 +16,7 @@ hashmap_t *hashmap_init() {
 
 
 void add_to_hashmap(hashmap_t *map, const char *name, xed_iform_enum_t iform) {
-    char toadd[54];
+    char toadd[strlen(name)+1];
     cut_last_underscore(name, toadd);
     unsigned long hashval = hash(toadd) % map->cap;
     collision_list_t *list = map->array[hashval];
@@ -73,7 +73,7 @@ unsigned long hash(const char *str) {
 collision_list_t *collision_list_new(const char *name, xed_iform_enum_t iform) {
     collision_list_t *list = malloc(sizeof(collision_list_t));
     list->next = NULL;
-    list->name = malloc(54); //max len of iform string
+    list->name = malloc(strlen(name)+1); //max len of iform string
     list->iforms = malloc(20 * sizeof(xed_iform_enum_t)); //maximum number of same enum is 18
     list->iforms[0] = iform;
     strcpy(list->name, name);

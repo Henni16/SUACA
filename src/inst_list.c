@@ -65,7 +65,7 @@ void print_list(inst_list_t* list) {
       disassemble(buffer, XED_TMP_BUF_LEN, &cur->array[j],
                    cur->printinfo[j]);
 
-      printf("%i: %s\n", j+1, buffer);
+      printf("%i: %s, iform: %s\n", j+1, buffer, xed_iform_enum_t2str(xed_decoded_inst_get_iform_enum(&cur->array[j])));
     }
     if (i+1 < list->numLists)
       printf("\n\n================================================\n\n\n");
