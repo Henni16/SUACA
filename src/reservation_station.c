@@ -77,32 +77,6 @@ void perform_cycle(station_t *station) {
 }
 
 
-void execute_instructions_in_ports(station_t *station) {
-    /*port_t *port;
-    port_t *prev = NULL;
-    for (size_t i = 0; i < station->num_ports; i++) {
-        port = station->ports[i];
-        prev = NULL;
-        while (port->inst->line >= 0) {
-            port->availiable = true;
-            port->num_cycles_in_port++;
-            inform_children_im_done(port->inst, port->num_cycles_in_port);
-            if (port->num_cycles_in_port == port->inst->latency) {
-                if (prev != NULL)
-                    prev->next = port->next;
-                else
-                    station->ports[i] = port->next;
-                add_to_sim_list(station->done_insts, port->inst);
-                port_t *todel = port;
-                port = port->next;
-                freePort(todel);
-            } else {
-                prev = port;
-                port = port->next;
-            }
-        }
-    }*/
-}
 
 void put_executables_into_ports(station_t *station) {
     sim_inst_t *cur = station->station_queue;
@@ -115,20 +89,20 @@ void put_executables_into_ports(station_t *station) {
             port_ops_t *po = cur->micro_ops;
             hashset_t *would_like_to_use = new_hashset(station->num_ports);
             while (po) {
-                if (!po->loaded_ops) {
-                    po = po->next;
-                    continue;
-                }
-                fits_single = false;
-                for (int i = 0; i < station->num_ports; ++i) {
+                fits_single = true;
+                for (int i = 0; i < station->num_ports && po->loaded_ops; ++i) {
                     if (po->usable_ports[i] && !station->ports[i]) {
                         station->ports[i] = cur;
                         cur->used_ports[i]++;
-                        fits_single = true;
                         po->loaded_ops--;
                         station->size--;
-                        break;
+                    } else if (po->usable_ports[i]) {
+                        fits_single = false;
                     }
+                }
+                if (!po->loaded_ops) {
+                    po = po->next;
+                    continue;
                 }
                 if (!fits_single) {
                     fits = false;
@@ -199,19 +173,6 @@ void delete_inst_from_queue(sim_inst_t *inst, station_t *station) {
     }
 }
 
-port_t *newPort(sim_inst_t *inst, port_t *next) {
-    port_t *port = (port_t *) malloc(sizeof(port_t));
-    port->inst = inst;
-    port->next = next;
-    port->num_cycles_in_port = 0;
-    port->availiable = false;
-    return port;
-}
-
-
-void freePort(port_t *port) {
-    free(port);
-}
 
 
 void freeStation(station_t *station) {
@@ -261,10 +222,3 @@ void printStation(station_t *s) {
 }
 
 
-void printPort(port_t *p) {
-    printf("line: %i cycles in port: %i", p->inst->line, p->num_cycles_in_port);
-    if (p->next) {
-        printf(" -> ");
-        printPort(p->next);
-    }
-}
