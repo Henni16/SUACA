@@ -10,6 +10,10 @@
 #include "sim_inst.h"
 
 
+typedef struct execute_list_s {
+    sim_inst_t *elem;
+    struct execute_list_s *next;
+} execute_list_t;
 
 typedef struct station_s {
     int size;
@@ -22,7 +26,9 @@ typedef struct station_s {
     sim_inst_t *wait_queue;
     sim_inst_t *station_queue;
     sim_inst_list_t *done_insts;
+    execute_list_t *to_exec;
 } station_t;
+
 
 /*
   parses file to create station
@@ -46,6 +52,12 @@ void load_instruction_into_station(station_t *station);
 */
 void put_executables_into_ports(station_t *station);
 
+/*
+ * increases the execution counter of all instructions in the ports
+ * informs the children instructions
+ */
+void execute_instructions_in_ports(station_t *station);
+
 
 void delete_inst_from_queue(sim_inst_t *inst, station_t *station);
 
@@ -54,6 +66,10 @@ void freeStation(station_t *station);
 void inform_children_im_done(sim_inst_t *inst, int cycles_done);
 
 void printStation(station_t *s);
+
+void execute_list_add(execute_list_t **list, sim_inst_t *to_add);
+
+void execute_list_clear(execute_list_t **list);
 
 
 

@@ -72,12 +72,9 @@ void graphs_and_map(single_list_t *list, int index) {
     station_t* station = create_initial_state(dg, list);
     free_graph(dg);
     if (station != NULL) {
-        //printStation(station);
-        //int input = getchar();
-        while (station->wait_queue || station->station_queue/*input != ' '*/) {
+        // perform computations until both queues are empty and to instruction is be executed (to_exec)
+        while (station->wait_queue || station->station_queue || station->to_exec) {
             perform_cycle(station);
-            //printStation(station);
-            //input = getchar();
         }
         print_sim_inst_list(station->done_insts, list, station->num_ports);
         freeStation(station);
@@ -89,11 +86,11 @@ void graphs_and_map(single_list_t *list, int index) {
 
 void clp(int argc, char *argv[]) {
     for (int i = 1; i < argc; i++) {
-        if (!strcmp(argv[i], "--cfg")) {
+        if (!strcmp(argv[i], "-cfg")) {
             build_cfg = 1;
-        } else if (!strcmp(argv[i], "--dg")) {
+        } else if (!strcmp(argv[i], "-dg")) {
             build_dep_graph = 1;
-        } else if (!strcmp(argv[i], "--map")) {
+        } else if (!strcmp(argv[i], "-map")) {
             print_map_flag = 1;
         } else if (!strcmp(argv[i], "--help")) {
             print_help = 1;

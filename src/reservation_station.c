@@ -64,18 +64,18 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts) {
     }
     free_info_array(table_info);
     station->done_insts = newSimInstList(insts->size);
+    station->to_exec = NULL;
     return station;
 }
 
 void perform_cycle(station_t *station) {
     load_instruction_into_station(station);
     put_executables_into_ports(station);
-    //execute_instructions_in_ports(station);
+    execute_instructions_in_ports(station);
     for (int i = 0; i < station->num_ports; ++i) {
         station->ports[i] = NULL;
     }
 }
-
 
 
 void put_executables_into_ports(station_t *station) {
@@ -115,11 +115,7 @@ void put_executables_into_ports(station_t *station) {
                 po = po->next;
             }
             if (fits) {
-                if (++cur->executed_cycles == cur->latency) {
-                    delete_inst_from_queue(cur, station);
-                    add_to_sim_list(station->done_insts, cur);
-                }
-                inform_children_im_done(cur, cur->executed_cycles);
+                execute_list_add(&station->to_exec, cur);
             } else {
                 for (int i = 0; i < station->num_ports; ++i) {
                     if (hashset_contains(would_like_to_use, i)) {
@@ -131,6 +127,22 @@ void put_executables_into_ports(station_t *station) {
         }
         cur = cur->next;
     }
+}
+
+
+void execute_instructions_in_ports(station_t *station) {
+    execute_list_t *list = station->to_exec;
+    sim_inst_t *cur;
+    while (list) {
+        cur = list->elem;
+        if (++cur->executed_cycles == cur->latency) {
+            delete_inst_from_queue(cur, station);
+            add_to_sim_list(station->done_insts, cur);
+        }
+        inform_children_im_done(cur, cur->executed_cycles);
+        list = list->next;
+    }
+    execute_list_clear(&station->to_exec);
 }
 
 void load_instruction_into_station(station_t *station) {
@@ -172,7 +184,6 @@ void delete_inst_from_queue(sim_inst_t *inst, station_t *station) {
         inst->next->previous = inst->previous;
     }
 }
-
 
 
 void freeStation(station_t *station) {
@@ -222,3 +233,27 @@ void printStation(station_t *s) {
 }
 
 
+void execute_list_add(execute_list_t **list, sim_inst_t *to_add) {
+    execute_list_t *new = malloc(sizeof(execute_list_t));
+    new->elem = to_add;
+    new->next = NULL;
+    if (!*list) {
+        *list = new;
+    } else {
+        while ((*list)->next) {
+            list = &(*list)->next;
+        }
+        (*list)->next = new;
+    }
+}
+
+void execute_list_clear(execute_list_t **list) {
+    execute_list_t *next;
+    execute_list_t *cur = *list;
+    while (cur) {
+        next = cur->next;
+        free(cur);
+        cur = next;
+    }
+    *list = NULL;
+}
