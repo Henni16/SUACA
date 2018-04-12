@@ -378,22 +378,21 @@ void skip_cur_element(FILE *f) {
 
 station_t *parse_station_file(char *file_name) {
     station_t *s = malloc(sizeof(station_t));
-    s->size = 0;
-    s->cap = INT_MAX;
-    s->load_per_cycle = 4;
-    s->num_ports = 6;
-    /*
-    s->ports = malloc(s->num_ports * sizeof(port_t *));
-    for (size_t i = 0; i < s->num_ports; i++) {
-        //create empty port as recursion anchor
-        s->ports[i] = newPort(newSimInst(-1, NULL, 0, 0, 0, 0), NULL);
-        s->ports[i]->availiable = true;
+    FILE *station_file = fopen(file_name, "r");
+    if (station_file == NULL) {
+        return NULL;
     }
-    */
+    char buf[MY_BUFF_SIZE];
+    fscanf(station_file, "%s", buf);
+    s->size = 0;
+    s->cap = atoi(strtok(buf, ";"));
+    s->load_per_cycle = atoi(strtok(NULL, ";"));
+    s->num_ports = atoi(strtok(NULL, ";"));
     s->ports = calloc(s->num_ports, sizeof(sim_inst_t *));
     s->wait_queue = NULL;
     s->station_queue = NULL;
     s->done_insts = NULL;
+    fclose(station_file);
     return s;
 }
 

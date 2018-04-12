@@ -11,6 +11,7 @@ int print_map_flag;
 int print_help;
 char *invalid_flag;
 char *file_name;
+char *arch_name = "SNB";
 
 void clp(int argc, char *argv[]);
 
@@ -69,14 +70,14 @@ void graphs_and_map(single_list_t *list, int index) {
     }
     free_map(map);
     free_graph(g);
-    station_t* station = create_initial_state(dg, list);
+    station_t* station = create_initial_state(dg, list, arch_name);
     free_graph(dg);
     if (station != NULL) {
         // perform computations until both queues are empty and to instruction is be executed (to_exec)
         while (station->wait_queue || station->station_queue || station->to_exec) {
             perform_cycle(station);
         }
-        print_sim_inst_list(station->done_insts, list, station->num_ports);
+        print_sim_inst_list(station->done_insts, list, station->num_ports, arch_name);
         freeStation(station);
     } else {
         printf("Couldn't create station!\n");
@@ -94,6 +95,8 @@ void clp(int argc, char *argv[]) {
             print_map_flag = 1;
         } else if (!strcmp(argv[i], "--help")) {
             print_help = 1;
+        } else if (!strcmp(argv[i], "--arch")) {
+            arch_name = argv[++i];
         } else if (*argv[i] == '-') {
             invalid_flag = argv[i];
         } else {

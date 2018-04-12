@@ -3,7 +3,7 @@
 
 //TODO set table file here
 #define TABLE "../../tables/intel.xml"
-#define STATION_FILE ""
+#define STATION_LOC "../../tables/"
 #define ARCHITECTURE_NAME "SNB"
 
 #include <stdbool.h>
@@ -33,7 +33,7 @@ typedef struct station_s {
 /*
   parses file to create station
 */
-station_t *create_initial_state(graph_t *dependencies, single_list_t *insts);
+station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, char *arch_name);
 
 
 /*
@@ -70,6 +70,8 @@ void printStation(station_t *s);
 void execute_list_add(execute_list_t **list, sim_inst_t *to_add);
 
 void execute_list_clear(execute_list_t **list);
+
+void build_station_file_string(char *dest, const char *arch_name);
 
 
 

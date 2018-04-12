@@ -66,7 +66,7 @@ void add_to_sim_list(sim_inst_list_t *list, sim_inst_t *elem);
 
 void free_sim_inst_list(sim_inst_list_t *list);
 
-void print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int num_ports);
+void print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int num_ports, char *arch_name);
 
 
 #endif

@@ -5,14 +5,17 @@
 #include "hashset.h"
 
 
-station_t *create_initial_state(graph_t *dependencies, single_list_t *insts) {
-    station_t *station = parse_station_file(STATION_FILE);
+station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, char *arch_name) {
+    char station_file[strlen(arch_name)+strlen(STATION_LOC)+strlen(".arch")+1];
+    build_station_file_string(station_file, arch_name);
+    station_t *station = parse_station_file(station_file);
     bool fail = false;
     if (station == NULL) {
+        printf("The station file for %s could not be found\n", arch_name);
         return NULL;
     }
     hashset_t *set = create_hashset(insts);
-    inst_info_t **table_info = parse_instruction_file(TABLE, ARCHITECTURE_NAME, station->num_ports, set);
+    inst_info_t **table_info = parse_instruction_file(TABLE, arch_name, station->num_ports, set);
     hashset_free(set);
     if (table_info == NULL) {
         return NULL;
@@ -256,4 +259,22 @@ void execute_list_clear(execute_list_t **list) {
         cur = next;
     }
     *list = NULL;
+}
+
+
+
+void build_station_file_string(char *dest, const char *arch_name) {
+    int st_loc_len = strlen(STATION_LOC);
+    int a_len = strlen(arch_name);
+    for (int i = 0; i < st_loc_len; ++i) {
+        dest[i] = STATION_LOC[i];
+    }
+    for (int i = st_loc_len; i < st_loc_len+a_len; ++i) {
+        dest[i] = arch_name[i-st_loc_len];
+    }
+    char *a = ".arch";
+    for (int i = st_loc_len+a_len; i < st_loc_len+a_len+strlen(a); ++i) {
+        dest[i] = a[i-st_loc_len-a_len];
+    }
+    dest[st_loc_len+a_len+strlen(a)] = '\0';
 }

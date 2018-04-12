@@ -79,7 +79,8 @@ void free_sim_inst_list(sim_inst_list_t *list) {
 }
 
 
-void print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int num_ports) {
+void print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int num_ports, char *arch_name) {
+    printf("Analysis for architecture: %s\n\n", arch_name);
     printf("Num Uops ||   had   || caused  || Used Ports\n");
     printf("         || to wait || to wait ||");
     for (int i = 0; i < num_ports; ++i) {
