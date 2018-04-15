@@ -64,6 +64,9 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, cha
             cur->dep_children[i] = (reg_sim_inst_t) {all[intreg.line],
                                                      get_latency_for_register(info->latencies, intreg.reg)};
         }
+        for (int i = 0; i < cur->fathers_todo; ++i) {
+            cur->fathers[i] = all[dependencies->nodes[j]->fathers[i].line];
+        }
     }
     free_info_array(table_info);
     station->done_insts = newSimInstList(insts->size);
@@ -86,6 +89,9 @@ void put_executables_into_ports(station_t *station) {
     while (cur != NULL && cur->micro_ops_loaded > 0) {
         if (!all_fathers_done(cur)) {
             cur->cycles_delayed++;
+            for (int i = 0; i < cur->fathers_todo; ++i) {
+                cur->fathers[i]->delayed_cycles++;
+            }
         } else {
             bool fits_single;
             bool fits = true;
@@ -191,17 +197,15 @@ void delete_inst_from_queue(sim_inst_t *inst, station_t *station) {
 
 void freeStation(station_t *station) {
     free_sim_inst_list(station->done_insts);
-    /*for (int i = 0; i < station->num_ports; ++i) {
-        freePort(station->ports[i]);
-    }*/
     free(station->ports);
     free(station);
 }
 
 void inform_children_im_done(sim_inst_t *inst, int cycles_done) {
     for (size_t i = 0; i < inst->num_dep_children; i++) {
-        if (inst->dep_children[i].cycles == cycles_done)
-            inst->dep_children[i].child->fathers_todo--;
+        if (inst->dep_children[i].cycles == cycles_done) {
+            clear_father_from_list(inst->dep_children[i].child, inst->line);
+        }
     }
 }
 

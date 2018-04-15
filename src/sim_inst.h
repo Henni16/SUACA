@@ -16,6 +16,7 @@ typedef struct sim_inst_s {
     int micro_ops_loaded;
     port_ops_t *micro_ops;
     int fathers_todo;
+    struct sim_inst_s **fathers;
     /*
       number of cycles the instruction had to wait
       for another instrunction to finish
@@ -35,8 +36,6 @@ typedef struct sim_inst_s {
     int* used_ports;
     // number of cycles this instruction has been executed
     int executed_cycles;
-    // number of microops that have been put into a port
-    int executed_microops;
 } sim_inst_t;
 
 typedef struct reg_sim_inst_s {
@@ -67,6 +66,10 @@ void add_to_sim_list(sim_inst_list_t *list, sim_inst_t *elem);
 void free_sim_inst_list(sim_inst_list_t *list);
 
 void print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int num_ports, char *arch_name);
+
+void clear_father_from_list(sim_inst_t *si, int father_line);
+
+
 
 
 #endif

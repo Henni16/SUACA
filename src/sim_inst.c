@@ -9,13 +9,13 @@ sim_inst_t *newSimInst(int line, port_ops_t *micro_ops, int num_micro_ops, int n
     ret->micro_ops = copy_port_op(micro_ops, numports);
     ret->line = line;
     ret->fathers_todo = num_fathers;
+    ret->fathers = malloc(num_fathers * sizeof(sim_inst_t*));
     ret->next = NULL;
     ret->cycles_delayed = 0;
     ret->delayed_cycles = 0;
     ret->latency = latency;
     ret->num_dep_children = num_children;
     ret->executed_cycles = 0;
-    ret->executed_microops = 0;
     ret->used_ports = calloc(numports, sizeof(int));
     ret->dep_children = (reg_sim_inst_t *) malloc(num_children * sizeof(reg_sim_inst_t));
     return ret;
@@ -55,6 +55,8 @@ void free_sim_inst(sim_inst_t *si) {
     if (!si) return;
     free_port_op(si->micro_ops);
     free(si->used_ports);
+    free(si->dep_children);
+    free(si->fathers);
     free(si);
 }
 
@@ -98,5 +100,15 @@ void print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int nu
             printf(" %i ||", inst->used_ports[j]);
         }
         printf(" %s\n", buffer);
+    }
+}
+
+
+void clear_father_from_list(sim_inst_t *si, int father_line) {
+    for (int i = 0; i < si->fathers_todo; ++i) {
+        if (si->fathers[i]->line == father_line) {
+            si->fathers[i] = si->fathers[--si->fathers_todo];
+            break;
+        }
     }
 }

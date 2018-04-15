@@ -9,6 +9,7 @@ int build_cfg;
 int build_dep_graph;
 int print_map_flag;
 int print_help;
+int num_iterations;
 char *invalid_flag;
 char *file_name;
 char *arch_name = "SNB";
@@ -96,7 +97,15 @@ void clp(int argc, char *argv[]) {
         } else if (!strcmp(argv[i], "--help")) {
             print_help = 1;
         } else if (!strcmp(argv[i], "--arch")) {
-            arch_name = argv[++i];
+            if (argc-1 == i || *argv[i+1] == '-') {
+                printf("Missing argument after --arch!\nDefault architecture is selected\n\n");
+            } else
+                arch_name = argv[++i];
+        } else if (!strcmp(argv[i], "--loop")) {
+            if (argc-1 == i || *argv[i+1] == '-') {
+                printf("Missing argument after --loop!\nDefault number of loop iterations is selected\n\n");
+            } else
+                num_iterations = atoi(argv[++i]);
         } else if (*argv[i] == '-') {
             invalid_flag = argv[i];
         } else {
