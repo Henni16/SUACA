@@ -77,7 +77,7 @@ void build_graphviz(graph_t* graph, single_list_t* list, char* name, int index){
   for (size_t i = 0; i < list->size; i++) {
     char buf[TMP_BUF_LEN];
     disassemble(buf, TMP_BUF_LEN, &list->array[i], list->printinfo[i]);
-    fprintf(f, "%i [label=\"%i: %s\", style=filled]\n", i, i+1, buf);
+    fprintf(f, "%i [label=\"%i: %s\", style=filled]\n", i, i, buf);
   }
   for (size_t i = 0; i < list->size; i++) {
     node_t* cur = graph->nodes[i];

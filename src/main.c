@@ -10,6 +10,7 @@ int build_dep_graph;
 int print_map_flag;
 int print_help;
 int num_iterations;
+int detail_line = -1;
 char *invalid_flag;
 char *file_name;
 char *arch_name = "SNB";
@@ -38,7 +39,7 @@ int main(int argc, char *argv[]) {
     }
 
     inst_list_t *instructions = build_inst_list(file_name);
-    print_list(instructions);
+    //print_list(instructions);
 
     for (size_t i = 0; i < instructions->numLists; i++) {
         graphs_and_map(instructions->lists[i], i);
@@ -78,7 +79,10 @@ void graphs_and_map(single_list_t *list, int index) {
         while (station->wait_queue || station->station_queue || station->to_exec) {
             perform_cycle(station);
         }
-        print_sim_inst_list(station->done_insts, list, station->num_ports, arch_name);
+        if (detail_line == -1)
+            print_sim_inst_list(station->done_insts, list, station->num_ports, arch_name);
+        else
+            print_sim_inst_details(station->done_insts, list, detail_line, station->num_ports);
         freeStation(station);
     } else {
         printf("Couldn't create station!\n");
@@ -97,15 +101,20 @@ void clp(int argc, char *argv[]) {
         } else if (!strcmp(argv[i], "--help")) {
             print_help = 1;
         } else if (!strcmp(argv[i], "--arch")) {
-            if (argc-1 == i || *argv[i+1] == '-') {
+            if (argc - 1 == i || *argv[i + 1] == '-') {
                 printf("Missing argument after --arch!\nDefault architecture is selected\n\n");
             } else
                 arch_name = argv[++i];
         } else if (!strcmp(argv[i], "--loop")) {
-            if (argc-1 == i || *argv[i+1] == '-') {
+            if (argc - 1 == i || *argv[i + 1] == '-') {
                 printf("Missing argument after --loop!\nDefault number of loop iterations is selected\n\n");
             } else
                 num_iterations = atoi(argv[++i]);
+        } else if (!strcmp(argv[i], "--detail")) {
+            if (argc - 1 == i || *argv[i + 1] == '-') {
+                printf("Missing argument after --detail!\nPlease select a line you want to have analyzed\n\n");
+            } else
+                detail_line = atoi(argv[++i]);
         } else if (*argv[i] == '-') {
             invalid_flag = argv[i];
         } else {

@@ -38,7 +38,7 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, cha
         //info->micro_ops->numrefs++;
         cur = newSimInst(i, info->micro_ops, info->num_micro_ops, dependencies->nodes[i]->num_fathers,
                          get_max_latency(info->latencies, index), dependencies->nodes[i]->num_successors,
-                         station->num_ports);
+                         station->num_ports, insts->size);
         all[i] = cur;
         cur->previous = prev;
         if (prev != NULL)
@@ -91,6 +91,8 @@ void put_executables_into_ports(station_t *station) {
             cur->cycles_delayed++;
             for (int i = 0; i < cur->fathers_todo; ++i) {
                 cur->fathers[i]->delayed_cycles++;
+                cur->fathers[i]->dep_delays[cur->line].delay_caused++;
+                cur->dep_delays[cur->fathers[i]->line].delay_suffered++;
             }
         } else {
             bool fits_single;
@@ -129,10 +131,13 @@ void put_executables_into_ports(station_t *station) {
                 for (int i = 0; i < station->num_ports; ++i) {
                     if (hashset_contains(would_like_to_use, i)) {
                         station->ports[i]->delayed_cycles++;
+                        cur->port_delays[i].delay_suffered++;
+                        station->ports[i]->port_delays[i].delay_caused++;
                     }
                 }
                 cur->cycles_delayed++;
             }
+            hashset_free(would_like_to_use);
         }
         cur = cur->next;
     }

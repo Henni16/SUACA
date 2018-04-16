@@ -9,6 +9,11 @@ struct reg_sim_inst_s;
 //forward declaration
 typedef struct port_ops_s port_ops_t;
 
+typedef struct delays_s {
+    int delay_suffered;
+    int delay_caused;
+} delays_t;
+
 typedef struct sim_inst_s {
     int line;
     int latency;
@@ -36,6 +41,11 @@ typedef struct sim_inst_s {
     int* used_ports;
     // number of cycles this instruction has been executed
     int executed_cycles;
+    // delays[i] will be the delays caused/suffered from the instruction in line i
+    // note that this can exceed the number of delayed_cycles, because multiple fathers/ports can be responsible
+    // for one delay
+    delays_t *dep_delays;
+    delays_t *port_delays;
 } sim_inst_t;
 
 typedef struct reg_sim_inst_s {
@@ -49,7 +59,7 @@ typedef struct sim_inst_list_s {
 } sim_inst_list_t;
 
 sim_inst_t *newSimInst(int line, port_ops_t *micro_ops, int num_micro_ops, int num_fathers,
-                       int latency, int num_children, int numports);
+                       int latency, int num_children, int numports, int num_insts);
 
 bool all_fathers_done(sim_inst_t *si);
 
@@ -66,6 +76,8 @@ void add_to_sim_list(sim_inst_list_t *list, sim_inst_t *elem);
 void free_sim_inst_list(sim_inst_list_t *list);
 
 void print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int num_ports, char *arch_name);
+
+void print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int line, int num_ports);
 
 void clear_father_from_list(sim_inst_t *si, int father_line);
 

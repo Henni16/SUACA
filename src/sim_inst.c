@@ -2,7 +2,7 @@
 #include "xmlParser.h"
 
 sim_inst_t *newSimInst(int line, port_ops_t *micro_ops, int num_micro_ops, int num_fathers,
-                       int latency, int num_children, int numports) {
+                       int latency, int num_children, int numports, int num_insts) {
     sim_inst_t *ret = (sim_inst_t *) malloc(sizeof(sim_inst_t));
     ret->num_micro_ops = num_micro_ops;
     ret->micro_ops_loaded = 0;
@@ -18,6 +18,14 @@ sim_inst_t *newSimInst(int line, port_ops_t *micro_ops, int num_micro_ops, int n
     ret->executed_cycles = 0;
     ret->used_ports = calloc(numports, sizeof(int));
     ret->dep_children = (reg_sim_inst_t *) malloc(num_children * sizeof(reg_sim_inst_t));
+    ret->dep_delays = malloc(num_insts * sizeof(delays_t));
+    for (int i = 0; i < num_insts; ++i) {
+        ret->dep_delays[i] = (delays_t){0,0};
+    }
+    ret->port_delays = malloc(numports * sizeof(delays_t));
+    for (int j = 0; j < numports; ++j) {
+        ret->port_delays[j] = (delays_t){0,0};
+    }
     return ret;
 }
 
@@ -57,6 +65,8 @@ void free_sim_inst(sim_inst_t *si) {
     free(si->used_ports);
     free(si->dep_children);
     free(si->fathers);
+    free(si->dep_delays);
+    free(si->port_delays);
     free(si);
 }
 
@@ -83,24 +93,66 @@ void free_sim_inst_list(sim_inst_list_t *list) {
 
 void print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int num_ports, char *arch_name) {
     printf("Analysis for architecture: %s\n\n", arch_name);
-    printf("Num Uops ||   had   || caused  || Used Ports\n");
-    printf("         || to wait || to wait ||");
+    printf("Line || Num Uops ||   had   || caused  || Used Ports\n");
+    printf("     ||          || to wait || to wait ||");
     for (int i = 0; i < num_ports; ++i) {
         printf(" %i ||", i);
     }
-    printf("\n----------------------------------------------------------------\n");
+    printf("\n--------------------------------------------------------------------------\n");
     sim_inst_t *inst = NULL;
     char buffer[XED_TMP_BUF_LEN];
     for (int i = 0; i < list->size; ++i) {
         inst = list->arr[i];
         disassemble(buffer, XED_TMP_BUF_LEN, &inst_list->array[i],
                     inst_list->printinfo[i]);
-        printf("   %i     ||    %i    ||    %i    ||", inst->num_micro_ops, inst->cycles_delayed, inst->delayed_cycles);
+        printf("  %i  ||    %i     ||    %i    ||    %i    ||", i, inst->num_micro_ops, inst->cycles_delayed, inst->delayed_cycles);
         for (int j = 0; j < num_ports; ++j) {
             printf(" %i ||", inst->used_ports[j]);
         }
         printf(" %s\n", buffer);
     }
+}
+
+
+void print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int line, int num_ports) {
+    char buffer[XED_TMP_BUF_LEN];
+    bool is_delayed = false;
+    disassemble(buffer, XED_TMP_BUF_LEN, &inst_list->array[line],
+                inst_list->printinfo[line]);
+    printf("\nDetailed delay information for instruction: %s in line %i\n\n", buffer, line);
+    printf("Delay caused by dependencies:\n");
+    delays_t *delays = list->arr[line]->dep_delays;
+    for (int i = 0; i < list->size; ++i) {
+        if (delays[i].delay_caused || delays[i].delay_suffered) {
+            if (!is_delayed) {
+                printf(" Line || was delayed || has delayed\n");
+                printf(" ----------------------------------\n");
+                is_delayed = true;
+            }
+            printf("  %i   ||     %i      ||     %i     \n", i, delays[i].delay_caused, delays[i].delay_suffered);
+        }
+    }
+    if (!is_delayed) {
+        printf(" None!\n");
+    } else {
+        is_delayed = false;
+    }
+    printf("\n\nDelay caused by blocked ports:\n");
+    delays = list->arr[line]->port_delays;
+    for (int i = 0; i < num_ports; ++i) {
+        if (delays[i].delay_caused || delays[i].delay_suffered) {
+            if (!is_delayed) {
+                printf(" Port || was delayed || has delayed\n");
+                printf(" ----------------------------------\n");
+                is_delayed = true;
+            }
+            printf("  %i   ||     %i      ||     %i     \n", i, delays[i].delay_caused, delays[i].delay_suffered);
+        }
+    }
+    if (!is_delayed) {
+        printf(" None!\n");
+    }
+    printf("\n");
 }
 
 
