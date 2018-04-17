@@ -15,7 +15,9 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, cha
         return NULL;
     }
     hashset_t *set = create_hashset(insts);
+    printf("Parsing measurement file...\n");
     inst_info_t **table_info = parse_instruction_file(TABLE, arch_name, station->num_ports, set);
+    printf("Done parsing!\n");
     hashset_free(set);
     if (table_info == NULL) {
         return NULL;

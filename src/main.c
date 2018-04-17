@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
 
     for (size_t i = 0; i < instructions->numLists; i++) {
         graphs_and_map(instructions->lists[i], i);
-        if (i + 1 < instructions->numLists && print_map)
+        if (i + 1 < instructions->numLists)
             printf("\n\n================================================\n\n\n");
     }
     free_list(instructions);
@@ -55,27 +55,22 @@ void help() {
     printf("options:\n");
     printf(" -cfg:  build controlflowgraph\n");
     printf(" -dg:   build dependencygraph\n");
-    printf(" -map:  print dependencymap\n");
+    printf(" --arch [x]: [x] is architecture the analysis is based on\n");
+    printf(" --detail [x]: detailed delay info for line [x]\n");
 }
 
 void graphs_and_map(single_list_t *list, int index) {
-    reg_map_t *map = compute_dependencies(list);
     graph_t *g = build_controlflowgraph(list);
     if (build_cfg)
         build_graphviz(g, list, "controlflow", index);
-    //graph_t *dg = build_dependencygraph(map, g);
     graph_t *dg = build_dependencygraph_cfg(list, g);
     if (build_dep_graph)
         build_graphviz(dg, list, "dependency", index);
-    if (print_map_flag) {
-        print_map(map);
-    }
-    free_map(map);
     free_graph(g);
     station_t* station = create_initial_state(dg, list, arch_name);
     free_graph(dg);
     if (station != NULL) {
-        // perform computations until both queues are empty and to instruction is be executed (to_exec)
+        // perform computations until both queues are empty and no instruction is be executed (to_exec)
         while (station->wait_queue || station->station_queue || station->to_exec) {
             perform_cycle(station);
         }
@@ -96,8 +91,6 @@ void clp(int argc, char *argv[]) {
             build_cfg = 1;
         } else if (!strcmp(argv[i], "-dg")) {
             build_dep_graph = 1;
-        } else if (!strcmp(argv[i], "-map")) {
-            print_map_flag = 1;
         } else if (!strcmp(argv[i], "--help")) {
             print_help = 1;
         } else if (!strcmp(argv[i], "--arch")) {
