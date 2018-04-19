@@ -120,7 +120,7 @@ void put_executables_into_ports(station_t *station) {
                 if (!fits_single) {
                     fits = false;
                     for (int i = 0; i < station->num_ports; ++i) {
-                        if (po->usable_ports[i] && station->ports[i]->line != cur->line) {
+                        if (po->usable_ports[i] && station->ports[i]->id != cur->id) {
                             insert_into_hashset(would_like_to_use, i);
                         }
                     }
@@ -203,7 +203,8 @@ void delete_inst_from_queue(sim_inst_t *inst, station_t *station) {
 
 
 void freeStation(station_t *station) {
-    free_sim_inst_list(station->done_insts);
+    if (station->done_insts)
+        free_sim_inst_list(station->done_insts);
     free(station->ports);
     free(station);
 }
@@ -211,40 +212,11 @@ void freeStation(station_t *station) {
 void inform_children_im_done(sim_inst_t *inst, int cycles_done) {
     for (size_t i = 0; i < inst->num_dep_children; i++) {
         if (inst->dep_children[i].cycles == cycles_done) {
-            clear_father_from_list(inst->dep_children[i].child, inst->line);
+            clear_father_from_list(inst->dep_children[i].child, inst->id);
         }
     }
 }
 
-
-void printStation(station_t *s) {
-    printf("wait queue:\n");
-    sim_inst_t *cur = s->wait_queue;
-    while (cur) {
-        printf("line: %i loaded: %i\n",
-               cur->line, cur->micro_ops_loaded);
-        cur = cur->next;
-    }
-    cur = s->station_queue;
-    printf("station queue:\n");
-    while (cur && cur->micro_ops_loaded > 0) {
-        printf("line: %i loaded: %i\n",
-               cur->line, cur->micro_ops_loaded);
-        cur = cur->next;
-    }
-    printf("done list:\n");
-    for (size_t i = 0; i < s->done_insts->size; i++) {
-        if (s->done_insts->arr[i])
-            printf("%i, ", i);
-    }
-    printf("\n");
-    for (size_t i = 0; i < s->num_ports; i++) {
-        printf("port %i: ", i);
-        //printPort(s->ports[i]);
-        printf("\n");
-    }
-    printf("\n\n================================================\n\n\n");
-}
 
 
 void execute_list_add(execute_list_t **list, sim_inst_t *to_add) {

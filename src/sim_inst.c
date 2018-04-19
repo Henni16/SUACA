@@ -1,6 +1,9 @@
 #include "sim_inst.h"
 #include "xmlParser.h"
 
+
+int sim_inst_global_id = 0;
+
 sim_inst_t *newSimInst(int line, port_ops_t *micro_ops, int num_micro_ops, int num_fathers,
                        int latency, int num_children, int numports, int num_insts) {
     sim_inst_t *ret = (sim_inst_t *) malloc(sizeof(sim_inst_t));
@@ -8,6 +11,7 @@ sim_inst_t *newSimInst(int line, port_ops_t *micro_ops, int num_micro_ops, int n
     ret->micro_ops_loaded = 0;
     ret->micro_ops = copy_port_op(micro_ops, numports);
     ret->line = line;
+    ret->id = sim_inst_global_id++;
     ret->fathers_todo = num_fathers;
     ret->fathers = malloc(num_fathers * sizeof(sim_inst_t*));
     ret->next = NULL;
@@ -197,9 +201,9 @@ void print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int
 }
 
 
-void clear_father_from_list(sim_inst_t *si, int father_line) {
+void clear_father_from_list(sim_inst_t *si, int father_id) {
     for (int i = 0; i < si->fathers_todo; ++i) {
-        if (si->fathers[i]->line == father_line) {
+        if (si->fathers[i]->id == father_id) {
             si->fathers[i] = si->fathers[--si->fathers_todo];
             break;
         }

@@ -18,6 +18,7 @@ typedef struct {
   xed_decoded_inst_t* array;
   int cap;
   int size;
+  int single_loop_size;
   xed_uint64_t* printinfo;
 } single_list_t;
 
@@ -37,6 +38,8 @@ void add_to_list(inst_list_t* list, xed_decoded_inst_t elem,
 void add_new_list(inst_list_t* list);
 
 void print_list(inst_list_t* list);
+
+int add_loop_instructions(single_list_t *list);
 
 void free_list(inst_list_t* list);
 

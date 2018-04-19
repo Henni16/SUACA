@@ -16,6 +16,7 @@ typedef struct delays_s {
 
 typedef struct sim_inst_s {
     int line;
+    int id;
     int latency;
     int num_micro_ops;
     int micro_ops_loaded;
@@ -57,6 +58,7 @@ typedef struct sim_inst_list_s {
     sim_inst_t **arr;
     int size;
 } sim_inst_list_t;
+
 
 sim_inst_t *newSimInst(int line, port_ops_t *micro_ops, int num_micro_ops, int num_fathers,
                        int latency, int num_children, int numports, int num_insts);

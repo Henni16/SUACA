@@ -65,8 +65,6 @@ void freeStation(station_t *station);
 
 void inform_children_im_done(sim_inst_t *inst, int cycles_done);
 
-void printStation(station_t *s);
-
 void execute_list_add(execute_list_t **list, sim_inst_t *to_add);
 
 void execute_list_clear(execute_list_t **list);

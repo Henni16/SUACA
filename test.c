@@ -13,7 +13,7 @@ int main(int argc, char** argv) {
   "add RAX, RBX;"
   "add RAX, RBX;"
   "add RAX, RBX;"
-  "add RAX, RBX;"
+  "add RBX, RBX;"
 
   ".att_syntax prefix;"
   "movl $222, %ebx;"

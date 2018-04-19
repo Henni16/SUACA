@@ -4,10 +4,10 @@
 #include <time.h>
 #include "reservation_station.h"
 #include "hashmap.h"
+#include "inst_list.h"
 
 int build_cfg;
 int build_dep_graph;
-int print_map_flag;
 int print_help;
 int num_iterations;
 int detail_line = -1;
@@ -57,9 +57,15 @@ void help() {
     printf(" -dg:   build dependencygraph\n");
     printf(" --arch [x]: [x] is architecture the analysis is based on\n");
     printf(" --detail [x]: detailed delay info for line [x]\n");
+    printf(" --loop [x]: run the analysis in a loop of [x]\n");
 }
 
 void graphs_and_map(single_list_t *list, int index) {
+    if (num_iterations > 1) {
+        if (!add_loop_instructions(list)) {
+            printf("Aborting analysis!\n");
+        }
+    }
     graph_t *g = build_controlflowgraph(list);
     if (build_cfg)
         build_graphviz(g, list, "controlflow", index);
