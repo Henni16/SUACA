@@ -73,13 +73,13 @@ void load_num_micro_ops(sim_inst_t *inst, int num_ops);
 
 sim_inst_list_t *newSimInstList(int length);
 
-void add_to_sim_list(sim_inst_list_t *list, sim_inst_t *elem);
+void add_to_sim_list(sim_inst_list_t *list, sim_inst_t *elem, int num_ports, int num_insts);
 
 void free_sim_inst_list(sim_inst_list_t *list);
 
-void print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int num_ports, char *arch_name);
+void print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int num_ports, char *arch_name, int num_iterations);
 
-void print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int line, int num_ports);
+void print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int line, int num_ports, int num_iterations);
 
 void clear_father_from_list(sim_inst_t *si, int father_line);
 

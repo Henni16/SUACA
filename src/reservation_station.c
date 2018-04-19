@@ -5,7 +5,7 @@
 #include "hashset.h"
 
 
-station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, char *arch_name) {
+station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, char *arch_name, int num_iterations) {
     char station_file[strlen(arch_name)+strlen(STATION_LOC)+strlen(".arch")+1];
     build_station_file_string(station_file, arch_name);
     station_t *station = parse_station_file(station_file);
@@ -14,6 +14,8 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, cha
         printf("The station file for %s could not be found\n", arch_name);
         return NULL;
     }
+    station->num_insts = insts->single_loop_size > -1 ? insts->single_loop_size : insts->size;
+    station->num_iterations = num_iterations;
     hashset_t *set = create_hashset(insts);
     printf("Parsing measurement file...\n");
     inst_info_t **table_info = parse_instruction_file(TABLE, arch_name, station->num_ports, set);
@@ -71,7 +73,7 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, cha
         }
     }
     free_info_array(table_info);
-    station->done_insts = newSimInstList(insts->size);
+    station->done_insts = newSimInstList(station->num_insts);
     station->to_exec = NULL;
     return station;
 }
@@ -153,7 +155,7 @@ void execute_instructions_in_ports(station_t *station) {
         cur = list->elem;
         if (++cur->executed_cycles == cur->latency) {
             delete_inst_from_queue(cur, station);
-            add_to_sim_list(station->done_insts, cur);
+            add_to_sim_list(station->done_insts, cur, station->num_ports, station->num_insts);
         }
         inform_children_im_done(cur, cur->executed_cycles);
         list = list->next;

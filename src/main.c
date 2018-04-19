@@ -9,7 +9,7 @@
 int build_cfg;
 int build_dep_graph;
 int print_help;
-int num_iterations;
+int num_iterations = 1;
 int detail_line = -1;
 char *invalid_flag;
 char *file_name;
@@ -73,7 +73,7 @@ void graphs_and_map(single_list_t *list, int index) {
     if (build_dep_graph)
         build_graphviz(dg, list, "dependency", index);
     free_graph(g);
-    station_t* station = create_initial_state(dg, list, arch_name);
+    station_t* station = create_initial_state(dg, list, arch_name, num_iterations);
     free_graph(dg);
     if (station != NULL) {
         // perform computations until both queues are empty and no instruction is be executed (to_exec)
@@ -81,9 +81,9 @@ void graphs_and_map(single_list_t *list, int index) {
             perform_cycle(station);
         }
         if (detail_line == -1)
-            print_sim_inst_list(station->done_insts, list, station->num_ports, arch_name);
+            print_sim_inst_list(station->done_insts, list, station->num_ports, arch_name, num_iterations);
         else
-            print_sim_inst_details(station->done_insts, list, detail_line, station->num_ports);
+            print_sim_inst_details(station->done_insts, list, detail_line, station->num_ports, num_iterations);
         freeStation(station);
     } else {
         printf("Couldn't create station!\n");

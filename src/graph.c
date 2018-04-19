@@ -73,7 +73,7 @@ void build_graphviz(graph_t *graph, single_list_t *list, char *name, int index) 
     snprintf(buf, sizeof(buf), "%s_%i.dot", name, index);
     FILE *f = fopen(buf, "w");
     fprintf(f, "digraph %s{\n", name);
-    for (size_t i = 0; i < (list->single_loop_size > 1 ? list->single_loop_size : list->size); i++) {
+    for (size_t i = 0; i < (list->single_loop_size > -1 ? list->single_loop_size : list->size); i++) {
         char buf[TMP_BUF_LEN];
         disassemble(buf, TMP_BUF_LEN, &list->array[i], list->printinfo[i]);
         fprintf(f, "%i [label=\"%i: %s\", style=filled]\n", i, i, buf);

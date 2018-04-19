@@ -20,6 +20,9 @@ typedef struct station_s {
     int cap;
     int load_per_cycle;
     int num_ports;
+    // initial number of instruction of a single iteration
+    int num_insts;
+    int num_iterations;
     //we store a pointer to the instruction that currently blocks the port
     //for computation of delayed cycles
     sim_inst_t **ports;
@@ -33,7 +36,7 @@ typedef struct station_s {
 /*
   parses file to create station
 */
-station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, char *arch_name);
+station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, char *arch_name, int num_iterations);
 
 
 /*
