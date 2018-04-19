@@ -6,7 +6,7 @@
 
 
 station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, char *arch_name, int num_iterations) {
-    char station_file[strlen(arch_name)+strlen(STATION_LOC)+strlen(".arch")+1];
+    char station_file[strlen(arch_name) + strlen(STATION_LOC) + strlen(".arch") + 1];
     build_station_file_string(station_file, arch_name);
     station_t *station = parse_station_file(station_file);
     bool fail = false;
@@ -14,7 +14,7 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, cha
         printf("The station file for %s could not be found\n", arch_name);
         return NULL;
     }
-    station->num_insts = insts->single_loop_size > -1 ? insts->single_loop_size : insts->size;
+    station->num_insts = insts->single_loop_size;
     station->num_iterations = num_iterations;
     hashset_t *set = create_hashset(insts);
     printf("Parsing measurement file...\n");
@@ -26,10 +26,11 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, cha
     }
     sim_inst_t *cur;
     sim_inst_t *prev = NULL;
-    sim_inst_t *all[insts->size];
+    sim_inst_t *all[station->num_insts * num_iterations];
     //build all sim insts
-    for (int i = 0; i < insts->size; i++) {
-        int index = xed_decoded_inst_get_iform_enum(&insts->array[i]);
+    for (int i = 0; i < station->num_insts * num_iterations; i++) {
+        int mod_i = i % station->num_insts;
+        int index = xed_decoded_inst_get_iform_enum(&insts->array[mod_i]);
         inst_info_t *info = table_info[index];
         if (info == NULL) {
             fail = true;
@@ -40,9 +41,9 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, cha
         }
         //needs to be incremented because we create a new reference to this struct (we'll copy for now)
         //info->micro_ops->numrefs++;
-        cur = newSimInst(i, info->micro_ops, info->num_micro_ops, dependencies->nodes[i]->num_fathers,
-                         get_max_latency(info->latencies, index), dependencies->nodes[i]->num_successors,
-                         station->num_ports, insts->size);
+        cur = newSimInst(mod_i, info->micro_ops, info->num_micro_ops, dependencies->nodes[mod_i]->num_fathers,
+                         get_max_latency(info->latencies, index), dependencies->nodes[mod_i]->num_successors,
+                         station->num_ports, station->num_insts);
         all[i] = cur;
         cur->previous = prev;
         if (prev != NULL)
@@ -59,17 +60,24 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, cha
         return NULL;
     }
     //build dependencies
-    for (int j = 0; j < insts->size; ++j) {
-        int index = xed_decoded_inst_get_iform_enum(&insts->array[j]);
-        inst_info_t *info = table_info[index];
-        cur = all[j];
-        for (int i = 0; i < cur->num_dep_children; ++i) {
-            int_reg_tuple_t intreg = dependencies->nodes[j]->successors[i];
-            cur->dep_children[i] = (reg_sim_inst_t) {all[intreg.line],
-                                                     get_latency_for_register(info->latencies, intreg.reg)};
-        }
-        for (int i = 0; i < cur->fathers_todo; ++i) {
-            cur->fathers[i] = all[dependencies->nodes[j]->fathers[i].line];
+    for (int k = 0; k < num_iterations; ++k) {
+        for (int j = 0; j < station->num_insts; ++j) {
+            int index = xed_decoded_inst_get_iform_enum(&insts->array[j]);
+            inst_info_t *info = table_info[index];
+            cur = all[j+(k*station->num_insts)];
+            for (int i = 0; i < cur->num_dep_children; ++i) {
+                int_reg_tuple_t intreg = dependencies->nodes[j]->successors[i];
+                if ((intreg.line + (k * station->num_insts)) >= num_iterations * station->num_insts) {
+                    cur->num_dep_children--;
+                    i--;
+                    continue;
+                }
+                cur->dep_children[i] = (reg_sim_inst_t) {all[intreg.line + (k * station->num_insts)],
+                                                         get_latency_for_register(info->latencies, intreg.reg)};
+            }
+            for (int i = 0; i < cur->fathers_todo; ++i) {
+                cur->fathers[i] = all[dependencies->nodes[j]->fathers[i].line + (k * station->num_insts)];
+            }
         }
     }
     free_info_array(table_info);
@@ -105,6 +113,10 @@ void put_executables_into_ports(station_t *station) {
             hashset_t *would_like_to_use = new_hashset(station->num_ports);
             while (po) {
                 fits_single = true;
+                // instruction is not fully loaded
+                if (po->numops) {
+                    fits = false;
+                }
                 for (int i = 0; i < station->num_ports && po->loaded_ops; ++i) {
                     if (po->usable_ports[i] && !station->ports[i]) {
                         station->ports[i] = cur;
@@ -220,7 +232,6 @@ void inform_children_im_done(sim_inst_t *inst, int cycles_done) {
 }
 
 
-
 void execute_list_add(execute_list_t **list, sim_inst_t *to_add) {
     execute_list_t *new = malloc(sizeof(execute_list_t));
     new->elem = to_add;
@@ -247,19 +258,18 @@ void execute_list_clear(execute_list_t **list) {
 }
 
 
-
 void build_station_file_string(char *dest, const char *arch_name) {
     int st_loc_len = strlen(STATION_LOC);
     int a_len = strlen(arch_name);
     for (int i = 0; i < st_loc_len; ++i) {
         dest[i] = STATION_LOC[i];
     }
-    for (int i = st_loc_len; i < st_loc_len+a_len; ++i) {
-        dest[i] = arch_name[i-st_loc_len];
+    for (int i = st_loc_len; i < st_loc_len + a_len; ++i) {
+        dest[i] = arch_name[i - st_loc_len];
     }
     char *a = ".arch";
-    for (int i = st_loc_len+a_len; i < st_loc_len+a_len+strlen(a); ++i) {
-        dest[i] = a[i-st_loc_len-a_len];
+    for (int i = st_loc_len + a_len; i < st_loc_len + a_len + strlen(a); ++i) {
+        dest[i] = a[i - st_loc_len - a_len];
     }
-    dest[st_loc_len+a_len+strlen(a)] = '\0';
+    dest[st_loc_len + a_len + strlen(a)] = '\0';
 }

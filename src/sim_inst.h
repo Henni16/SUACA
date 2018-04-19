@@ -83,8 +83,7 @@ void print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int
 
 void clear_father_from_list(sim_inst_t *si, int father_line);
 
-void print_conditional_spaces(int i);
-
+void print_conditional_spaces(double i);
 
 
 #endif

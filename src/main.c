@@ -65,6 +65,8 @@ void graphs_and_map(single_list_t *list, int index) {
         if (!add_loop_instructions(list)) {
             printf("Aborting analysis!\n");
         }
+    } else {
+        list->single_loop_size = list->size;
     }
     graph_t *g = build_controlflowgraph(list);
     if (build_cfg)
