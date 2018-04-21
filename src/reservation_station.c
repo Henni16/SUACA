@@ -30,6 +30,9 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, cha
     //build all sim insts
     for (int i = 0; i < station->num_insts * num_iterations; i++) {
         int mod_i = i % station->num_insts;
+        // for every iteration after the first we have to consider the second part of the dep_graph
+        // to find the fathers
+        int father_i = i < station->num_insts ? mod_i : mod_i + station->num_insts;
         int index = xed_decoded_inst_get_iform_enum(&insts->array[mod_i]);
         inst_info_t *info = table_info[index];
         if (info == NULL) {
@@ -41,7 +44,8 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, cha
         }
         //needs to be incremented because we create a new reference to this struct (we'll copy for now)
         //info->micro_ops->numrefs++;
-        cur = newSimInst(mod_i, info->micro_ops, info->num_micro_ops, dependencies->nodes[mod_i]->num_fathers,
+        cur = newSimInst(mod_i, info->micro_ops, info->num_micro_ops,
+                         dependencies->nodes[father_i]->num_fathers,
                          get_max_latency(info->latencies, index), dependencies->nodes[mod_i]->num_successors,
                          station->num_ports, station->num_insts);
         all[i] = cur;
@@ -64,7 +68,7 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, cha
         for (int j = 0; j < station->num_insts; ++j) {
             int index = xed_decoded_inst_get_iform_enum(&insts->array[j]);
             inst_info_t *info = table_info[index];
-            cur = all[j+(k*station->num_insts)];
+            cur = all[j + (k * station->num_insts)];
             for (int i = 0; i < cur->num_dep_children; ++i) {
                 int_reg_tuple_t intreg = dependencies->nodes[j]->successors[i];
                 if ((intreg.line + (k * station->num_insts)) >= num_iterations * station->num_insts) {
@@ -75,8 +79,10 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, cha
                 cur->dep_children[i] = (reg_sim_inst_t) {all[intreg.line + (k * station->num_insts)],
                                                          get_latency_for_register(info->latencies, intreg.reg)};
             }
+            int added = k > 0 ? (k-1) * station->num_insts : 0;
+            int second_j = k > 0 ? j + station->num_insts : j;
             for (int i = 0; i < cur->fathers_todo; ++i) {
-                cur->fathers[i] = all[dependencies->nodes[j]->fathers[i].line + (k * station->num_insts)];
+                cur->fathers[i] = all[dependencies->nodes[second_j]->fathers[i].line + added];
             }
         }
     }
@@ -272,4 +278,15 @@ void build_station_file_string(char *dest, const char *arch_name) {
         dest[i] = a[i - st_loc_len - a_len];
     }
     dest[st_loc_len + a_len + strlen(a)] = '\0';
+}
+
+
+int compute_total_num_microops(station_t *station) {
+    sim_inst_t *cur = station->station_queue;
+    int num = 0;
+    do {
+        num += cur->num_micro_ops;
+        cur = cur->next;
+    } while (cur && cur->line > 0);
+    return num;
 }

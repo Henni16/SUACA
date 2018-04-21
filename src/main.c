@@ -78,12 +78,18 @@ void graphs_and_map(single_list_t *list, int index) {
     station_t* station = create_initial_state(dg, list, arch_name, num_iterations);
     free_graph(dg);
     if (station != NULL) {
+        int total_num_microops = compute_total_num_microops(station) * num_iterations;
+        int num_cycles = 0;
         // perform computations until both queues are empty and no instruction is be executed (to_exec)
         while (station->wait_queue || station->station_queue || station->to_exec) {
             perform_cycle(station);
+            num_cycles++;
         }
-        if (detail_line == -1)
+        if (detail_line == -1) {
+            printf("Block throughput: %.2f cycles\n", ((double)num_cycles)/num_iterations);
+            printf("Microops per cycle: %.2f\n", ((double)total_num_microops)/num_cycles);
             print_sim_inst_list(station->done_insts, list, station->num_ports, arch_name, num_iterations);
+        }
         else
             print_sim_inst_details(station->done_insts, list, detail_line, station->num_ports, num_iterations);
         freeStation(station);

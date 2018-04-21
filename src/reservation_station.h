@@ -74,6 +74,11 @@ void execute_list_clear(execute_list_t **list);
 
 void build_station_file_string(char *dest, const char *arch_name);
 
+/*
+ * computes the total number of microops in one iteration
+ */
+int compute_total_num_microops(station_t *station);
+
 
 
 #endif
