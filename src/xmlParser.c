@@ -506,6 +506,8 @@ port_ops_t *newPortOp(int numports, int numops) {
 
 
 void free_port_op(port_ops_t *po) {
+    if (!po)
+        return;
     if (--po->numrefs)
         return;
     free(po->usable_ports);

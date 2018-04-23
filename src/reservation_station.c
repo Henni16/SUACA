@@ -9,7 +9,6 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, cha
     char station_file[strlen(arch_name) + strlen(STATION_LOC) + strlen(".arch") + 1];
     build_station_file_string(station_file, arch_name);
     station_t *station = parse_station_file(station_file);
-    bool fail = false;
     if (station == NULL) {
         printf("The station file for %s could not be found\n", arch_name);
         return NULL;
@@ -27,6 +26,7 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, cha
     sim_inst_t *cur;
     sim_inst_t *prev = NULL;
     sim_inst_t *all[station->num_insts * num_iterations];
+    station->done_insts = newSimInstList(station->num_insts);
     //build all sim insts
     for (int i = 0; i < station->num_insts * num_iterations; i++) {
         int mod_i = i % station->num_insts;
@@ -36,11 +36,13 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, cha
         int index = xed_decoded_inst_get_iform_enum(&insts->array[mod_i]);
         inst_info_t *info = table_info[index];
         if (info == NULL) {
-            fail = true;
-            printf("Unsupported instruction found in line: %i  instruction was: %s\n", i + 1,
-                   xed_iform_enum_t2str(index));
+            if (!station->done_insts->arr[mod_i])
+                printf("Unsupported instruction found in line: %i  instruction was: %s\n", i + 1,
+                       xed_iform_enum_t2str(index));
+            all[i] = newSimInst(mod_i, NULL, 0, 0, 0, 0, 0, 0);
+            all[i]->unsupported = true;
+            station->done_insts->arr[mod_i] = all[i];
             continue;
-            //return NULL;
         }
         //needs to be incremented because we create a new reference to this struct (we'll copy for now)
         //info->micro_ops->numrefs++;
@@ -58,36 +60,42 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, cha
         }
         prev = cur;
     }
-    if (fail) {
-        free_info_array(table_info);
-        freeStation(station);
-        return NULL;
-    }
+
     //build dependencies
     for (int k = 0; k < num_iterations; ++k) {
         for (int j = 0; j < station->num_insts; ++j) {
             int index = xed_decoded_inst_get_iform_enum(&insts->array[j]);
             inst_info_t *info = table_info[index];
             cur = all[j + (k * station->num_insts)];
+            int to_sub = 0;
             for (int i = 0; i < cur->num_dep_children; ++i) {
                 int_reg_tuple_t intreg = dependencies->nodes[j]->successors[i];
                 if ((intreg.line + (k * station->num_insts)) >= num_iterations * station->num_insts) {
-                    cur->num_dep_children--;
-                    i--;
+                    to_sub++;
+                    continue;
+                }
+                if (all[(intreg.line + (k * station->num_insts))]->unsupported) {
+                    to_sub++;
                     continue;
                 }
                 cur->dep_children[i] = (reg_sim_inst_t) {all[intreg.line + (k * station->num_insts)],
                                                          get_latency_for_register(info->latencies, intreg.reg)};
             }
-            int added = k > 0 ? (k-1) * station->num_insts : 0;
+            cur->num_dep_children -= to_sub;
+            int added = k > 0 ? (k - 1) * station->num_insts : 0;
             int second_j = k > 0 ? j + station->num_insts : j;
+            to_sub = 0;
             for (int i = 0; i < cur->fathers_todo; ++i) {
+                if (all[dependencies->nodes[second_j]->fathers[i].line + added]->unsupported) {
+                    to_sub++;
+                    continue;
+                }
                 cur->fathers[i] = all[dependencies->nodes[second_j]->fathers[i].line + added];
             }
+            cur->fathers_todo -= to_sub;
         }
     }
     free_info_array(table_info);
-    station->done_insts = newSimInstList(station->num_insts);
     station->to_exec = NULL;
     return station;
 }

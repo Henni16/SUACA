@@ -17,6 +17,7 @@ typedef struct delays_s {
 typedef struct sim_inst_s {
     int line;
     int id;
+    bool unsupported;
     int latency;
     int num_micro_ops;
     int micro_ops_loaded;

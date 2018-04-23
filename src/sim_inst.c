@@ -9,6 +9,7 @@ sim_inst_t *newSimInst(int line, port_ops_t *micro_ops, int num_micro_ops, int n
                        int latency, int num_children, int numports, int num_insts) {
     sim_inst_t *ret = (sim_inst_t *) malloc(sizeof(sim_inst_t));
     ret->num_micro_ops = num_micro_ops;
+    ret->unsupported = false;
     ret->micro_ops_loaded = 0;
     ret->micro_ops = copy_port_op(micro_ops, numports);
     ret->line = line;
@@ -132,6 +133,14 @@ void print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int nu
                     inst_list->printinfo[i]);
         print_conditional_spaces(i);
         printf(" %i   ||", i);
+        if (inst->unsupported) {
+            printf("    X    ||    X    ||    X    ||");
+            for (int j = 0; j < num_ports; ++j) {
+                printf("   X   ||");
+            }
+            printf(" %s\n", buffer);
+            continue;
+        }
         print_conditional_spaces(inst->num_micro_ops);
         printf("  %i    ||", inst->num_micro_ops);
         print_conditional_spaces(((double)inst->cycles_delayed)/num_iterations);
@@ -169,6 +178,10 @@ void print_conditional_spaces(double i) {
 void print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int line, int num_ports, int num_iterations) {
     if (line >= inst_list->single_loop_size || line < 0) {
         printf("Invalid line selected!\nPlease choose a line between 0 and %i\n", inst_list->single_loop_size-1);
+        return;
+    }
+    if (list->arr[line]->unsupported) {
+        printf("Details for unsupported operation can't be printed!\nPlease choose a valid line.\n");
         return;
     }
     char buffer[XED_TMP_BUF_LEN];
