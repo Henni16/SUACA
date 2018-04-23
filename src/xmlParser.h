@@ -80,7 +80,7 @@ void skip_cur_element(FILE *f);
 
 void split_attribute(char *attribute, attribute_value_t *a);
 
-station_t *parse_station_file(char *file_name);
+station_t *parse_station_file(char *file_name, int num_iterations, int single_loop_size);
 
 int get_max_latency(latency_reg_t *l, xed_iform_enum_t iform);
 

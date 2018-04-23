@@ -376,7 +376,7 @@ void skip_cur_element(FILE *f) {
 }
 
 
-station_t *parse_station_file(char *file_name) {
+station_t *parse_station_file(char *file_name, int num_iterations, int single_loop_size) {
     station_t *s = malloc(sizeof(station_t));
     FILE *station_file = fopen(file_name, "r");
     if (station_file == NULL) {
@@ -392,6 +392,8 @@ station_t *parse_station_file(char *file_name) {
     s->wait_queue = NULL;
     s->station_queue = NULL;
     s->done_insts = NULL;
+    s->num_insts = single_loop_size;
+    s->num_iterations = num_iterations;
     fclose(station_file);
     return s;
 }

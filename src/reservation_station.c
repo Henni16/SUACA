@@ -1,28 +1,11 @@
 #include "reservation_station.h"
-#include "xmlParser.h"
 #include "inst_list.h"
 #include "graph.h"
 #include "hashset.h"
+#include "xmlParser.h"
 
 
-station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, char *arch_name, int num_iterations) {
-    char station_file[strlen(arch_name) + strlen(STATION_LOC) + strlen(".arch") + 1];
-    build_station_file_string(station_file, arch_name);
-    station_t *station = parse_station_file(station_file);
-    if (station == NULL) {
-        printf("The station file for %s could not be found\n", arch_name);
-        return NULL;
-    }
-    station->num_insts = insts->single_loop_size;
-    station->num_iterations = num_iterations;
-    hashset_t *set = create_hashset(insts);
-    printf("Parsing measurement file...\n");
-    inst_info_t **table_info = parse_instruction_file(TABLE, arch_name, station->num_ports, set);
-    printf("Done parsing!\n");
-    hashset_free(set);
-    if (table_info == NULL) {
-        return NULL;
-    }
+void create_initial_state(graph_t *dependencies, single_list_t *insts, int num_iterations, station_t* station, inst_info_t **table_info, bool print_unsupported) {
     sim_inst_t *cur;
     sim_inst_t *prev = NULL;
     sim_inst_t *all[station->num_insts * num_iterations];
@@ -36,7 +19,7 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, cha
         int index = xed_decoded_inst_get_iform_enum(&insts->array[mod_i]);
         inst_info_t *info = table_info[index];
         if (info == NULL) {
-            if (!station->done_insts->arr[mod_i])
+            if (!station->done_insts->arr[mod_i] && print_unsupported)
                 printf("Unsupported instruction found in line: %i  instruction was: %s\n", i + 1,
                        xed_iform_enum_t2str(index));
             all[i] = newSimInst(mod_i, NULL, 0, 0, 0, 0, 0, 0);
@@ -95,9 +78,7 @@ station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, cha
             cur->fathers_todo -= to_sub;
         }
     }
-    free_info_array(table_info);
     station->to_exec = NULL;
-    return station;
 }
 
 void perform_cycle(station_t *station) {

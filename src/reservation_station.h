@@ -32,11 +32,12 @@ typedef struct station_s {
     execute_list_t *to_exec;
 } station_t;
 
+typedef struct inst_info_s inst_info_t;
 
 /*
-  parses file to create station
+  creates the sim_insts and the dependencies for the given station and instruction array
 */
-station_t *create_initial_state(graph_t *dependencies, single_list_t *insts, char *arch_name, int num_iterations);
+void create_initial_state(graph_t *dependencies, single_list_t *insts, int num_iterations, station_t* station, inst_info_t **table_info, bool print_unsupported);
 
 
 /*

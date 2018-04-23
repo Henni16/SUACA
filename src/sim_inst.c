@@ -113,7 +113,12 @@ void free_sim_inst_list(sim_inst_list_t *list) {
 }
 
 
-void print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int num_ports, char *arch_name, int num_iterations) {
+void print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int num_ports, char *arch_name, int num_iterations, int num_cycles,
+                         int total_num_microops, int frontend_cycles, int port_cycles) {
+    printf("Block throughput: %.2f cycles\n", ((double) num_cycles) / num_iterations);
+    printf("Block throughput with perfect frontend: %.2f cycles\n", ((double) frontend_cycles) / num_iterations);
+    printf("Block throughput with non-blocking ports: %.2f cycles\n", ((double) port_cycles) / num_iterations);
+    printf("Microops per cycle: %.2f\n", ((double) total_num_microops) / num_cycles);
     printf("\nAnalysis for architecture: %s\n\n", arch_name);
     printf(" Line  ||   Num   ||   had   || caused  ||            Used Ports\n");
     printf("       ||   Uops  || to wait || to wait ||");

@@ -15,6 +15,12 @@ int detail_line = -1;
 char *invalid_flag;
 char *file_name;
 char *arch_name = "SNB";
+station_t *station;
+station_t *frontend_test;
+int frontend_cycles;
+station_t *port_test;
+int port_cycles;
+inst_info_t **table_info;
 
 void clp(int argc, char *argv[]);
 
@@ -61,7 +67,11 @@ void help() {
     printf(" --loop [x]: run the analysis in a loop of [x]\n");
 }
 
-void perform_simulation(station_t *station, single_list_t *list) {
+int perform_simulation(station_t *station, single_list_t *list, bool print) {
+    if (!station) {
+        printf("Couldn't create station!\n");
+        return 0;
+    }
     int total_num_microops = compute_total_num_microops(station) * num_iterations;
     int num_cycles = 0;
     // perform computations until both queues are empty and no instruction is be executed (to_exec)
@@ -69,13 +79,35 @@ void perform_simulation(station_t *station, single_list_t *list) {
         perform_cycle(station);
         num_cycles++;
     }
-    if (detail_line == -1) {
-        printf("Block throughput: %.2f cycles\n", ((double) num_cycles) / num_iterations);
-        printf("Microops per cycle: %.2f\n", ((double) total_num_microops) / num_cycles);
-        print_sim_inst_list(station->done_insts, list, station->num_ports, arch_name, num_iterations);
-    } else
+    if (detail_line == -1 && print) {
+        print_sim_inst_list(station->done_insts, list, station->num_ports, arch_name, num_iterations, num_cycles,
+                            total_num_microops, frontend_cycles, port_cycles);
+    } else if (print)
         print_sim_inst_details(station->done_insts, list, detail_line, station->num_ports, num_iterations);
     freeStation(station);
+    return num_cycles;
+}
+
+int parse_stuff(single_list_t *insts) {
+    char station_file[strlen(arch_name) + strlen(STATION_LOC) + strlen(".arch") + 1];
+    build_station_file_string(station_file, arch_name);
+    station = parse_station_file(station_file, num_iterations, insts->single_loop_size);
+    if (station == NULL) {
+        printf("The station file for %s could not be found\n", arch_name);
+        return 0;
+    }
+    frontend_test = parse_station_file(station_file, num_iterations, insts->single_loop_size);
+    frontend_test->load_per_cycle = frontend_test->cap;
+    port_test = parse_station_file(station_file, num_iterations, insts->single_loop_size);
+    hashset_t *set = create_hashset(insts);
+    printf("Parsing measurement file...\n");
+    table_info = parse_instruction_file(TABLE, arch_name, station->num_ports, set);
+    printf("Done parsing!\n");
+    hashset_free(set);
+    if (table_info == NULL) {
+        return 0;
+    }
+
 }
 
 void graphs_and_map(single_list_t *list, int index) {
@@ -93,13 +125,17 @@ void graphs_and_map(single_list_t *list, int index) {
     if (build_dep_graph)
         build_graphviz(dg, list, "dependency", index);
     free_graph(g);
-    station_t *station = create_initial_state(dg, list, arch_name, num_iterations);
-    free_graph(dg);
-    if (station != NULL) {
-        perform_simulation(station, list);
-    } else {
-        printf("Couldn't create station!\n");
+    parse_stuff(list);
+    if (detail_line == -1) {
+        create_initial_state(dg, list, num_iterations, frontend_test, table_info, false);
+        frontend_cycles = perform_simulation(frontend_test, list, false);
+        create_initial_state(dg, list, num_iterations, port_test, table_info, false);
+        port_cycles = perform_simulation(port_test, list, false);
     }
+    create_initial_state(dg, list, num_iterations, station, table_info, true);
+    perform_simulation(station, list, true);
+    free_info_array(table_info);
+    free_graph(dg);
 }
 
 

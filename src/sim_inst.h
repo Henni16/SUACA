@@ -40,7 +40,7 @@ typedef struct sim_inst_s {
     int num_dep_children;
     struct reg_sim_inst_s *dep_children;
     //number of cycles that were used on each port
-    int* used_ports;
+    int *used_ports;
     // number of cycles this instruction has been executed
     int executed_cycles;
     // delays[i] will be the delays caused/suffered from the instruction in line i
@@ -78,9 +78,12 @@ void add_to_sim_list(sim_inst_list_t *list, sim_inst_t *elem, int num_ports, int
 
 void free_sim_inst_list(sim_inst_list_t *list);
 
-void print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int num_ports, char *arch_name, int num_iterations);
+void
+print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int num_ports, char *arch_name, int num_iterations,
+                    int num_cycles, int total_num_microops, int frontend_cycles, int port_cycles);
 
-void print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int line, int num_ports, int num_iterations);
+void
+print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int line, int num_ports, int num_iterations);
 
 void clear_father_from_list(sim_inst_t *si, int father_line);
 
