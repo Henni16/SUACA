@@ -193,6 +193,16 @@ void parse_operands(FILE *file, inst_info_t *info) {
                     }
                     latreg->reg[0] = XED_REG_RFLAGS;
                     flagfound = true;
+                } else if (!strcmp(att.value, "imm") || !strcmp(att.value, "mem")) {
+                    if (latreg != NULL) {
+                        latreg->next = newLatReg();
+                        latreg = latreg->next;
+                    } else {
+                        latreg = newLatReg();
+                        info->latencies = latreg;
+                    }
+                    latreg->reg[0] = XED_REG_INVALID;
+                    flagfound = true;
                 }
                 tofind--;
             }
@@ -389,16 +399,18 @@ station_t *parse_station_file(char *file_name, int num_iterations, int single_lo
     s->load_per_cycle = atoi(strtok(NULL, ";"));
     s->num_ports = atoi(strtok(NULL, ";"));
     s->ports = calloc(s->num_ports, sizeof(sim_inst_t *));
+    s->port_usage = calloc(s->num_ports, sizeof(int));
     s->wait_queue = NULL;
     s->station_queue = NULL;
     s->done_insts = NULL;
     s->num_insts = single_loop_size;
     s->num_iterations = num_iterations;
+    s->non_blocking_ports = false;
     fclose(station_file);
     return s;
 }
 
-int get_max_latency(latency_reg_t *l, xed_iform_enum_t iform) {
+int get_max_latency(latency_reg_t *l) {
     int max = -1;
     while (l != NULL) {
         if (l->latency > max)

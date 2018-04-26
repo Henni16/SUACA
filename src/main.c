@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
     }
 
     inst_list_t *instructions = build_inst_list(file_name);
-    //print_list(instructions);
+    print_list(instructions);
 
     for (size_t i = 0; i < instructions->numLists; i++) {
         graphs_and_map(instructions->lists[i], i);
@@ -99,6 +99,7 @@ int parse_stuff(single_list_t *insts) {
     frontend_test = parse_station_file(station_file, num_iterations, insts->single_loop_size);
     frontend_test->load_per_cycle = frontend_test->cap;
     port_test = parse_station_file(station_file, num_iterations, insts->single_loop_size);
+    port_test->non_blocking_ports = true;
     hashset_t *set = create_hashset(insts);
     printf("Parsing measurement file...\n");
     table_info = parse_instruction_file(TABLE, arch_name, station->num_ports, set);

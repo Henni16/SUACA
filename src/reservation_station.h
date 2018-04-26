@@ -2,6 +2,7 @@
 #define RESERVATION_STATION_H
 
 //TODO set table file here
+//#define TABLE "../../tables/result_reduced.xml"
 #define TABLE "../../tables/intel.xml"
 #define STATION_LOC "../../tables/"
 #define ARCHITECTURE_NAME "SNB"
@@ -30,6 +31,8 @@ typedef struct station_s {
     sim_inst_t *station_queue;
     sim_inst_list_t *done_insts;
     execute_list_t *to_exec;
+    bool non_blocking_ports;
+    int *port_usage;
 } station_t;
 
 typedef struct inst_info_s inst_info_t;

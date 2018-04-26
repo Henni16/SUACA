@@ -5,7 +5,8 @@
 #include "xmlParser.h"
 
 
-void create_initial_state(graph_t *dependencies, single_list_t *insts, int num_iterations, station_t* station, inst_info_t **table_info, bool print_unsupported) {
+void create_initial_state(graph_t *dependencies, single_list_t *insts, int num_iterations, station_t *station,
+                          inst_info_t **table_info, bool print_unsupported) {
     sim_inst_t *cur;
     sim_inst_t *prev = NULL;
     sim_inst_t *all[station->num_insts * num_iterations];
@@ -31,7 +32,7 @@ void create_initial_state(graph_t *dependencies, single_list_t *insts, int num_i
         //info->micro_ops->numrefs++;
         cur = newSimInst(mod_i, info->micro_ops, info->num_micro_ops,
                          dependencies->nodes[father_i]->num_fathers,
-                         get_max_latency(info->latencies, index), dependencies->nodes[mod_i]->num_successors,
+                         get_max_latency(info->latencies), dependencies->nodes[mod_i]->num_successors,
                          station->num_ports, station->num_insts);
         all[i] = cur;
         cur->previous = prev;
@@ -114,7 +115,9 @@ void put_executables_into_ports(station_t *station) {
                 }
                 for (int i = 0; i < station->num_ports && po->loaded_ops; ++i) {
                     if (po->usable_ports[i] && !station->ports[i]) {
-                        station->ports[i] = cur;
+                        if (!station->non_blocking_ports) {
+                            station->ports[i] = cur;
+                        }
                         cur->used_ports[i]++;
                         po->loaded_ops--;
                         station->size--;
@@ -215,6 +218,7 @@ void freeStation(station_t *station) {
     if (station->done_insts)
         free_sim_inst_list(station->done_insts);
     free(station->ports);
+    free(station->port_usage);
     free(station);
 }
 

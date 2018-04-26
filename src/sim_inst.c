@@ -194,8 +194,40 @@ void print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int
     disassemble(buffer, XED_TMP_BUF_LEN, &inst_list->array[line],
                 inst_list->printinfo[line]);
     printf("\nDetailed delay information for instruction: %s in line %i\n\n", buffer, line);
+    sim_inst_t *inst = list->arr[line];
+    sim_inst_t *cur;
+    int lat1 = 0;
+    int lat2 = 0;
+    printf("Maximum latency: %i\n\n", inst->latency);
+    printf("Latencies for dependencies:\n");
+    printf("  Line || %i -> Line || Line -> %i\n", inst->line, inst->line);
+    printf("  ----------------------------------\n");
+    for (int i = 0; i < list->size; ++i) {
+        cur = list->arr[i];
+        print_conditional_spaces(i);
+        for (int j = 0; j < inst->num_dep_children; ++j) {
+            if (inst->dep_children[j].child->line == cur->line) {
+                lat1 = inst->dep_children[j].cycles;
+            }
+        }
+        for (int j = 0; j < cur->num_dep_children; ++j) {
+            if (cur->dep_children[j].child->line == inst->line) {
+                lat2 = cur->dep_children[j].cycles;
+            }
+        }
+        if (lat1 || lat2) {
+            printf(" %i   ||", i);
+            print_conditional_spaces(lat1);
+            printf("   %i     ||", lat1);
+            print_conditional_spaces(lat2);
+            printf("   %i   \n", lat2);
+        }
+        lat1 = 0;
+        lat2 = 0;
+    }
+    printf("\n\n");
     printf("Delay caused by dependencies:\n");
-    delays_t *delays = list->arr[line]->dep_delays;
+    delays_t *delays = inst->dep_delays;
     for (int i = 0; i < list->size; ++i) {
         if (delays[i].delay_caused || delays[i].delay_suffered) {
             if (!is_delayed) {
@@ -208,7 +240,7 @@ void print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int
             print_conditional_spaces(((double)delays[i].delay_caused)/num_iterations);
             printf("   %.1f     ||", ((double)delays[i].delay_caused)/num_iterations);
             print_conditional_spaces(((double)delays[i].delay_suffered)/num_iterations);
-            printf("   %.1f    \n", ((double)delays[i].delay_suffered)/num_iterations);
+            printf("   %.1f     \n", ((double)delays[i].delay_suffered)/num_iterations);
         }
     }
     if (!is_delayed) {
@@ -217,7 +249,7 @@ void print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int
         is_delayed = false;
     }
     printf("\n\nDelay caused by blocked ports:\n");
-    delays = list->arr[line]->port_delays;
+    delays = inst->port_delays;
     for (int i = 0; i < num_ports; ++i) {
         if (delays[i].delay_caused || delays[i].delay_suffered) {
             if (!is_delayed) {

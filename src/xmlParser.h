@@ -82,7 +82,7 @@ void split_attribute(char *attribute, attribute_value_t *a);
 
 station_t *parse_station_file(char *file_name, int num_iterations, int single_loop_size);
 
-int get_max_latency(latency_reg_t *l, xed_iform_enum_t iform);
+int get_max_latency(latency_reg_t *l);
 
 /*
  * searches for the latency of a specific register
