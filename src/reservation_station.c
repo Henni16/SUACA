@@ -107,23 +107,31 @@ void put_executables_into_ports(station_t *station) {
             bool fits = true;
             port_ops_t *po = cur->micro_ops;
             hashset_t *would_like_to_use = new_hashset(station->num_ports);
+            int will_use[station->num_ports];
             while (po) {
                 fits_single = true;
                 // instruction is not fully loaded
                 if (po->numops) {
                     fits = false;
                 }
-                for (int i = 0; i < station->num_ports && po->loaded_ops; ++i) {
+                int arr_len = 0;
+                // check which ports are possible
+                for (int i = 0; i < station->num_ports; ++i) {
                     if (po->usable_ports[i] && !station->ports[i]) {
-                        if (!station->non_blocking_ports) {
-                            station->ports[i] = cur;
-                        }
-                        cur->used_ports[i]++;
-                        po->loaded_ops--;
-                        station->size--;
+                        insert_sorted(will_use, &arr_len, i, station);
                     } else if (po->usable_ports[i]) {
                         fits_single = false;
                     }
+                }
+                // assign the microops to the least used ports
+                for (int i = 0; i < arr_len && po->loaded_ops; ++i) {
+                    if (!station->non_blocking_ports) {
+                        station->ports[will_use[i]] = cur;
+                        cur->used_ports[will_use[i]]++;
+                        station->port_usage[will_use[i]]++;
+                    }
+                    po->loaded_ops--;
+                    station->size--;
                 }
                 if (!po->loaded_ops) {
                     po = po->next;
@@ -180,11 +188,11 @@ void load_instruction_into_station(station_t *station) {
     else
         loadable = station->load_per_cycle;
     sim_inst_t *next = station->wait_queue;
-    station->size += loadable;
     while (loadable > 0 && next) {
         //all instruct of next can be loaded
         if (get_loadable_micro_ops(next) <= loadable) {
             loadable -= get_loadable_micro_ops(next);
+            station->size += get_loadable_micro_ops(next);
             load_num_micro_ops(next, get_loadable_micro_ops(next));
             next->micro_ops_loaded = next->num_micro_ops;
             station->wait_queue = next->next;
@@ -193,6 +201,7 @@ void load_instruction_into_station(station_t *station) {
             //instruction can't be fully loaded
         else {
             next->micro_ops_loaded += loadable;
+            station->size += loadable;
             load_num_micro_ops(next, loadable);
             loadable = 0;
         }
@@ -282,4 +291,19 @@ int compute_total_num_microops(station_t *station) {
         cur = cur->next;
     } while (cur && cur->line > 0);
     return num;
+}
+
+
+void insert_sorted(int *arr, int *len, int val, station_t *station) {
+    int tmp;
+    for (int i = 0; i < *len; ++i) {
+        if (station->port_usage[arr[i]] > station->port_usage[val]) {
+            tmp = val;
+            val = arr[i];
+            arr[i] = tmp;
+        }
+    }
+    if (*len < station->num_ports) {
+        arr[(*len)++] = val;
+    }
 }

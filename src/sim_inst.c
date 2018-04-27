@@ -193,13 +193,13 @@ void print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int
     bool is_delayed = false;
     disassemble(buffer, XED_TMP_BUF_LEN, &inst_list->array[line],
                 inst_list->printinfo[line]);
-    printf("\nDetailed delay information for instruction: %s in line %i\n\n", buffer, line);
+    printf("\n Detailed delay information for instruction: %s in line %i\n\n", buffer, line);
     sim_inst_t *inst = list->arr[line];
     sim_inst_t *cur;
     int lat1 = 0;
     int lat2 = 0;
     printf("Maximum latency: %i\n\n", inst->latency);
-    printf("Latencies for dependencies:\n");
+    printf(" Latencies for dependencies:\n");
     printf("  Line || %i -> Line || Line -> %i\n", inst->line, inst->line);
     printf("  ----------------------------------\n");
     for (int i = 0; i < list->size; ++i) {
@@ -226,7 +226,7 @@ void print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int
         lat2 = 0;
     }
     printf("\n\n");
-    printf("Delay caused by dependencies:\n");
+    printf(" Delay caused by dependencies:\n");
     delays_t *delays = inst->dep_delays;
     for (int i = 0; i < list->size; ++i) {
         if (delays[i].delay_caused || delays[i].delay_suffered) {
@@ -248,7 +248,7 @@ void print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int
     } else {
         is_delayed = false;
     }
-    printf("\n\nDelay caused by blocked ports:\n");
+    printf("\n\n Delay caused by blocked ports:\n");
     delays = inst->port_delays;
     for (int i = 0; i < num_ports; ++i) {
         if (delays[i].delay_caused || delays[i].delay_suffered) {

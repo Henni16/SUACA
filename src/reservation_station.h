@@ -83,6 +83,8 @@ void build_station_file_string(char *dest, const char *arch_name);
  */
 int compute_total_num_microops(station_t *station);
 
+void insert_sorted(int *arr, int *len, int val, station_t *station);
+
 
 
 #endif
