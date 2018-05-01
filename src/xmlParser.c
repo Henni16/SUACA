@@ -276,9 +276,8 @@ bool parse_architecture(FILE *file, inst_info_t *info, int numports) {
                 parse_ports(&att, po);
             } else {
                 split_attribute(buff, &att);
-                if (!strcmp(att.attribute, "total_uops"))
+                if (!strcmp(att.attribute, "total_uops")) {
                     info->num_micro_ops = atoi(att.value);
-                else if (!strcmp(att.attribute, "version")) {
                     if (att.rest) {
 #if XML_DEBUG > 0
                         printf("No measurement for Instruction: %s on architecture: %s\n", xed_iform_enum_t2str(iform), ARCHITECTURE_NAME);
@@ -308,6 +307,7 @@ bool parse_architecture(FILE *file, inst_info_t *info, int numports) {
                 cycles = atoi(att.value);
             } else if (!strcmp(att.attribute, "targetOp")) {
                 set_cycles(info, cycles, atoi(att.value));
+                skip_cur_element(file);
                 break;
             }
         }
@@ -319,7 +319,7 @@ bool parse_architecture(FILE *file, inst_info_t *info, int numports) {
 void set_cycles(inst_info_t *info, int cycles, int id) {
     latency_reg_t *latreg = info->latencies;
     while (latreg != NULL) {
-        if (latreg->id == id) {
+        if (latreg->id == id && cycles > latreg->latency) {
             latreg->latency = cycles;
             return;
         }

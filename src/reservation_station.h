@@ -2,8 +2,8 @@
 #define RESERVATION_STATION_H
 
 //TODO set table file here
-//#define TABLE "../../tables/result_reduced.xml"
-#define TABLE "../../tables/intel.xml"
+#define TABLE "../../tables/result_reduced.xml"
+//#define TABLE "../../tables/intel.xml"
 #define STATION_LOC "../../tables/"
 #define ARCHITECTURE_NAME "SNB"
 

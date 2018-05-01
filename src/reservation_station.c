@@ -83,6 +83,7 @@ void create_initial_state(graph_t *dependencies, single_list_t *insts, int num_i
 }
 
 void perform_cycle(station_t *station) {
+
     load_instruction_into_station(station);
     put_executables_into_ports(station);
     execute_instructions_in_ports(station);
