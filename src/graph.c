@@ -51,8 +51,17 @@ void add_graph_dependency(int source_line, int destination_line, graph_t *graph,
     } else {
         dest->fathers = (int_reg_tuple_t *) malloc(sizeof(int_reg_tuple_t));
     }
-    source->successors[source->num_successors - 1] = (int_reg_tuple_t) {destination_line, dep_reg};
-    dest->fathers[dest->num_fathers - 1] = (int_reg_tuple_t) {source_line, dep_reg};
+    source->successors[source->num_successors - 1] = (int_reg_tuple_t) {destination_line, dep_reg, XED_FLAG_INVALID};
+    dest->fathers[dest->num_fathers - 1] = (int_reg_tuple_t) {source_line, dep_reg, XED_FLAG_INVALID};
+}
+
+
+void add_graph_dependency_flag(int source_line, int destination_line, graph_t *graph, xed_flag_enum_t flag) {
+    add_graph_dependency(source_line, destination_line, graph, XED_REG_RFLAGS);
+    node_t *source = graph->nodes[source_line];
+    node_t *dest = graph->nodes[destination_line];
+    source->successors[source->num_successors - 1].flag = flag;
+    dest->fathers[dest->num_fathers - 1].flag = flag;
 }
 
 
@@ -83,12 +92,25 @@ void build_graphviz(graph_t *graph, single_list_t *list, char *name, int index) 
         for (size_t j = 0; j < cur->num_successors; j++) {
             if (cur->successors[j].reg != XED_REG_INVALID) {
                 if (cur->successors[j].line >= list->single_loop_size) {
-                    fprintf(f, "%i -> %i [ label = \"%s\" color = \"red\"]\n", i,
-                            cur->successors[j].line - list->single_loop_size,
-                            xed_reg_enum_t2str(cur->successors[j].reg));
+                    if (cur->successors[j].reg == XED_REG_RFLAGS) {
+                        fprintf(f, "%i -> %i [ label = \"%s - %s\" color = \"red\"]\n", i,
+                                cur->successors[j].line - list->single_loop_size,
+                                xed_reg_enum_t2str(cur->successors[j].reg),
+                                xed_flag_enum_t2str(cur->successors[j].flag));
+                    } else {
+                        fprintf(f, "%i -> %i [ label = \"%s\" color = \"red\"]\n", i,
+                                cur->successors[j].line - list->single_loop_size,
+                                xed_reg_enum_t2str(cur->successors[j].reg));
+                    }
                 } else {
-                    fprintf(f, "%i -> %i [ label = \"%s\" ]\n", i, cur->successors[j].line,
-                            xed_reg_enum_t2str(cur->successors[j].reg));
+                    if (cur->successors[j].reg == XED_REG_RFLAGS) {
+                        fprintf(f, "%i -> %i [ label = \"%s - %s\" ]\n", i, cur->successors[j].line,
+                                xed_reg_enum_t2str(cur->successors[j].reg),
+                                xed_flag_enum_t2str(cur->successors[j].flag));
+                    } else {
+                        fprintf(f, "%i -> %i [ label = \"%s\" ]\n", i, cur->successors[j].line,
+                                xed_reg_enum_t2str(cur->successors[j].reg));
+                    }
                 }
             } else {
                 if (cur->successors[j].line >= list->single_loop_size) {

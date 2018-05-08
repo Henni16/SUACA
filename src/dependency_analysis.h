@@ -34,12 +34,12 @@ void build_single_depency(access_t* first, graph_t* flowgraph, graph_t* dep_grap
 graph_t *build_dependencygraph_cfg(single_list_t *instructions, graph_t *cfg);
 
 
-void branch_analysis_root(graph_t *dg, single_list_t *instructions, graph_t *cfg, int *write_ops, int start);
+void branch_analysis_root(graph_t *dg, single_list_t *instructions, graph_t *cfg, int *write_ops, int *write_flags, int start);
 
 
 //checks all operands for dependencies and adds them respectively
 //returns the number of remaining writes
-void add_all_dependencies(graph_t *dg, int toline, int *write_ops, xed_decoded_inst_t *xedd);
+void add_all_dependencies(graph_t *dg, int toline, int *write_ops, int *write_flags, xed_decoded_inst_t *xedd);
 
 
 

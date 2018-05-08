@@ -1,0 +1,236 @@
+\documentclass[a4paper,12pt,titlepage, twoside]{report} 
+
+\usepackage[latin1]{inputenc}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage[fleqn]{amsmath}
+\usepackage{xcolor}
+\usepackage{relsize}
+\usepackage{paralist}
+\usepackage{graphicx}
+\usepackage[linesnumbered, ruled]{algorithm2e}
+
+\usepackage{pdfpages}
+
+
+\newcommand{\suaca}{\textbf{SUACA}}
+
+%\usepackage{bnf}
+%\usepackage{epsf}
+\usepackage{appendix}
+
+%\usepackage[a4paper]{geometry}
+%\geometry{left=3cm,right=3cm,top=23mm,bottom=25mm,head=14.5pt}
+
+\usepackage{phdthesis}
+\setlength{\headheight}{15pt}
+\usepackage{listings}
+\lstset{showspaces=false,showstringspaces=false,breaklines=true,breakindent=0pt,
+        prebreak={},
+        postbreak=\mbox{{ }}}
+
+\usepackage{makeidx}          % wir wollen auch einen Index
+\usepackage{hyperref} 
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{changepage}
+\parindent0pt
+\newtheorem{theorem}{Theorem}
+\newtheorem{definition}{Definition}
+
+\begin{document}
+\setlength{\oddsidemargin}{\dimexpr (\paperwidth-\textwidth)/2 - 1in\relax}
+\setlength{\evensidemargin}{\oddsidemargin}
+
+\begin{titlepage}
+\setlength{\topmargin}{0cm}
+
+\begin{changetext}{2cm}{0cm}{0cm}{0cm}{0cm}
+   
+  
+
+%\let\footnotesize\small \let\footnoterule\relax
+\begin{center}
+
+%\hbox{}
+%\vfill
+\includegraphics[width=4cm]{eule}
+\vskip 1cm
+Saarland University\\
+Faculty of Natural Sciences and Technology I\\
+Department of Computer Science\\[2ex]
+\setlength{\textheight}{2cm}
+\vskip 1cm
+{\large \bfseries Bachelor Thesis}
+
+\vskip .75cm
+{\huge\bfseries SUACA \par}
+{A tool for performance analysis of machine programs \par}
+
+\vskip 1.5cm
+
+submitted by\\
+\vskip .25cm
+{\large Hendrik Meerkamp}
+\\
+
+\vskip 1cm
+
+submitted\\
+\vskip .25cm
+\today
+
+\vskip 1.5cm
+
+Supervisor\\
+\vskip .25cm
+Prof. Dr. Sebastian Hack\\
+\vskip .5cm
+Advisor \\
+\vskip .25cm
+Andreas Abel\\
+\vskip .5cm
+Reviewers\\
+\vskip .25cm
+Prof. Dr. Sebastian Hack\\
+Prof. Dr. Jan Reineke
+\end{center}
+\end{changetext}
+\vfill
+\end{titlepage}
+
+\newpage
+\thispagestyle{empty}
+\mbox{}
+
+\includepdf[pages=2]{deckblatt_BA_MA_Dipl_eid_bibo_engl.pdf}
+
+\newpage
+\thispagestyle{empty}
+\mbox{}
+
+\begin{abstract}
+Abstract
+\end{abstract}
+
+
+\newpage
+\thispagestyle{empty}
+\mbox{}
+
+\setcounter{page}{0}
+\tableofcontents 
+
+
+\chapter{Introduction}
+xyz
+
+\chapter{Functionality of SUACA}
+
+
+\chapter{Algorithms}
+
+In this chapter we're going to take a look at the algorithms that are being used for our calculations.
+
+\section{Dependency analysis}
+
+\subsection{Single iteration}
+
+Here we want to take a look at the algorithm that computes the dependency graph. \\
+First we want to discuss a simpler version that ignores the control-flow of the program.
+
+\begin{algorithm}[H]
+    \SetAlgoLined
+    \caption{Dependency analysis without control-flow}
+    \SetKwInOut{Input}{Input}
+    \SetKwInOut{Output}{Output}
+    \Input{Instructionlist InstList}
+    \Output{Dependencygraph DG}
+    Map $:=$ map from Register to line\;
+    DG $:=$ Graph that has the same nodes as CFG, but no edges\;
+    \ForEach{Instruction $i$ in InstList} {
+         \ForEach{Register-Operand $r$ in Operands($i$)} {
+             \eIf{IsRead($r$)} {
+                 DG.addEdge(Map[$r$], LineOf($i$))\;
+             }{
+                Map[$r$] = LineOf(i)\;
+            }
+        }
+    }
+    \Return DG\;
+\end{algorithm}
+
+Where
+\begin{itemize}
+    \item $Operands(i)$ returns a list of all operands of instruction $i$.
+    \item $IsRead(r)$ returns true if the operand $r$ will be read and false if it will be written to.
+    \item $LineOf(i)$ returns the line of instruction $i$ in the original program.
+\end{itemize}
+
+This algorithm will iterate over all instructions ``line after line''. For each instruction $i$ it will then iterate over all of its operands. For each operand we'll check if it is accessed via read or write. If it is read the algorithm will add an edge from the last written access to the current line. If it is written to the algorithm will map the register to the current line.\\
+
+The runtime of this algorithm can be described as $\mathcal{O}(n*m)$ where $n$ is the number of instructions and $m$ the maximum number of operands that occur in the program.\\
+
+Note that we consider every operand as a register. In practice an operand can of course be a memory address. In this case \suaca\ will extract all registers from that address and treat them as a read operand. \suaca\ will not trace the memory itself.\\
+
+Now we want to take a look at the control-flow sensitive algorithm \suaca\ actually uses. 
+
+\begin{algorithm}[H]
+    \SetAlgoLined
+    \caption{Control-flow sensitive dependency analysis}
+    \SetKwFunction{deps}{Dep-Analysis-Start}
+    \SetKwFunction{dep}{Dep-Analysis}
+    \SetKwProg{Fn}{Function}{:}{\Return DG\;}
+    \Fn{\deps{CFG}}{
+        Map $:=$ map from Register to line\;
+        DG $:=$ Graph that has the same nodes as CFG, but no edges\;
+        Node $:=$ Startnode of CFG\;
+        \dep{CFG, DG, Map, Node}\;
+    }
+    \SetKwProg{Fn}{Function}{:}{}
+    \Fn{\dep{CFG, DG, Father-Map, Node}}{
+        Map $:=$ copy of Father-Map\;
+        \While{HasSuccessor(Node)} {
+            \ForEach{Register-Operand $r$ in Operands($i$)} {
+                \eIf{IsRead($r$)} {
+                    DG.addEdge(Map[$r$], LineOf($i$))\;
+                }{
+                    Map[$r$] = LineOf(i)\;
+                }
+            }
+            Node $=$ Successor(Node, 0)\;
+            \If{numSuccessors(Node) $>$ 1} {
+                \dep{CFG, DG, Map, Successor(Node, 1)}\; 
+            }
+        }
+    }
+\end{algorithm}
+
+Where
+\begin{itemize}
+    \item $numSuccessors(Node)$ returns the number of successors of $Node$ in its underlying graph.
+    \item $Successor(Node, i)$ returns the $i$th successor of $Node$ in the Graph $Node$ belongs to.
+    \item $HasSuccessor(Node)$ returns true if $numSuccessors(Node) >= 1$.
+\end{itemize}
+
+This time we'll ``climb along'' the $CFG$. If we never face a branch, i.e.\ $numSuccessors()$ never returns a value greater $1$, this algorithm will exactly the same as the one we have just seen.\\
+In the case of $numSuccessors() > 1$ we'll make another call of $Dep-Analysis$ on the ``right branch''. From there on there will be $2$ analyses, one for every branch in the $CFG$. Each analysis has its own $Map$ as there can be different writes on each branch. Note that we won't join the two analyses as we would need to find the first mutual descendant.\\
+
+In the worst case every instruction is a branch, so we would spawn a new function for every one of them. This leads to a runtime of $\mathcal{O}(n^2*m)$.\\
+
+For this algorithm we assume no backbranches, i.e.\ no loops, inside the program. In practice \suaca\ will simply check for every branch if it is a backbranch and should the situation arise ignore it.
+
+
+\subsection{Multiple iterations}
+
+When telling \suaca\ to run the program in multiple loops we need to adjust the dependency analysis algorithm as there can arise some ``loop dependencies''. To solve this, we'll simply consider the program twice. So we'll append a copy of the program to itself, compute the $CFG$ and then run the algorithm above. Because we know the original length of our program we can extract all ``loop dependencies'' from the resulting dependency graph.
+
+\section{Choosing the ports}
+
+\section{Executing applicable instructions}
+
+\bibliographystyle{alpha}
+{\small \bibliography{thesis}}
+
+
+\end{document}

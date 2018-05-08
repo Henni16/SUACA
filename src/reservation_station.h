@@ -5,7 +5,6 @@
 #define TABLE "../../tables/result_reduced.xml"
 //#define TABLE "../../tables/intel.xml"
 #define STATION_LOC "../../tables/"
-#define ARCHITECTURE_NAME "SNB"
 
 #include <stdbool.h>
 #include "sim_inst.h"

@@ -147,22 +147,27 @@ graph_t *build_dependencygraph_cfg(single_list_t *instructions, graph_t *cfg) {
     graph_t *dg = newGraph(instructions->size);
 
     int write_ops[xed_reg_enum_t_last()];
+    int write_flags[xed_flag_enum_t_last()];
 
     for (int i = 0; i < xed_reg_enum_t_last(); ++i) {
         write_ops[i] = -1;
     }
-    branch_analysis_root(dg, instructions, cfg, write_ops, 0);
+    for (int i = 0; i < xed_flag_enum_t_last(); ++i) {
+        write_flags[i] = -1;
+    }
+    branch_analysis_root(dg, instructions, cfg, write_ops, write_flags, 0);
     return dg;
 }
 
 
-void branch_analysis_root(graph_t *dg, single_list_t *instructions, graph_t *cfg, int *write_ops, int start) {
+void branch_analysis_root(graph_t *dg, single_list_t *instructions, graph_t *cfg, int *write_ops, int *write_flags, int start) {
     node_t *cur_node = cfg->nodes[start];
     int cur_line = start;
     while (true) {
-        add_all_dependencies(dg, cur_line, write_ops, &instructions->array[cur_line]);
+        add_all_dependencies(dg, cur_line, write_ops, write_flags, &instructions->array[cur_line]);
         if (cur_node->num_successors > 1) {
             int write_ops_single[xed_reg_enum_t_last()];
+            int write_flags_single[xed_flag_enum_t_last()];
             for (int i = 0; i < cur_node->num_successors; ++i) {
                 if (cur_line >= cur_node->successors[i].line) {
                     continue;
@@ -170,7 +175,10 @@ void branch_analysis_root(graph_t *dg, single_list_t *instructions, graph_t *cfg
                 for (int j = 0; j < xed_reg_enum_t_last(); ++j) {
                     write_ops_single[j] = write_ops[j];
                 }
-                branch_analysis_root(dg, instructions, cfg, write_ops_single, cur_node->successors[i].line);
+                for (int j = 0; j < xed_flag_enum_t_last(); ++j) {
+                    write_flags_single[j] = write_flags[j];
+                }
+                branch_analysis_root(dg, instructions, cfg, write_ops_single, write_flags_single, cur_node->successors[i].line);
             }
             return;
         } else if (cur_node->num_successors == 0) {
@@ -187,7 +195,25 @@ void branch_analysis_root(graph_t *dg, single_list_t *instructions, graph_t *cfg
 }
 
 
-void add_all_dependencies(graph_t *dg, int toline, int *write_ops, xed_decoded_inst_t *xedd) {
+void add_all_dependencies(graph_t *dg, int toline, int *write_ops, int *write_flags, xed_decoded_inst_t *xedd) {
+
+    // flags
+    if (xed_decoded_inst_uses_rflags(xedd)) {
+        const xed_simple_flag_t  *simple_flag = xed_decoded_inst_get_rflags_info(xedd);
+        const xed_flag_action_t *flag_action;
+        xed_flag_enum_t name;
+        for (unsigned int i = 0; i < xed_simple_flag_get_nflags(simple_flag); ++i) {
+            flag_action = xed_simple_flag_get_flag_action(simple_flag, i);
+            name = xed_flag_action_get_flag_name(flag_action);
+            if (write_flags[name] != -1 && xed_flag_action_read_flag(flag_action)) {
+                add_graph_dependency_flag(write_flags[name], toline, dg, name);
+            } else if (xed_flag_action_writes_flag(flag_action)) {
+                write_flags[name] = toline;
+            }
+        }
+    }
+
+    // registers
     const xed_inst_t *xi = xed_decoded_inst_inst(xedd);
     int num_writen = 0;
     int num_read = 0;
@@ -218,6 +244,7 @@ void add_all_dependencies(graph_t *dg, int toline, int *write_ops, xed_decoded_i
                 xed_reg_enum_t reg;
                 if (!xed_operand_is_register(op_name)) break;
                 xed3_get_generic_operand(xedd, op_name, &reg);
+                if (reg == XED_REG_RFLAGS) break;
                 if (xed_operand_read(op))
                     read[num_read++] = reg;
                 if (xed_operand_written(op) && reg != XED_REG_RIP)
@@ -229,6 +256,7 @@ void add_all_dependencies(graph_t *dg, int toline, int *write_ops, xed_decoded_i
     for (int i = 0; i < num_read; ++i) {
         fromLine = write_ops[compute_register(read[i])];
         if (fromLine != -1) {
+            // check if edge already exists, we only want it once
             bool exists = false;
             for (int j = 0; j < dg->nodes[toline]->num_fathers; ++j) {
                 if (dg->nodes[toline]->fathers[j].line == fromLine) {

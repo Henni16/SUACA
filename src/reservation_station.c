@@ -151,13 +151,18 @@ void put_executables_into_ports(station_t *station) {
             if (fits) {
                 execute_list_add(&station->to_exec, cur);
             } else {
+                // we need this because one instruction might block several ports and we want to count the number
+                // of cycles an instruction caused a delay
+                hashset_t *already_blamed = new_hashset(station->num_ports);
                 for (int i = 0; i < station->num_ports; ++i) {
-                    if (hashset_contains(would_like_to_use, i)) {
+                    if (hashset_contains(would_like_to_use, i) && !hashset_contains(already_blamed, station->ports[i]->id)) {
                         station->ports[i]->delayed_cycles++;
                         cur->port_delays[i].delay_suffered++;
                         station->ports[i]->port_delays[i].delay_caused++;
+                        insert_into_hashset(already_blamed, station->ports[i]->id);
                     }
                 }
+                hashset_free(already_blamed);
                 cur->cycles_delayed++;
             }
             hashset_free(would_like_to_use);

@@ -10,6 +10,7 @@
 typedef struct int_reg_tuple_s {
     int line;
     xed_reg_enum_t reg;
+    xed_flag_enum_t flag;
 } int_reg_tuple_t;
 
 typedef struct node_s {
@@ -37,6 +38,8 @@ node_t *get_node(graph_t *graph, int line);
 
 void add_graph_dependency(int source_line, int destination_line, graph_t *graph,
                           xed_reg_enum_t reg);
+
+void add_graph_dependency_flag(int source_line, int destination_line, graph_t *graph, xed_flag_enum_t flag);
 
 int is_successor(int from, int to, graph_t *graph);
 
