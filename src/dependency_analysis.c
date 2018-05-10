@@ -206,7 +206,16 @@ void add_all_dependencies(graph_t *dg, int toline, int *write_ops, int *write_fl
             flag_action = xed_simple_flag_get_flag_action(simple_flag, i);
             name = xed_flag_action_get_flag_name(flag_action);
             if (write_flags[name] != -1 && xed_flag_action_read_flag(flag_action)) {
-                add_graph_dependency_flag(write_flags[name], toline, dg, name);
+                bool exists = false;
+                for (int j = 0; j < dg->nodes[toline]->num_fathers; ++j) {
+                    // check if the same dependence from the same father already exists
+                    if (dg->nodes[toline]->fathers[j].line == write_flags[name] && dg->nodes[toline]->fathers[j].flag == name) {
+                        exists = true;
+                        break;
+                    }
+                }
+                if (!exists)
+                    add_graph_dependency_flag(write_flags[name], toline, dg, name);
             } else if (xed_flag_action_writes_flag(flag_action)) {
                 write_flags[name] = toline;
             }
@@ -259,7 +268,8 @@ void add_all_dependencies(graph_t *dg, int toline, int *write_ops, int *write_fl
             // check if edge already exists, we only want it once
             bool exists = false;
             for (int j = 0; j < dg->nodes[toline]->num_fathers; ++j) {
-                if (dg->nodes[toline]->fathers[j].line == fromLine) {
+                // check if the same dependence from the same father already exists
+                if (dg->nodes[toline]->fathers[j].line == fromLine && dg->nodes[toline]->fathers[j].reg == read[i]) {
                     exists = true;
                     break;
                 }

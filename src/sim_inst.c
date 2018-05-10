@@ -198,13 +198,12 @@ void print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int
     sim_inst_t *cur;
     int lat1 = 0;
     int lat2 = 0;
-    printf("Maximum latency: %i\n\n", inst->latency);
+    printf(" Maximum latency: %i\n\n", inst->latency);
     printf(" Latencies for dependencies:\n");
     printf("  Line || %i -> Line || Line -> %i\n", inst->line, inst->line);
-    printf("  ----------------------------------\n");
+    printf(" ----------------------------------\n");
     for (int i = 0; i < list->size; ++i) {
         cur = list->arr[i];
-        print_conditional_spaces(i);
         for (int j = 0; j < inst->num_dep_children; ++j) {
             if (inst->dep_children[j].child->line == cur->line) {
                 lat1 = inst->dep_children[j].cycles;
@@ -216,6 +215,7 @@ void print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int
             }
         }
         if (lat1 || lat2) {
+            print_conditional_spaces(i);
             printf(" %i   ||", i);
             print_conditional_spaces(lat1);
             printf("   %i     ||", lat1);
@@ -232,7 +232,7 @@ void print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int
         if (delays[i].delay_caused || delays[i].delay_suffered) {
             if (!is_delayed) {
                 printf("  Line || was delayed || has delayed\n");
-                printf("  ----------------------------------\n");
+                printf(" ----------------------------------\n");
                 is_delayed = true;
             }
             print_conditional_spaces(i);
@@ -254,7 +254,7 @@ void print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int
         if (delays[i].delay_caused || delays[i].delay_suffered) {
             if (!is_delayed) {
                 printf("  Port || was delayed || has delayed\n");
-                printf("  ----------------------------------\n");
+                printf(" ----------------------------------\n");
                 is_delayed = true;
             }
             print_conditional_spaces(i);
