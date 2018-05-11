@@ -126,15 +126,48 @@ Abstract
 xyz
 
 \chapter{Functionality of SUACA}
-In this chapter we're going to construct at an example x86 assembly program. We will then use this program to show all available \suaca\ options. So first consider the following code snippet:
+In this chapter we're going to explain and show the full functionality of \suaca. First we will take a look at the command line interface and then see an example run of each available option.\\
+The CLI of works as follows:\\
+\[
+suaca\ [option]\ path\_to\_file
+\]
+Where $[option]$ is one or several of the following:
+\begin{itemize}
+    \item $-cfg$ will print the controlflowgraph into a file called $controlflow.dot$. The format will be graphviz readable.
+    \item $-dg$ will print the dependencygraph into a file called $dependency.dot$. The format will also be graphviz readable.
+    \item ${--}arch\ x$ will consider $x$ as the underlaying micro-architecture of the analysis. At the time of writing the available options are NHM, SNB, IVB, HSW, BDW, SKL, CFL and KBL. The default value is SNB.
+    \item ${--}loop\ x$ will trigger the loop analysis. The default value of $x$ is $1$.
+    \item ${--}detail\ x$ will print detailed information about line $x$.
+\end{itemize}
 
-\begin{lstlisting}
-    Inhalt...
-\end{lstlisting}
+We will use the following example code to show the effects of each of those options:
+
+
+\begin{verbatim}
+1:   mov rax, 1
+2:   cmp rcx, 0
+3:   jne else
+4:   add rbx, rax
+5:   jmp end
+else:
+6:   add rbx, rax
+end:
+7:   add rbx, rbx
+\end{verbatim}
+
+\section{Controlflowgraph}
+
+\section{Dependencygraph}
+
+\section{Architecture selection}
+
+\section{Loop analysis}
+
+\section{Detailed information}
 
 \chapter{Algorithms}
 
-In this chapter we're going to take a look at the algorithms that are being used for our calculations.
+When trying to analyze a program the user sometimes needs to fully understand how the results were calculated. Especially if he wants use them to improve his code. Therefore we will discuss \suaca's most important algorithms in the following chapter.
 
 \section{Dependency analysis}
 
