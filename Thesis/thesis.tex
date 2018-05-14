@@ -13,7 +13,10 @@
 \usepackage{pdfpages}
 
 
+
 \newcommand{\suaca}{\textbf{SUACA}}
+\newcommand{\microop}{$\mu$op}
+\newcommand{\microops}{$\mu$ops}
 
 %\usepackage{bnf}
 %\usepackage{epsf}
@@ -32,6 +35,20 @@
 \usepackage{makeidx}          % wir wollen auch einen Index
 \usepackage{hyperref} 
 \usepackage{tikz}
+\usetikzlibrary{matrix,backgrounds, shapes, arrows.meta}
+\tikzset{mynode/.style={draw, ellipse, thick, line width = 2pt}}
+\usepackage{tkz-graph}
+\SetUpEdge[lw         = 1.5pt,
+           style={->},
+           color      = black,
+           labelcolor = white,
+           labeltext  = red,
+           labelstyle = {draw,text=black}]
+
+\tikzset{bright/.style = {bend right=23, ->}}
+\tikzset{bleft/.style = {bend left=23, ->}}
+
+
 \usepackage{pgfplots}
 \usepackage{changepage}
 \parindent0pt
@@ -133,7 +150,7 @@ suaca\ [option]\ path\_to\_file
 \]
 Where $[option]$ is one or several of the following:
 \begin{itemize}
-    \item $-cfg$ will print the controlflowgraph into a file called $controlflow.dot$. The format will be graphviz readable.
+    \item $-cfg$ will print the control flow graph into a file called $controlflow.dot$. The format will be graphviz readable.
     \item $-dg$ will print the dependencygraph into a file called $dependency.dot$. The format will also be graphviz readable.
     \item ${--}arch\ x$ will consider $x$ as the underlaying micro-architecture of the analysis. At the time of writing the available options are NHM, SNB, IVB, HSW, BDW, SKL, CFL and KBL. The default value is SNB.
     \item ${--}loop\ x$ will trigger the loop analysis. The default value of $x$ is $1$.
@@ -142,26 +159,155 @@ Where $[option]$ is one or several of the following:
 
 We will use the following example code to show the effects of each of those options:
 
-
 \begin{verbatim}
-1:   mov rax, 1
-2:   cmp rcx, 0
-3:   jne else
-4:   add rbx, rax
-5:   jmp end
+0:   mov rax, 1
+1:   cmp rcx, 0
+2:   jne else
+3:   add rbx, rax
+4:   jmp end
 else:
-6:   add rbx, rax
+5:   add rbx, rax
 end:
-7:   add rbx, rbx
+6:   add rbx, rbx
 \end{verbatim}
 
-\section{Controlflowgraph}
+\section{Plain analysis}
+Running \suaca\ without any of the options above will give the following output:
 
-\section{Dependencygraph}
 
-\section{Architecture selection}
+\begin{lstlisting}
+Block throughput: 3.00 cycles
+Block throughput with perfect frontend: 3.00 cycles
+Block throughput with non-blocking ports: 3.00 cycles
+Microops per cycle: 2.33
+
+Analysis for architecture: SNB
+
+Line  ||   Num   ||   had   || caused  ||   Used Ports
+      ||   Uops  || to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||
+------------------------------------------------------------------------------------------------
+0   ||    1    ||         ||   1.0   ||  1.0  ||       ||       ||       ||       ||       || mov rax, 0x1
+1   ||    1    ||         ||   1.0   ||       ||  1.0  ||       ||       ||       ||       || cmp rcx, 0x0
+2   ||    1    ||   1.0   ||   1.0   ||       ||       ||       ||       ||       ||  1.0  || jnz 0x7
+3   ||    1    ||   1.0   ||   1.0   ||  1.0  ||       ||       ||       ||       ||       || add rbx, rax
+4   ||    1    ||   1.0   ||         ||       ||       ||       ||       ||       ||  1.0  || jmp 0x5
+5   ||    1    ||         ||   1.0   ||       ||  1.0  ||       ||       ||       ||       || add rbx, rax
+6   ||    1    ||   1.0   ||         ||  1.0  ||       ||       ||       ||       ||       || add rbx, rbx
+\end{lstlisting}
+
+\begin{itemize}
+    \item \textbf{Block throughput} is the number of cycles needed to execute the program once ($\frac{Total\ number\ of\ cycles}{Number\ of\ iterations}$).
+    \item \textbf{Block throughput with perfect frontend} can be used to see if the frontend of the processor was the bottleneck of the execution. To compute this value \suaca\ will perform a full analysis of the program. However, it will assume that $number\ of\ \mu ops\ loaded\ per\ cycle = capacity\ of\ reservation\ station$. If the runtime experiences a speedup we can conclude that the frontend was indeed the bottleneck.
+    \item The computation of \textbf{Block throughput with non-blocking ports} works similar. It will perform a full analysis, but every port can be used arbitrarily. This time we can conclude that one of the ports has to be the bottleneck, should the runtime improve.
+\end{itemize}
+
+
+In the table we can observe the following columns:
+\begin{itemize}
+    \item The \textbf{had to wait} column describes the number a cycles the instruction experienced a delay from either blocked ports or a value dependence. 
+    \item The \textbf{caused to wait} column describes the number of cycles the instruction caused a delay similar to the \textbf{had to wait} value. However, it won't track transitive dependencies. So consider a program that has a dependency chain of $A \rightarrow B \rightarrow C$ (where $A$, $B$ and $C$ are instructions of your program) and $A$ is not fully computed. $A$ will cause $B$ to be delayed, resulting in an increased \textbf{caused to wait} value of $A$. $B$ will then cause $C$ to be delayed, resulting in an increased \textbf{caused to wait} value of $B$.
+    \item The \textbf{Used Ports} columns describe how many \microops\ were assigned to this port each iteration. Those values are computed with $\frac{total\ port\ usage}{number\ of\ iterations}$. Floating point arithmetic may cause minor inaccuracies.
+\end{itemize}
 
 \section{Loop analysis}
+
+
+
+\section{Control flow graph}
+The control flow graph is mainly used to compute the correct dependency graph. The $CFG$ of our example program can be seen in ~\autoref{fig:cfg}. The red edge only appears if the analysis runs in a loop as it represents the ``back jump'' to the start of the program that won't appear in a single iteration.
+
+\begin{figure}
+    \centering
+    \begin{tikzpicture}
+    \node[mynode] (A) at (0, 0)     {0: mov rax, 0x1};	
+    \node[mynode] (B) at (0, -2)    {1: cmp rcx, 0x0};
+    \node[mynode] (C) at (0, -4)    {2: jnz 0x7};
+    \node[mynode] (D) at (-3, -6)   {3: add rbx, rax};
+    \node[mynode] (E) at (-3, -8)   {4: jmp 0x5};
+    \node[mynode] (F) at (1, -7)    {5: add rbx, rax};
+    \node[mynode] (G) at (0, -10)   {6: add rbx, rbx};
+    
+    
+    
+    \Edges[](A,B);
+    \Edges[](B,C);
+    \Edges[](C,D);
+    \Edges[](C,F);
+    \Edges[](D,E);
+    \Edges[](E,G);
+    \Edges[](F,G);
+    \Edges[style={->, bend right = 90}, color=red](G,A);
+    
+    \end{tikzpicture}
+    \caption{Control flow graph}
+    \label{fig:cfg}
+\end{figure}
+
+\section{Dependencygraph}
+The dependency graph describes all register dependencies that occur in the program. An edge from node $A$ to node $B$ means that the instruction represented by $B$ depends on the instruction represented by $A$. The detailed algorithm that is used to generate this graph can be seen at ~\autoref{sec:depanalysis}.\\
+First consider this graph that will be generated in the ``single loop case'' in \autoref{fig:woloop}.\\
+
+
+\begin{figure}
+\centering
+\begin{tikzpicture}
+    \node[mynode] (A) at (-4, 0)  {0: mov rax, 0x1};	
+    \node[mynode] (B) at (-7, -2) {3: add rbx, rax};
+    \node[mynode] (C) at (-1, -2)  {5: add rbx, rax};
+    \node[mynode] (D) at (-4, -4) {6: add rbx, rbx};
+
+
+    \Edges[label=$RAX$, style=bright](A,B);
+    \Edges[label=$RAX$, style=bleft](A,C);
+    \Edges[label=$RBX$, style={->, bend right = 10}](B,D);
+    \Edges[label=$RBX$, style={->, bend left = 10}](C,D);
+
+    \node[mynode] (E)  at (3, 0)  {1: cmp rcx, 0x0};
+    \node[mynode] (F)  at (3, -2.5) {2: jnz 0x7};
+    
+    \Edges[label=$RFLAGS - zf$](E,F);
+    
+    \node[mynode] (G)  at (3, -4) {4: jmp 0x5};
+
+\end{tikzpicture}
+\caption{Dependency graph without loop dependencies}
+\label{fig:woloop}
+\end{figure}
+
+
+We can see that this graph was generated with the $CFG$ in mind as there is no edge from node $3$ to node $5$. Additionally we can observe that \suaca\ does differentiate between the different flags contained in the $RFLAGS$ register as the dependence is only reasoned with the $zf$ flag.\\
+When \suaca\ is called with at least $2$ loops it will also track all ``loop dependencies''. \autoref{fig:wloop} shows the graph with those in consideration. We can see that two edges were added and they will be colored red to indicate that they were caused by the loops.
+
+\begin{figure}
+    \centering
+    \begin{tikzpicture}
+    \node[mynode] (A) at (-4, 0)  {0: mov rax, 0x1};	
+    \node[mynode] (B) at (-7, -2) {3: add rbx, rax};
+    \node[mynode] (C) at (-1, -2)  {5: add rbx, rax};
+    \node[mynode] (D) at (-4, -4) {6: add rbx, rbx};
+    
+    
+    \Edges[label=$RAX$, style=bright](A,B);
+    \Edges[label=$RAX$, style=bleft](A,C);
+    \Edges[label=$RBX$, style=bleft](B,D);
+    \Edges[label=$RBX$, color = red, style=bleft](D, B);
+    \Edges[label=$RBX$, style=bright](C,D);
+    \Edges[label=$RBX$, color = red, style=bright](D, C);
+    
+    \node[mynode] (E)  at (3, 0)  {1: cmp rcx, 0x0};
+    \node[mynode] (F)  at (3, -2.5) {2: jnz 0x7};
+    
+    \Edges[label=$RFLAGS - zf$](E,F);
+    
+    \node[mynode] (G)  at (3, -4) {4: jmp 0x5};
+    
+    \end{tikzpicture}
+    \caption{Dependency graph with loop dependencies}
+    \label{fig:wloop}
+\end{figure}
+
+
+\section{Architecture selection}
 
 \section{Detailed information}
 
@@ -170,15 +316,16 @@ end:
 When trying to analyze a program the user sometimes needs to fully understand how the results were calculated. Especially if he wants use them to improve his code. Therefore we will discuss \suaca's most important algorithms in the following chapter.
 
 \section{Dependency analysis}
+\label{sec:depanalysis}
 
 \subsection{Single iteration}
 
 Here we want to take a look at the algorithm that computes the dependency graph. \\
-First we want to discuss a simpler version that ignores the control-flow of the program.
+First we want to discuss a simpler version that ignores the control flow of the program.
 
 \begin{algorithm}[H]
     \SetAlgoLined
-    \caption{Dependency analysis without control-flow}
+    \caption{Dependency analysis without control flow}
     \SetKwInOut{Input}{Input}
     \SetKwInOut{Output}{Output}
     \Input{Instructionlist InstList}
@@ -210,11 +357,12 @@ The runtime of this algorithm can be described as $\mathcal{O}(n*m)$ where $n$ i
 
 Note that we consider every operand as a register. In practice an operand can of course be a memory address. In this case \suaca\ will extract all registers from that address and treat them as a read operand. \suaca\ will not trace the memory itself.\\
 
-Now we want to take a look at the control-flow sensitive algorithm \suaca\ actually uses. 
+Now we want to take a look at the control flow sensitive algorithm \suaca\ actually uses. 
 
 \begin{algorithm}[H]
     \SetAlgoLined
-    \caption{Control-flow sensitive dependency analysis}
+    \caption{Control flow sensitive dependency analysis}
+    \label{alg:dep}
     \SetKwFunction{deps}{Dep-Analysis-Start}
     \SetKwFunction{dep}{Dep-Analysis}
     \SetKwProg{Fn}{Function}{:}{\Return DG\;}
