@@ -80,7 +80,7 @@ void free_sim_inst_list(sim_inst_list_t *list);
 
 void
 print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int num_ports, char *arch_name, int num_iterations,
-                    int num_cycles, int total_num_microops, int frontend_cycles, int port_cycles);
+                    int num_cycles, int total_num_microops, int frontend_cycles, int port_cycles, int dep_cycles);
 
 void
 print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int line, int num_ports, int num_iterations);

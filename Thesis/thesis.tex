@@ -51,6 +51,7 @@
 
 \usepackage{pgfplots}
 \usepackage{changepage}
+\usepackage{fancyvrb}
 \parindent0pt
 \newtheorem{theorem}{Theorem}
 \newtheorem{definition}{Definition}
@@ -159,46 +160,51 @@ Where $[option]$ is one or several of the following:
 
 We will use the following example code to show the effects of each of those options:
 
-\begin{verbatim}
-0:   mov rax, 1
-1:   cmp rcx, 0
-2:   jne else
-3:   add rbx, rax
-4:   jmp end
+\begin{center}
+\begin{BVerbatim}
+   mov rax, 1
+   cmp rcx, 0
+   jne else
+   add rbx, rax
+   jmp end
 else:
-5:   add rbx, rax
+   add rbx, rax
 end:
-6:   add rbx, rbx
-\end{verbatim}
+   add rbx, rbx
+\end{BVerbatim}    
+\end{center}
 
 \section{Plain analysis}
-Running \suaca\ without any of the options above will give the following output:
+Running \suaca\ without any of the options above will result in the following output:
 
 
-\begin{lstlisting}
+\begin{Verbatim}[fontsize=\scriptsize]
 Block throughput: 3.00 cycles
-Block throughput with perfect frontend: 3.00 cycles
+Block throughput with perfect front end: 3.00 cycles
 Block throughput with non-blocking ports: 3.00 cycles
+Block throughput with perfect front end and non-blocking ports: 3.00 cycles
 Microops per cycle: 2.33
 
 Analysis for architecture: SNB
 
-Line  ||   Num   ||   had   || caused  ||   Used Ports
+ Line ||   Num   ||   had   || caused  ||                    Used Ports
       ||   Uops  || to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||
 ------------------------------------------------------------------------------------------------
-0   ||    1    ||         ||   1.0   ||  1.0  ||       ||       ||       ||       ||       || mov rax, 0x1
-1   ||    1    ||         ||   1.0   ||       ||  1.0  ||       ||       ||       ||       || cmp rcx, 0x0
-2   ||    1    ||   1.0   ||   1.0   ||       ||       ||       ||       ||       ||  1.0  || jnz 0x7
-3   ||    1    ||   1.0   ||   1.0   ||  1.0  ||       ||       ||       ||       ||       || add rbx, rax
-4   ||    1    ||   1.0   ||         ||       ||       ||       ||       ||       ||  1.0  || jmp 0x5
-5   ||    1    ||         ||   1.0   ||       ||  1.0  ||       ||       ||       ||       || add rbx, rax
-6   ||    1    ||   1.0   ||         ||  1.0  ||       ||       ||       ||       ||       || add rbx, rbx
-\end{lstlisting}
+  0   ||    1    ||         ||   1.0   ||  1.0  ||       ||       ||       ||       ||       || mov rax, 0x1
+  1   ||    1    ||         ||   1.0   ||       ||  1.0  ||       ||       ||       ||       || cmp rcx, 0x0
+  2   ||    1    ||   1.0   ||   1.0   ||       ||       ||       ||       ||       ||  1.0  || jnz 0x7
+  3   ||    1    ||   1.0   ||   1.0   ||  1.0  ||       ||       ||       ||       ||       || add rbx, rax
+  4   ||    1    ||   1.0   ||         ||       ||       ||       ||       ||       ||  1.0  || jmp 0x5
+  5   ||    1    ||         ||   1.0   ||       ||  1.0  ||       ||       ||       ||       || add rbx, rax
+  6   ||    1    ||   1.0   ||         ||  1.0  ||       ||       ||       ||       ||       || add rbx, rbx
+\end{Verbatim}
 
+At the beginning one will notice the following values:
 \begin{itemize}
     \item \textbf{Block throughput} is the number of cycles needed to execute the program once ($\frac{Total\ number\ of\ cycles}{Number\ of\ iterations}$).
-    \item \textbf{Block throughput with perfect frontend} can be used to see if the frontend of the processor was the bottleneck of the execution. To compute this value \suaca\ will perform a full analysis of the program. However, it will assume that $number\ of\ \mu ops\ loaded\ per\ cycle = capacity\ of\ reservation\ station$. If the runtime experiences a speedup we can conclude that the frontend was indeed the bottleneck.
-    \item The computation of \textbf{Block throughput with non-blocking ports} works similar. It will perform a full analysis, but every port can be used arbitrarily. This time we can conclude that one of the ports has to be the bottleneck, should the runtime improve.
+    \item \textbf{Block throughput with perfect front end} can be used to see if the front end of the processor was the bottleneck of the execution. To compute this value \suaca\ will perform a full analysis of the program. However, it will assume that $number\ of\ \mu ops\ loaded\ per\ cycle = capacity\ of\ reservation\ station$. If the runtime experiences a speedup we can conclude that the front end was indeed the bottleneck.
+    \item \textbf{Block throughput with non-blocking ports} is computed similarly. It will perform a full analysis, but every port can be used arbitrarily. Should the runtime improve we can conclude that one of the ports has to be the bottleneck.
+    \item \textbf{Block throughput with perfect front end and non-blocking ports} is a combination of the two above. In some corner cases it might be possible that both front end and ports are responsible for a decreased runtime. This can happen if every loaded instruction is directly computed (front end bottleneck), but if the front end was faster there wouldn't be another port to run the additionally loaded instructions on. In this case none of the first values would differ from the normal \textbf{Block throughput} although they are actually both part of the bottleneck.
 \end{itemize}
 
 
@@ -206,11 +212,11 @@ In the table we can observe the following columns:
 \begin{itemize}
     \item The \textbf{had to wait} column describes the number a cycles the instruction experienced a delay from either blocked ports or a value dependence. 
     \item The \textbf{caused to wait} column describes the number of cycles the instruction caused a delay similar to the \textbf{had to wait} value. However, it won't track transitive dependencies. So consider a program that has a dependency chain of $A \rightarrow B \rightarrow C$ (where $A$, $B$ and $C$ are instructions of your program) and $A$ is not fully computed. $A$ will cause $B$ to be delayed, resulting in an increased \textbf{caused to wait} value of $A$. $B$ will then cause $C$ to be delayed, resulting in an increased \textbf{caused to wait} value of $B$.
-    \item The \textbf{Used Ports} columns describe how many \microops\ were assigned to this port each iteration. Those values are computed with $\frac{total\ port\ usage}{number\ of\ iterations}$. Floating point arithmetic may cause minor inaccuracies.
+    \item The \textbf{Used Ports} columns describe how many \microops\ were assigned to this port. If possible \suaca\ will always assign a \microop\ to the port that has been used the least during the analysis (out of the ports that this particular \microop\ is able to use) in order to achieve an even distribution of the ports. A detailed description of how those are computed can be found in ~\autoref{sec:chooseport}.
 \end{itemize}
 
 \section{Loop analysis}
-
+ Those values are computed with $\frac{total\ port\ usage}{number\ of\ iterations}$. Floating point arithmetic may cause minor inaccuracies.
 
 
 \section{Control flow graph}
@@ -411,6 +417,7 @@ For this algorithm we assume no backbranches, i.e.\ no loops, inside the program
 When telling \suaca\ to run the program in multiple loops we need to adjust the dependency analysis algorithm as there can arise some ``loop dependencies''. To solve this, we'll simply consider the program twice. So we'll append a copy of the program to itself, compute the $CFG$ and then run the algorithm above. Because we know the original length of our program we can extract all ``loop dependencies'' from the resulting dependency graph.
 
 \section{Choosing the ports}
+\label{sec:chooseport}
 
 \section{Executing applicable instructions}
 

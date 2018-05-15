@@ -114,10 +114,11 @@ void free_sim_inst_list(sim_inst_list_t *list) {
 
 
 void print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int num_ports, char *arch_name, int num_iterations, int num_cycles,
-                         int total_num_microops, int frontend_cycles, int port_cycles) {
+                         int total_num_microops, int frontend_cycles, int port_cycles, int dep_cycles) {
     printf("Block throughput: %.2f cycles\n", ((double) num_cycles) / num_iterations);
-    printf("Block throughput with perfect frontend: %.2f cycles\n", ((double) frontend_cycles) / num_iterations);
+    printf("Block throughput with perfect front end: %.2f cycles\n", ((double) frontend_cycles) / num_iterations);
     printf("Block throughput with non-blocking ports: %.2f cycles\n", ((double) port_cycles) / num_iterations);
+    printf("Block throughput with perfect front end and non-blocking ports: %.2f cycles\n", ((double) dep_cycles) / num_iterations);
     printf("Microops per cycle: %.2f\n", ((double) total_num_microops) / num_cycles);
     printf("\nAnalysis for architecture: %s\n\n", arch_name);
     printf(" Line  ||   Num   ||   had   || caused  ||            Used Ports\n");
@@ -160,7 +161,7 @@ void print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int nu
             printf("       ||");
         for (int j = 0; j < num_ports; ++j) {
             print_conditional_spaces(((double)inst->used_ports[j])/num_iterations);
-            if (inst->used_ports[j]>0)
+            if (inst->used_ports[j] > 0)
                 printf("%.1f  ||", ((double)inst->used_ports[j])/num_iterations);
             else
                 printf("     ||");

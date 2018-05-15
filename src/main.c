@@ -20,6 +20,8 @@ station_t *frontend_test;
 int frontend_cycles;
 station_t *port_test;
 int port_cycles;
+station_t *dep_test;
+int dep_cycles;
 inst_info_t **table_info;
 
 void clp(int argc, char *argv[]);
@@ -81,7 +83,7 @@ int perform_simulation(station_t *station, single_list_t *list, bool print) {
     }
     if (detail_line == -1 && print) {
         print_sim_inst_list(station->done_insts, list, station->num_ports, arch_name, num_iterations, num_cycles,
-                            total_num_microops, frontend_cycles, port_cycles);
+                            total_num_microops, frontend_cycles, port_cycles, dep_cycles);
     } else if (print)
         print_sim_inst_details(station->done_insts, list, detail_line, station->num_ports, num_iterations);
     freeStation(station);
@@ -100,6 +102,9 @@ int parse_stuff(single_list_t *insts) {
     frontend_test->load_per_cycle = frontend_test->cap;
     port_test = parse_station_file(station_file, num_iterations, insts->single_loop_size);
     port_test->non_blocking_ports = true;
+    dep_test = parse_station_file(station_file, num_iterations, insts->single_loop_size);
+    dep_test->load_per_cycle = dep_test->cap;
+    dep_test->non_blocking_ports = true;
     hashset_t *set = create_hashset(insts);
     printf("Parsing measurement file...\n");
     table_info = parse_instruction_file(TABLE, arch_name, station->num_ports, set);
@@ -132,6 +137,9 @@ void graphs_and_map(single_list_t *list, int index) {
         frontend_cycles = perform_simulation(frontend_test, list, false);
         create_initial_state(dg, list, num_iterations, port_test, table_info, false);
         port_cycles = perform_simulation(port_test, list, false);
+        create_initial_state(dg, list, num_iterations, dep_test, table_info, false);
+        dep_cycles = perform_simulation(dep_test, list, false);
+
     }
     create_initial_state(dg, list, num_iterations, station, table_info, true);
     perform_simulation(station, list, true);
