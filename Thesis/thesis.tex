@@ -1,3 +1,4 @@
+% !TeX spellcheck = en_US
 \documentclass[a4paper,12pt,titlepage, twoside]{report} 
 
 \usepackage[latin1]{inputenc}
@@ -9,12 +10,13 @@
 \usepackage{paralist}
 \usepackage{graphicx}
 \usepackage[linesnumbered, ruled]{algorithm2e}
-
+\usepackage[section]{placeins}
 \usepackage{pdfpages}
 
 
 
 \newcommand{\suaca}{\textbf{SUACA}}
+\newcommand{\iaca}{\textbf{IACA}}
 \newcommand{\microop}{$\mu$op}
 \newcommand{\microops}{$\mu$ops}
 
@@ -175,6 +177,7 @@ end:
 \end{center}
 
 \section{Plain analysis}
+\label{sec:plain}
 Running \suaca\ without any of the options above will result in the following output:
 
 
@@ -215,8 +218,44 @@ In the table we can observe the following columns:
     \item The \textbf{Used Ports} columns describe how many \microops\ were assigned to this port. If possible \suaca\ will always assign a \microop\ to the port that has been used the least during the analysis (out of the ports that this particular \microop\ is able to use) in order to achieve an even distribution of the ports. A detailed description of how those are computed can be found in ~\autoref{sec:chooseport}.
 \end{itemize}
 
+A closer look at the concrete values of this particular run reveals that the sum of the \textbf{caused to wait} column is $5$ whereas the \textbf{had to wait} column only sums up to $4$. This is due to the fact that both line $3$ and $5$ are responsible for the delay of line $6$ because of the dependence via the $rbx$ register. The exact dependencies can be found in ~\autoref{fig:wloop}. The same behavior arises when an instruction can't be executed because all ports are blocked. When $3$ different instructions $A, B$ and $C$ block the ports another instruction $D$ would like to use the \textbf{caused to wait} values of $A, B$ and $C$ are increased while only one \textbf{had to wait} value ($D$'s) will increase.
+
 \section{Loop analysis}
- Those values are computed with $\frac{total\ port\ usage}{number\ of\ iterations}$. Floating point arithmetic may cause minor inaccuracies.
+As we mentioned above the major use case of \iaca\ is analyzing an innermost loop. While \iaca\ will therefore always assume a loop (and ``choose'' the number of iterations) when analyzing a program \suaca\ will give the user the option to run the simulation in a loop with the $--loop\ x$ flag. First consider the \suaca\ run of our example program with the flag $--loop\ 200$ set:
+
+\begin{Verbatim}[fontsize=\scriptsize]
+Block throughput: 2.34 cycles
+Block throughput with perfect front end: 2.34 cycles
+Block throughput with non-blocking ports: 2.00 cycles
+Block throughput with perfect front end and non-blocking ports: 2.00 cycles
+Microops per cycle: 2.99
+
+Analysis for architecture: SNB
+
+ Line  ||   Num   ||   had   || caused  ||            Used Ports
+       ||   Uops  || to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||
+------------------------------------------------------------------------------------------------
+   0   ||    1    ||  15.1   ||  43.2   ||  0.0  ||  1.0  ||       ||       ||       ||       || mov rax, 0x1
+   1   ||    1    ||  15.8   ||  32.3   ||  0.3  ||  0.3  ||       ||       ||       ||  0.3  || cmp rcx, 0x0
+   2   ||    1    ||  16.5   ||  20.8   ||       ||       ||       ||       ||       ||  1.0  || jnz 0x7
+   3   ||    1    ||  15.5   ||  28.9   ||  0.7  ||  0.3  ||       ||       ||       ||       || add rbx, rax
+   4   ||    1    ||  16.8   ||  20.4   ||       ||       ||       ||       ||       ||  1.0  || jmp 0x5
+   5   ||    1    ||  15.2   ||  28.9   ||  0.3  ||  0.7  ||       ||       ||       ||       || add rbx, rax
+   6   ||    1    ||  15.8   ||  43.9   ||  1.0  ||       ||       ||       ||       ||       || add rbx, rbx
+\end{Verbatim}
+
+When running the simulation in a loop the following values will become averages per iteration:
+
+\begin{itemize}
+    \item had to wait
+    \item caused to wait
+    \item used ports
+\end{itemize} 
+
+More specifically they will be computed with $\frac{total\ value}{number\ of\ iterations}$.\\
+We can observe that line $0$ has used port $0$ $0.0$ times. This just means that this instruction has used port $0$, but to a very little amount and if we remember our \hyperref[sec:plain]{first run}, which didn't use the $loop$ option, we can see that line $0$ in fact uses port $0$ at least once.\\
+When looking at the block throughput values we can see that our example program runs quite significantly faster with non-blocking ports. And this makes sense as only ports $0, 1$ and $5$ can be used by the instructions we're using. The two jump instructions are the biggest offender as they can exclusively use port $5$.\\
+We can also see that the values of the \textbf{caused to wait} column are a lot higher than those of the \textbf{had to wait} column. This is due to the fact, that several lines can be the cause of another line to be delayed as we already explained in ~\autoref{sec:plain}.
 
 
 \section{Control flow graph}
@@ -249,8 +288,10 @@ The control flow graph is mainly used to compute the correct dependency graph. T
     \label{fig:cfg}
 \end{figure}
 
+\FloatBarrier
+
 \section{Dependencygraph}
-The dependency graph describes all register dependencies that occur in the program. An edge from node $A$ to node $B$ means that the instruction represented by $B$ depends on the instruction represented by $A$. The detailed algorithm that is used to generate this graph can be seen at ~\autoref{sec:depanalysis}.\\
+The dependency graph describes all register dependencies that occur in the program. An edge from node $A$ to node $B$ means that the instruction represented by $B$ depends on the instruction represented by $A$. \suaca\ will only track read-after-write dependencies. Whenever an instruction uses a memory address \suaca\ will try to extract all used registers. It won't keep track of the stack as this would often times require runtime specific information. The detailed algorithm that is used to generate this graph can be seen at ~\autoref{sec:depanalysis}.\\
 First consider this graph that will be generated in the ``single loop case'' in \autoref{fig:woloop}.\\
 
 
@@ -312,8 +353,33 @@ When \suaca\ is called with at least $2$ loops it will also track all ``loop dep
     \label{fig:wloop}
 \end{figure}
 
+\FloatBarrier
 
 \section{Architecture selection}
+
+As previously discussed one of the big a advantages of \suaca\ is that one can easily add new architectures that the analysis is based on.\\
+The $--arch\ x$ option gives the user the ability to choose a specific micro-architecture. For our example we will use Intel's Coffee Lake micro-architecture instead of the Sandy Bridge micro-architecture we used previously (the first two columns are left out to improve readability):
+
+\begin{Verbatim}[fontsize=\scriptsize]
+Block throughput: 2.00 cycles
+Block throughput with perfect front end: 2.00 cycles
+Block throughput with non-blocking ports: 2.00 cycles
+Block throughput with perfect front end and non-blocking ports: 2.00 cycles
+Microops per cycle: 3.49
+
+Analysis for architecture: CFL
+
+   had   || caused  ||            Used Ports
+ to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||   6   ||   7   ||
+------------------------------------------------------------------------------------------------------------
+   4.7   ||  15.9   ||  0.1  ||  0.8  ||       ||       ||       ||  0.1  ||  0.1  ||       || mov rax, 0x1
+   5.4   ||  13.6   ||  0.2  ||  0.5  ||       ||       ||       ||  0.1  ||  0.2  ||       || cmp rcx, 0x0
+   6.2   ||   9.8   ||  0.4  ||       ||       ||       ||       ||       ||  0.6  ||       || jnz 0x7
+  43.2   ||  48.9   ||  0.1  ||  0.2  ||       ||       ||       ||  0.7  ||  0.0  ||       || add rbx, rax
+   5.1   ||   9.1   ||  0.2  ||       ||       ||       ||       ||       ||  0.8  ||       || jmp 0x5
+  42.8   ||  51.6   ||  0.7  ||  0.1  ||       ||       ||       ||  0.2  ||  0.0  ||       || add rbx, rax
+  43.6   ||  90.8   ||  0.1  ||  0.2  ||       ||       ||       ||  0.7  ||  0.0  ||       || add rbx, rbx
+\end{Verbatim}
 
 \section{Detailed information}
 
