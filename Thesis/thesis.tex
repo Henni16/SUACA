@@ -142,8 +142,36 @@ Abstract
 \tableofcontents 
 
 
+%----------------------------------------------------------------------------------------
+%	Introduction
+%----------------------------------------------------------------------------------------
+
 \chapter{Introduction}
-xyz
+\begin{lstlisting}[language=XML, basicstyle=\ttfamily\scriptsize, breaklines=true]
+<instruction ... iform="ADD_LOCK_MEMv_GPRv" ...>
+<operand idx="2" type="reg" ...>RAX,RCX,RDX,RBX,...</operand>
+<operand idx="3" type="flag" ...>OF</operand>
+...
+<architecture name="NHM">
+<measurement ... port15="2" port2="1" port3="1" port4="1" total_uops="5">
+<latency ... cycles="19" startOp="2" targetOp="3"/>
+...
+<\measurement>
+</architecture>
+<\instruction>
+\end{lstlisting}
+\label{lst:xml}
+
+
+
+
+
+
+
+
+%----------------------------------------------------------------------------------------
+%	Functionality of SUACA
+%----------------------------------------------------------------------------------------
 
 \chapter{Functionality of SUACA}
 In this chapter we're going to explain and show the full functionality of \suaca. First we will take a look at the command line interface and then see an example run of each available option.\\
@@ -155,9 +183,12 @@ Where $[option]$ is one or several of the following:
 \begin{itemize}
     \item $-cfg$ will print the control flow graph into a file called $controlflow.dot$. The format will be graphviz readable.
     \item $-dg$ will print the dependencygraph into a file called $dependency.dot$. The format will also be graphviz readable.
+    \item $-p$ triggers the ``performance mode''.
     \item ${--}arch\ x$ will consider $x$ as the underlaying micro-architecture of the analysis. At the time of writing the available options are NHM, SNB, IVB, HSW, BDW, SKL, CFL and KBL. The default value is SNB.
     \item ${--}loop\ x$ will trigger the loop analysis. The default value of $x$ is $1$.
     \item ${--}detail\ x$ will print detailed information about line $x$.
+    \item ${--}setup\ x\ y$ sets the default values.
+    \item ${--}print-default$ prints the defaults.
 \end{itemize}
 
 We will use the following example code to show the effects of each of those options:
@@ -219,6 +250,9 @@ In the table we can observe the following columns:
 \end{itemize}
 
 A closer look at the concrete values of this particular run reveals that the sum of the \textbf{caused to wait} column is $5$ whereas the \textbf{had to wait} column only sums up to $4$. This is due to the fact that both line $3$ and $5$ are responsible for the delay of line $6$ because of the dependence via the $rbx$ register. The exact dependencies can be found in ~\autoref{fig:wloop}. The same behavior arises when an instruction can't be executed because all ports are blocked. When $3$ different instructions $A, B$ and $C$ block the ports another instruction $D$ would like to use the \textbf{caused to wait} values of $A, B$ and $C$ are increased while only one \textbf{had to wait} value ($D$'s) will increase.
+
+
+
 
 \section{Loop analysis}
 As we mentioned above the major use case of \iaca\ is analyzing an innermost loop. While \iaca\ will therefore always assume a loop (and ``choose'' the number of iterations) when analyzing a program \suaca\ will give the user the option to run the simulation in a loop with the $--loop\ x$ flag. First consider the \suaca\ run of our example program with the flag $--loop\ 200$ set:
@@ -381,7 +415,75 @@ Analysis for architecture: CFL
   43.6   ||  90.8   ||  0.1  ||  0.2  ||       ||       ||       ||  0.7  ||  0.0  ||       || add rbx, rbx
 \end{Verbatim}
 
+The most significant change is that the non-blocking ports analysis no longer experiences an improvement in runtime. This is due to the larger number of ports in the Coffee Lake architecture. We can now instead observe that the three $add$ instructions, or more so their dependencies on each other, are responsible for most of the delays. 
+
+
+
+
 \section{Detailed information}
+Finally \suaca can also deliver some detailed information about a specific line. The following table shows the result of a run on our example program with $200$ iterations and details for line $0$.
+
+\begin{Verbatim}[fontsize=\scriptsize]
+Detailed delay information for instruction: mov rax, 0x1 in line 0
+
+Maximum latency: 1
+
+Latencies for dependencies:
+Line || 0 -> Line || Line -> 0
+----------------------------------
+ 3   ||     1     ||     0
+ 5   ||     1     ||     0
+
+
+Delay caused by dependencies:
+Line || was delayed || has delayed
+----------------------------------
+ 3   ||    15.2     ||     0.0
+ 5   ||    14.5     ||     0.0
+
+
+Delay caused by blocked ports:
+Port || was delayed || has delayed
+----------------------------------
+ 0   ||     0.0     ||    15.1
+ 1   ||    13.5     ||    15.1
+ 5   ||     0.0     ||    15.1
+\end{Verbatim}
+
+In order to get a better understanding of those values we will split the output and explain them each by each.
+
+\begin{Verbatim}[fontsize=\scriptsize]
+Maximum latency: 1
+
+Latencies for dependencies:
+Line || 0 -> Line || Line -> 0
+----------------------------------
+ 3   ||     1     ||     0
+ 5   ||     1     ||     0
+\end{Verbatim}
+First we can see that this instruction has a maximum latency of one cycle. This value can differ from those of the table below as we have seen in ~\autoref{lst:xml}.\\
+The table itself shows the latencies \suaca\ used for the dependencies. The second column show the delay from the analyzed line to the line given in the first column and the third row shows the delay in the other direction. In our case lines $3$ and $5$ depend on line $0$ (see ~\autoref{fig:wloop}) and we can see here that those lines actually have to wait one cycle for line $0$ to be finished.\\
+
+\section{TODO find fancy name for "Rest"}
+The remaining options are:
+
+\begin{itemize}
+    \item $-p$ triggers the ``performance mode''. More specifically this will prevent the three extra analyses that are needed to generate the three additional block throughput values. In most cases however, \suaca's performance bottleneck will be the parser for the measurement files which cannot be deactivated. 
+    \item ${--}setup\ x\ y$ sets the default values for the architecture ($x$) and the number of iterations ($y$). Note that one always has to use both values. 
+    \item ${--}print-default$ prints the default values for architecture and number of iterations.
+\end{itemize}
+
+
+
+
+
+
+
+
+
+%----------------------------------------------------------------------------------------
+%	Algorithms
+%----------------------------------------------------------------------------------------
 
 \chapter{Algorithms}
 

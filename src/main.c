@@ -10,11 +10,15 @@ int build_cfg;
 int build_dep_graph;
 int print_help;
 int branch;
-int num_iterations = 1;
+bool print_setup = false;
+bool perfomance = false;
+int num_iterations = 0;
 int detail_line = -1;
+char *setup_arch;
+int setup_loop = 0;
 char *invalid_flag;
 char *file_name;
-char *arch_name = "SNB";
+char *arch_name;
 station_t *station;
 station_t *frontend_test;
 int frontend_cycles;
@@ -37,6 +41,26 @@ int main(int argc, char *argv[]) {
         help();
         return 0;
     }
+    if (setup_loop && setup_arch) {
+        create_setup_file(CONFIG_LOC, setup_arch, setup_loop);
+        return 0;
+    } else {
+        bool success = parse_setup_file(CONFIG_LOC, &setup_arch, &setup_loop);
+        if (!success) {
+            printf("Couldn't find suaca.config at location %s\nAbort!\n", CONFIG_LOC);
+            return 1;
+        }
+        if (print_setup) {
+            printf("Default architecture: %s\nDefault number of iterations: %i\n", setup_arch, setup_loop);
+            return 0;
+        }
+        if (!arch_name) {
+            arch_name = setup_arch;
+        }
+        if (num_iterations == 0) {
+            num_iterations = setup_loop;
+        }
+    }
     if (invalid_flag != NULL) {
         printf("Invalid flag: %s\nValid ", invalid_flag);
         help();
@@ -56,17 +80,21 @@ int main(int argc, char *argv[]) {
             printf("\n\n================================================\n\n\n");
     }
     free_list(instructions);
+    free(arch_name);
     printf("time: %f", (clock() - start) / (double) CLOCKS_PER_SEC);
     return 0;
 }
 
 void help() {
     printf("options:\n");
-    printf(" -cfg:  build controlflowgraph\n");
-    printf(" -dg:   build dependencygraph\n");
-    printf(" --arch [x]: [x] is architecture the analysis is based on\n");
-    printf(" --detail [x]: detailed delay info for line [x]\n");
-    printf(" --loop [x]: run the analysis in a loop of [x]\n");
+    printf(" -cfg:            build controlflowgraph\n");
+    printf(" -dg:             build dependencygraph\n");
+    printf(" -p:              run in \"performance mode\"\n");
+    printf(" --arch [x]:      [x] is architecture the analysis is based on\n");
+    printf(" --detail [x]:    detailed delay info for line [x]\n");
+    printf(" --loop [x]:      run the analysis in a loop of [x]\n");
+    printf(" --setup [x] [y]: set [x]/[y] as the default architecture/number of iterations\n");
+    printf(" --print-default: prints the default values for architecture/number of iterations\n");
 }
 
 int perform_simulation(station_t *station, single_list_t *list, bool print) {
@@ -81,11 +109,15 @@ int perform_simulation(station_t *station, single_list_t *list, bool print) {
         perform_cycle(station);
         num_cycles++;
     }
-    if (detail_line == -1 && print) {
+    if (detail_line == -1 && print && !perfomance) {
         print_sim_inst_list(station->done_insts, list, station->num_ports, arch_name, num_iterations, num_cycles,
                             total_num_microops, frontend_cycles, port_cycles, dep_cycles);
-    } else if (print)
+    } else if (print && detail_line != -1)
         print_sim_inst_details(station->done_insts, list, detail_line, station->num_ports, num_iterations);
+    else if (print) {
+        print_sim_inst_list(station->done_insts, list, station->num_ports, arch_name, num_iterations, num_cycles,
+                            total_num_microops, -1, -1, -1);
+    }
     freeStation(station);
     return num_cycles;
 }
@@ -98,13 +130,15 @@ int parse_stuff(single_list_t *insts) {
         printf("The station file for %s could not be found\n", arch_name);
         return 0;
     }
-    frontend_test = parse_station_file(station_file, num_iterations, insts->single_loop_size);
-    frontend_test->load_per_cycle = frontend_test->cap;
-    port_test = parse_station_file(station_file, num_iterations, insts->single_loop_size);
-    port_test->non_blocking_ports = true;
-    dep_test = parse_station_file(station_file, num_iterations, insts->single_loop_size);
-    dep_test->load_per_cycle = dep_test->cap;
-    dep_test->non_blocking_ports = true;
+    if (!perfomance) {
+        frontend_test = parse_station_file(station_file, num_iterations, insts->single_loop_size);
+        frontend_test->load_per_cycle = frontend_test->cap;
+        port_test = parse_station_file(station_file, num_iterations, insts->single_loop_size);
+        port_test->non_blocking_ports = true;
+        dep_test = parse_station_file(station_file, num_iterations, insts->single_loop_size);
+        dep_test->load_per_cycle = dep_test->cap;
+        dep_test->non_blocking_ports = true;
+    }
     hashset_t *set = create_hashset(insts);
     printf("Parsing measurement file...\n");
     table_info = parse_instruction_file(TABLE, arch_name, station->num_ports, set);
@@ -131,8 +165,10 @@ void graphs_and_map(single_list_t *list, int index) {
     if (build_dep_graph)
         build_graphviz(dg, list, "dependency", index);
     free_graph(g);
-    parse_stuff(list);
-    if (detail_line == -1) {
+    if (!parse_stuff(list)) {
+        return;
+    }
+    if (detail_line == -1 && !perfomance) {
         create_initial_state(dg, list, num_iterations, frontend_test, table_info, false);
         frontend_cycles = perform_simulation(frontend_test, list, false);
         create_initial_state(dg, list, num_iterations, port_test, table_info, false);
@@ -171,6 +207,17 @@ void clp(int argc, char *argv[]) {
                 printf("Missing argument after --detail!\nPlease select a line you want to have analyzed\n\n");
             } else
                 detail_line = atoi(argv[++i]);
+        } else if (!strcmp(argv[i], "--setup")) {
+            if (argc - 2 == i || *argv[i + 1] == '-' || *argv[i + 2] == '-') {
+                printf("--setup need two arguments!\n--setup [Default architecture] [default number of iterations]\n\n");
+            } else {
+                setup_arch = argv[++i];
+                setup_loop = atoi(argv[++i]);
+            }
+        } else if (!strcmp(argv[i], "--print-default")) {
+            print_setup = true;
+        } else if (!strcmp(argv[i], "-p")) {
+            perfomance = true;
         } else if (!strcmp(argv[i], "-b")) {
             branch = 1;
         } else if (*argv[i] == '-') {

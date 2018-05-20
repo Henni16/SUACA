@@ -82,6 +82,10 @@ void split_attribute(char *attribute, attribute_value_t *a);
 
 station_t *parse_station_file(char *file_name, int num_iterations, int single_loop_size);
 
+void create_setup_file(char *file_name, char *setup_arch, int setup_loop);
+
+bool parse_setup_file(char *file_name, char **setup_arch, int *setup_loop);
+
 int get_max_latency(latency_reg_t *l);
 
 /*

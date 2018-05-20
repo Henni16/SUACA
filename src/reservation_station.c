@@ -177,7 +177,7 @@ void execute_instructions_in_ports(station_t *station) {
     sim_inst_t *cur;
     while (list) {
         cur = list->elem;
-        if (++cur->executed_cycles == cur->latency) {
+        if (++cur->executed_cycles >= cur->latency) {
             delete_inst_from_queue(cur, station);
             add_to_sim_list(station->done_insts, cur, station->num_ports, station->num_insts);
         }
@@ -239,7 +239,7 @@ void freeStation(station_t *station) {
 
 void inform_children_im_done(sim_inst_t *inst, int cycles_done) {
     for (size_t i = 0; i < inst->num_dep_children; i++) {
-        if (inst->dep_children[i].cycles == cycles_done) {
+        if (inst->dep_children[i].cycles == cycles_done || !inst->dep_children[i].cycles) {
             clear_father_from_list(inst->dep_children[i].child, inst->id);
         }
     }

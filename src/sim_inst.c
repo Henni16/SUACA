@@ -15,7 +15,7 @@ sim_inst_t *newSimInst(int line, port_ops_t *micro_ops, int num_micro_ops, int n
     ret->line = line;
     ret->id = sim_inst_global_id++;
     ret->fathers_todo = num_fathers;
-    ret->fathers = malloc(num_fathers * sizeof(sim_inst_t*));
+    ret->fathers = malloc(num_fathers * sizeof(sim_inst_t *));
     ret->next = NULL;
     ret->cycles_delayed = 0;
     ret->delayed_cycles = 0;
@@ -26,11 +26,11 @@ sim_inst_t *newSimInst(int line, port_ops_t *micro_ops, int num_micro_ops, int n
     ret->dep_children = (reg_sim_inst_t *) malloc(num_children * sizeof(reg_sim_inst_t));
     ret->dep_delays = malloc(num_insts * sizeof(delays_t));
     for (int i = 0; i < num_insts; ++i) {
-        ret->dep_delays[i] = (delays_t){0,0};
+        ret->dep_delays[i] = (delays_t) {0, 0};
     }
     ret->port_delays = malloc(numports * sizeof(delays_t));
     for (int j = 0; j < numports; ++j) {
-        ret->port_delays[j] = (delays_t){0,0};
+        ret->port_delays[j] = (delays_t) {0, 0};
     }
     return ret;
 }
@@ -113,12 +113,17 @@ void free_sim_inst_list(sim_inst_list_t *list) {
 }
 
 
-void print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int num_ports, char *arch_name, int num_iterations, int num_cycles,
-                         int total_num_microops, int frontend_cycles, int port_cycles, int dep_cycles) {
+void
+print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int num_ports, char *arch_name, int num_iterations,
+                    int num_cycles,
+                    int total_num_microops, int frontend_cycles, int port_cycles, int dep_cycles) {
     printf("Block throughput: %.2f cycles\n", ((double) num_cycles) / num_iterations);
-    printf("Block throughput with perfect front end: %.2f cycles\n", ((double) frontend_cycles) / num_iterations);
-    printf("Block throughput with non-blocking ports: %.2f cycles\n", ((double) port_cycles) / num_iterations);
-    printf("Block throughput with perfect front end and non-blocking ports: %.2f cycles\n", ((double) dep_cycles) / num_iterations);
+    if (frontend_cycles > -1) {
+        printf("Block throughput with perfect front end: %.2f cycles\n", ((double) frontend_cycles) / num_iterations);
+        printf("Block throughput with non-blocking ports: %.2f cycles\n", ((double) port_cycles) / num_iterations);
+        printf("Block throughput with perfect front end and non-blocking ports: %.2f cycles\n",
+               ((double) dep_cycles) / num_iterations);
+    }
     printf("Microops per cycle: %.2f\n", ((double) total_num_microops) / num_cycles);
     printf("\nAnalysis for architecture: %s\n\n", arch_name);
     printf(" Line  ||   Num   ||   had   || caused  ||            Used Ports\n");
@@ -149,20 +154,20 @@ void print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int nu
         }
         print_conditional_spaces(inst->num_micro_ops);
         printf("  %i    ||", inst->num_micro_ops);
-        print_conditional_spaces(((double)inst->cycles_delayed)/num_iterations);
+        print_conditional_spaces(((double) inst->cycles_delayed) / num_iterations);
         if (inst->cycles_delayed > 0)
-            printf(" %.1f   ||", ((double)inst->cycles_delayed)/num_iterations);
+            printf(" %.1f   ||", ((double) inst->cycles_delayed) / num_iterations);
         else
             printf("       ||");
-        print_conditional_spaces(((double)inst->delayed_cycles)/num_iterations);
+        print_conditional_spaces(((double) inst->delayed_cycles) / num_iterations);
         if (inst->delayed_cycles > 0)
-            printf(" %.1f   ||", ((double)inst->delayed_cycles)/num_iterations);
+            printf(" %.1f   ||", ((double) inst->delayed_cycles) / num_iterations);
         else
             printf("       ||");
         for (int j = 0; j < num_ports; ++j) {
-            print_conditional_spaces(((double)inst->used_ports[j])/num_iterations);
+            print_conditional_spaces(((double) inst->used_ports[j]) / num_iterations);
             if (inst->used_ports[j] > 0)
-                printf("%.1f  ||", ((double)inst->used_ports[j])/num_iterations);
+                printf("%.1f  ||", ((double) inst->used_ports[j]) / num_iterations);
             else
                 printf("     ||");
         }
@@ -181,9 +186,10 @@ void print_conditional_spaces(double i) {
 }
 
 
-void print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int line, int num_ports, int num_iterations) {
+void
+print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int line, int num_ports, int num_iterations) {
     if (line >= inst_list->single_loop_size || line < 0) {
-        printf("Invalid line selected!\nPlease choose a line between 0 and %i\n", inst_list->single_loop_size-1);
+        printf("Invalid line selected!\nPlease choose a line between 0 and %i\n", inst_list->single_loop_size - 1);
         return;
     }
     if (list->arr[line]->unsupported) {
@@ -238,10 +244,10 @@ void print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int
             }
             print_conditional_spaces(i);
             printf(" %i   ||", i);
-            print_conditional_spaces(((double)delays[i].delay_caused)/num_iterations);
-            printf("   %.1f     ||", ((double)delays[i].delay_caused)/num_iterations);
-            print_conditional_spaces(((double)delays[i].delay_suffered)/num_iterations);
-            printf("   %.1f     \n", ((double)delays[i].delay_suffered)/num_iterations);
+            print_conditional_spaces(((double) delays[i].delay_caused) / num_iterations);
+            printf("   %.1f     ||", ((double) delays[i].delay_caused) / num_iterations);
+            print_conditional_spaces(((double) delays[i].delay_suffered) / num_iterations);
+            printf("   %.1f     \n", ((double) delays[i].delay_suffered) / num_iterations);
         }
     }
     if (!is_delayed) {
@@ -260,10 +266,10 @@ void print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int
             }
             print_conditional_spaces(i);
             printf(" %i   ||", i);
-            print_conditional_spaces(((double)delays[i].delay_caused)/num_iterations);
-            printf("   %.1f     ||", ((double)delays[i].delay_caused)/num_iterations);
-            print_conditional_spaces(((double)delays[i].delay_suffered)/num_iterations);
-            printf("   %.1f    \n", ((double)delays[i].delay_suffered)/num_iterations);
+            print_conditional_spaces(((double) delays[i].delay_caused) / num_iterations);
+            printf("   %.1f     ||", ((double) delays[i].delay_caused) / num_iterations);
+            print_conditional_spaces(((double) delays[i].delay_suffered) / num_iterations);
+            printf("   %.1f    \n", ((double) delays[i].delay_suffered) / num_iterations);
         }
     }
     if (!is_delayed) {

@@ -277,7 +277,10 @@ bool parse_architecture(FILE *file, inst_info_t *info, int numports) {
             } else {
                 split_attribute(buff, &att);
                 if (!strcmp(att.attribute, "total_uops")) {
-                    info->num_micro_ops = atoi(att.value);
+                    // TODO ask Andreas
+                    int tmp = atoi(att.value);
+                    if (tmp > info->num_micro_ops)
+                        info->num_micro_ops = tmp;
                     if (att.rest) {
 #if XML_DEBUG > 0
                         printf("No measurement for Instruction: %s on architecture: %s\n", xed_iform_enum_t2str(iform), ARCHITECTURE_NAME);
@@ -408,6 +411,28 @@ station_t *parse_station_file(char *file_name, int num_iterations, int single_lo
     s->non_blocking_ports = false;
     fclose(station_file);
     return s;
+}
+
+
+void create_setup_file(char *file_name, char *setup_arch, int setup_loop) {
+    FILE *f = fopen(file_name, "w");
+    fprintf(f, "%s;%i;", setup_arch, setup_loop);
+    fclose(f);
+}
+
+bool parse_setup_file(char *file_name, char **setup_arch, int *setup_loop) {
+    FILE *f = fopen(file_name, "r");
+    if (f == NULL) {
+        return false;
+    }
+    char buf[MY_BUFF_SIZE];
+    fscanf(f, "%s", buf);
+    char *tmp = strtok(buf, ";");
+    *setup_arch = malloc(sizeof(strlen(tmp))+1);
+    strcpy(*setup_arch, tmp);
+    *setup_loop = atoi(strtok(NULL, ";"));
+    fclose(f);
+    return true;
 }
 
 int get_max_latency(latency_reg_t *l) {
