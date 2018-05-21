@@ -5,15 +5,50 @@
 #include "xmlParser.h"
 
 
+bool *compute_needed_instructions(graph_t *cfg, int branch) {
+    bool *needed = calloc(cfg->size, sizeof(bool));
+    if (branch == -1) {
+        for (int i = 0; i < cfg->size; ++i) {
+            needed[i] = true;
+        }
+        return needed;
+    }
+    bool branched = false;
+    int cur_line = 0;
+    node_t *cur = cfg->nodes[cur_line];
+    while (cur) {
+        if (!branched && cur->num_successors > 1) {
+            branched = true;
+            cur_line = cur->successors[branch].line;
+        } else if (!cur->num_successors){
+            needed[cur_line] = true;
+            break;
+        } else {
+            needed[cur_line] = true;
+            cur_line = cur->successors[0].line;
+        }
+        cur = cfg->nodes[cur_line];
+    }
+    return needed;
+}
+
 void create_initial_state(graph_t *dependencies, single_list_t *insts, int num_iterations, station_t *station,
-                          inst_info_t **table_info, bool print_unsupported) {
+                          inst_info_t **table_info, bool print_unsupported, int branch, graph_t *cfg) {
+    reset_global_id();
     sim_inst_t *cur;
     sim_inst_t *prev = NULL;
-    sim_inst_t *all[station->num_insts * num_iterations];
+    sim_inst_t **all =  malloc(station->num_insts * num_iterations * sizeof(sim_inst_t*));
     station->done_insts = newSimInstList(station->num_insts);
+    bool *needed = compute_needed_instructions(cfg, branch);
     //build all sim insts
     for (int i = 0; i < station->num_insts * num_iterations; i++) {
         int mod_i = i % station->num_insts;
+        if (!needed[mod_i]) {
+            all[i] = newSimInst(mod_i, NULL, 0, 0, 0, 0, 0, 0);
+            all[i]->not_needed = true;
+            station->done_insts->arr[mod_i] = all[i];
+            continue;
+        }
         // for every iteration after the first we have to consider the second part of the dep_graph
         // to find the fathers
         int father_i = i < station->num_insts ? mod_i : mod_i + station->num_insts;
@@ -58,11 +93,11 @@ void create_initial_state(graph_t *dependencies, single_list_t *insts, int num_i
                     to_sub++;
                     continue;
                 }
-                if (all[(intreg.line + (k * station->num_insts))]->unsupported) {
+                if (all[(intreg.line + (k * station->num_insts))]->unsupported || all[(intreg.line + (k * station->num_insts))]->not_needed) {
                     to_sub++;
                     continue;
                 }
-                cur->dep_children[i] = (reg_sim_inst_t) {all[intreg.line + (k * station->num_insts)],
+                cur->dep_children[i-to_sub] = (reg_sim_inst_t) {all[intreg.line + (k * station->num_insts)],
                                                          get_latency_for_register(info->latencies, intreg.reg)};
             }
             cur->num_dep_children -= to_sub;
@@ -70,16 +105,18 @@ void create_initial_state(graph_t *dependencies, single_list_t *insts, int num_i
             int second_j = k > 0 ? j + station->num_insts : j;
             to_sub = 0;
             for (int i = 0; i < cur->fathers_todo; ++i) {
-                if (all[dependencies->nodes[second_j]->fathers[i].line + added]->unsupported) {
+                if (all[dependencies->nodes[second_j]->fathers[i].line + added]->unsupported || all[dependencies->nodes[second_j]->fathers[i].line + added]->not_needed) {
                     to_sub++;
                     continue;
                 }
-                cur->fathers[i] = all[dependencies->nodes[second_j]->fathers[i].line + added];
+                cur->fathers[i-to_sub] = all[dependencies->nodes[second_j]->fathers[i].line + added];
             }
             cur->fathers_todo -= to_sub;
         }
     }
     station->to_exec = NULL;
+    free(needed);
+    free(all);
 }
 
 void perform_cycle(station_t *station) {

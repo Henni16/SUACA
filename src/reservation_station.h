@@ -40,7 +40,8 @@ typedef struct inst_info_s inst_info_t;
 /*
   creates the sim_insts and the dependencies for the given station and instruction array
 */
-void create_initial_state(graph_t *dependencies, single_list_t *insts, int num_iterations, station_t* station, inst_info_t **table_info, bool print_unsupported);
+void create_initial_state(graph_t *dependencies, single_list_t *insts, int num_iterations, station_t *station,
+                          inst_info_t **table_info, bool print_unsupported, int branch, graph_t *cfg);
 
 
 /*
@@ -84,7 +85,6 @@ void build_station_file_string(char *dest, const char *arch_name);
 int compute_total_num_microops(station_t *station);
 
 void insert_sorted(int *arr, int *len, int val, station_t *station);
-
 
 
 #endif

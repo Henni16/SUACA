@@ -18,6 +18,7 @@ typedef struct sim_inst_s {
     int line;
     int id;
     bool unsupported;
+    bool not_needed;
     int latency;
     int num_micro_ops;
     int micro_ops_loaded;
@@ -88,6 +89,8 @@ print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int line
 void clear_father_from_list(sim_inst_t *si, int father_line);
 
 void print_conditional_spaces(double i);
+
+void reset_global_id();
 
 
 #endif

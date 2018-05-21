@@ -5,11 +5,12 @@
 #include "reservation_station.h"
 #include "hashmap.h"
 #include "inst_list.h"
+#include "graph.h"
 
 int build_cfg;
 int build_dep_graph;
 int print_help;
-int branch;
+int branch = 0;
 bool print_setup = false;
 bool perfomance = false;
 int num_iterations = 0;
@@ -30,7 +31,7 @@ inst_info_t **table_info;
 
 void clp(int argc, char *argv[]);
 
-void graphs_and_map(single_list_t *list, int index);
+void graphs_and_map(single_list_t *list, int index, int branch);
 
 void help();
 
@@ -75,7 +76,14 @@ int main(int argc, char *argv[]) {
     print_list(instructions);
 
     for (size_t i = 0; i < instructions->numLists; i++) {
-        graphs_and_map(instructions->lists[i], i);
+        if (branch) {
+            printf("Left branch analysis:\n\n");
+            graphs_and_map(instructions->lists[i], i, 0);
+            printf("\n\nRight branch analysis:\n\n");
+            graphs_and_map(instructions->lists[i], i, 1);
+        } else
+            graphs_and_map(instructions->lists[i], i, -1);
+        free_info_array(table_info);
         if (i + 1 < instructions->numLists)
             printf("\n\n================================================\n\n\n");
     }
@@ -139,23 +147,24 @@ int parse_stuff(single_list_t *insts) {
         dep_test->load_per_cycle = dep_test->cap;
         dep_test->non_blocking_ports = true;
     }
-    hashset_t *set = create_hashset(insts);
-    printf("Parsing measurement file...\n");
-    table_info = parse_instruction_file(TABLE, arch_name, station->num_ports, set);
-    printf("Done parsing!\n");
-    hashset_free(set);
-    if (table_info == NULL) {
-        return 0;
+    if (!table_info) {
+        hashset_t *set = create_hashset(insts);
+        printf("Parsing measurement file...\n");
+        table_info = parse_instruction_file(TABLE, arch_name, station->num_ports, set);
+        printf("Done parsing!\n");
+        hashset_free(set);
+        if (table_info == NULL) {
+            return 0;
+        }
     }
-
 }
 
-void graphs_and_map(single_list_t *list, int index) {
-    if (num_iterations > 1) {
+void graphs_and_map(single_list_t *list, int index, int branch) {
+    if (num_iterations > 1 && branch != 1) {
         if (!add_loop_instructions(list)) {
             printf("Aborting analysis!\n");
         }
-    } else {
+    } else if (branch != 1){
         list->single_loop_size = list->size;
     }
     graph_t *g = build_controlflowgraph(list);
@@ -164,22 +173,21 @@ void graphs_and_map(single_list_t *list, int index) {
     graph_t *dg = build_dependencygraph_cfg(list, g);
     if (build_dep_graph)
         build_graphviz(dg, list, "dependency", index);
-    free_graph(g);
     if (!parse_stuff(list)) {
         return;
     }
     if (detail_line == -1 && !perfomance) {
-        create_initial_state(dg, list, num_iterations, frontend_test, table_info, false);
+        create_initial_state(dg, list, num_iterations, frontend_test, table_info, false, branch, g);
         frontend_cycles = perform_simulation(frontend_test, list, false);
-        create_initial_state(dg, list, num_iterations, port_test, table_info, false);
+        create_initial_state(dg, list, num_iterations, port_test, table_info, false, branch, g);
         port_cycles = perform_simulation(port_test, list, false);
-        create_initial_state(dg, list, num_iterations, dep_test, table_info, false);
+        create_initial_state(dg, list, num_iterations, dep_test, table_info, false, branch, g);
         dep_cycles = perform_simulation(dep_test, list, false);
 
     }
-    create_initial_state(dg, list, num_iterations, station, table_info, true);
+    create_initial_state(dg, list, num_iterations, station, table_info, true, branch, g);
+    free_graph(g);
     perform_simulation(station, list, true);
-    free_info_array(table_info);
     free_graph(dg);
 }
 
