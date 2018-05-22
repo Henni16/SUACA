@@ -203,6 +203,10 @@ print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int line
         printf("Details for unsupported operation can't be printed!\nPlease choose a valid line.\n");
         return;
     }
+    if (list->arr[line]->not_needed) {
+        printf("This instruction doesn't belong to this branch!\n");
+        return;
+    }
     char buffer[XED_TMP_BUF_LEN];
     bool is_delayed = false;
     disassemble(buffer, XED_TMP_BUF_LEN, &inst_list->array[line],

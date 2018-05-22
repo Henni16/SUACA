@@ -147,7 +147,7 @@ Abstract
 %----------------------------------------------------------------------------------------
 
 \chapter{Introduction}
-\begin{lstlisting}[language=XML, basicstyle=\ttfamily\scriptsize, breaklines=true]
+\begin{lstlisting}[language=XML, basicstyle=\ttfamily\scriptsize, breaklines=true, label=lst:xml]
 <instruction ... iform="ADD_LOCK_MEMv_GPRv" ...>
 <operand idx="2" type="reg" ...>RAX,RCX,RDX,RBX,...</operand>
 <operand idx="3" type="flag" ...>OF</operand>
@@ -160,7 +160,6 @@ Abstract
 </architecture>
 <\instruction>
 \end{lstlisting}
-\label{lst:xml}
 
 
 
@@ -255,6 +254,7 @@ A closer look at the concrete values of this particular run reveals that the sum
 
 
 \section{Loop analysis}
+\label{sec:loop}
 As we mentioned above the major use case of \iaca\ is analyzing an innermost loop. While \iaca\ will therefore always assume a loop (and ``choose'' the number of iterations) when analyzing a program \suaca\ will give the user the option to run the simulation in a loop with the $--loop\ x$ flag. First consider the \suaca\ run of our example program with the flag $--loop\ 200$ set:
 
 \begin{Verbatim}[fontsize=\scriptsize]
@@ -429,6 +429,7 @@ Detailed delay information for instruction: mov rax, 0x1 in line 0
 Maximum latency: 1
 
 Latencies for dependencies:
+
 Line || 0 -> Line || Line -> 0
 ----------------------------------
  3   ||     1     ||     0
@@ -436,6 +437,7 @@ Line || 0 -> Line || Line -> 0
 
 
 Delay caused by dependencies:
+
 Line || was delayed || has delayed
 ----------------------------------
  3   ||    15.2     ||     0.0
@@ -443,6 +445,7 @@ Line || was delayed || has delayed
 
 
 Delay caused by blocked ports:
+
 Port || was delayed || has delayed
 ----------------------------------
  0   ||     0.0     ||    15.1
@@ -450,21 +453,57 @@ Port || was delayed || has delayed
  5   ||     0.0     ||    15.1
 \end{Verbatim}
 
-In order to get a better understanding of those values we will split the output and explain them each by each.
+In order to get a better understanding of those values we will split the output and explain them step by step.
 
 \begin{Verbatim}[fontsize=\scriptsize]
 Maximum latency: 1
 
 Latencies for dependencies:
+
 Line || 0 -> Line || Line -> 0
 ----------------------------------
  3   ||     1     ||     0
  5   ||     1     ||     0
 \end{Verbatim}
-First we can see that this instruction has a maximum latency of one cycle. This value can differ from those of the table below as we have seen in ~\autoref{lst:xml}.\\
-The table itself shows the latencies \suaca\ used for the dependencies. The second column show the delay from the analyzed line to the line given in the first column and the third row shows the delay in the other direction. In our case lines $3$ and $5$ depend on line $0$ (see ~\autoref{fig:wloop}) and we can see here that those lines actually have to wait one cycle for line $0$ to be finished.\\
 
-\section{TODO find fancy name for "Rest"}
+First we can see that this instruction has a maximum latency of one cycle. This value can differ from those of the table below as we have seen in ~\autoref{lst:xml}.\\
+The table itself shows the latencies \suaca\ used for the dependencies. The second column show the delay from the analyzed line to the line given in the first column and the third row shows the delay in the other direction. In our case lines $3$ and $5$ depend on line $0$ (see ~\autoref{fig:wloop}) and we can see here that those lines actually have to wait one cycle for line $0$ to be finished and line $0$ itself is independent of the other two.\\
+
+
+\begin{Verbatim}[fontsize=\scriptsize]
+Delay caused by blocked ports:
+
+Port || was delayed || has delayed
+----------------------------------
+0   ||     0.0     ||    15.1
+1   ||    13.5     ||    15.1
+5   ||     0.0     ||    15.1
+\end{Verbatim}
+
+This table now shows, that lines $3$ and $5$ actually are delayed by our analyzed line. On average line $3$ has to wait $15.2$ cycles for line $0$ to be finished while line $5$ has to wait $14.5$ cycles. Of course both of them don't cause any delay on line $0$ as there is no dependence.\\
+
+
+\begin{Verbatim}[fontsize=\scriptsize]
+Delay caused by blocked ports:
+
+Port || was delayed || has delayed
+----------------------------------
+ 0   ||     0.0     ||    15.1
+ 1   ||    13.5     ||    15.1
+ 5   ||     0.0     ||    15.1
+\end{Verbatim}
+
+Finally \suaca\ also tells you how much delay was caused by the ports. First consider that the $mov$ instruction in line $0$ can, in theory, use ports $0, 1$ and $5$. In our case it causes a delay of $13.5$ cycles per iteration on another instruction, because it uses port $1$. It doesn't cause any delay on the other two ports that it might use simply because it always uses port $1$ in our particular case (see ~\autoref{sec:loop}). The second column tells us that line $0$ experiences a delay of $15.1$ cycles per iteration because all three usable ports were blocked. The $mov$ instruction we're considering here only consists of a single \microop\ which leads to all three of those values being identical.\\
+More precisely the $mov$ instruction can only be delayed by blocked ports if all three of its usable ports are blocked, otherwise it would just chose the free one. So all three of those blocked ports are responsible hence the three identical values.\\
+However this is not always the case as an instruction might consist of more than one \microop. We will discuss this further in \autoref{sec:chooseport}.
+
+
+\section{Branch analysis}
+
+
+
+
+\section{Auxiliary}
 The remaining options are:
 
 \begin{itemize}
