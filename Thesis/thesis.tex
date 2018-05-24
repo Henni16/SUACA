@@ -183,6 +183,7 @@ Where $[option]$ is one or several of the following:
     \item $-cfg$ will print the control flow graph into a file called $controlflow.dot$. The format will be graphviz readable.
     \item $-dg$ will print the dependencygraph into a file called $dependency.dot$. The format will also be graphviz readable.
     \item $-p$ triggers the ``performance mode''.
+    \item $-b$ triggers the branch analysis.
     \item ${--}arch\ x$ will consider $x$ as the underlaying micro-architecture of the analysis. At the time of writing the available options are NHM, SNB, IVB, HSW, BDW, SKL, CFL and KBL. The default value is SNB.
     \item ${--}loop\ x$ will trigger the loop analysis. The default value of $x$ is $1$.
     \item ${--}detail\ x$ will print detailed information about line $x$.
@@ -421,7 +422,7 @@ The most significant change is that the non-blocking ports analysis no longer ex
 
 
 \section{Detailed information}
-Finally \suaca can also deliver some detailed information about a specific line. The following table shows the result of a run on our example program with $200$ iterations and details for line $0$.
+\suaca can also deliver some detailed information about one particular line. This can be useful to determine how a specific instruction causes and experiences a delay. The following table shows the result of a run on our example program with $200$ iterations and details for line $0$.
 
 \begin{Verbatim}[fontsize=\scriptsize]
 Detailed delay information for instruction: mov rax, 0x1 in line 0
@@ -498,8 +499,52 @@ More precisely the $mov$ instruction can only be delayed by blocked ports if all
 However this is not always the case as an instruction might consist of more than one \microop. We will discuss this further in \autoref{sec:chooseport}.
 
 
+
+
 \section{Branch analysis}
 
+Finally \suaca is able to analyze different branches. As we have seen in \autoref{fig:cfg} and \autoref{fig:woloop} the ``normal'' analysis already considers branches for it's dependencies. However, as the effect of the instructions will be completely ignored in the simulation the branches won't have any other effect.\\
+With the $-b$ flag one can trigger the actual branch analysis which will perform two simulations, one for each branch. This will always consider the first $jump$ instruction and this one only. It won't consider every single possible path through a program with multiple branches. We will now consider the branching analysis of our example program, again with the Sandy Bridge architecture and $200$ iterations:
+
+\begin{Verbatim}[fontsize=\scriptsize]
+Left branch analysis:
+
+Block throughput: 2.00 cycles
+Block throughput with perfect front end: 2.00 cycles
+Block throughput with non-blocking ports: 2.00 cycles
+Block throughput with perfect front end and non-blocking ports: 2.00 cycles
+Microops per cycle: 2.49
+
+Analysis for architecture: SNB
+
+Line  ||   Num   ||   had   || caused  ||            Used Ports
+      ||   Uops  || to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||
+------------------------------------------------------------------------------------------------
+  0   ||    1    ||   2.4   ||   5.8   ||  0.3  ||  0.8  ||       ||       ||       ||       || mov rax, 0x1
+  1   ||    1    ||   2.5   ||   4.2   ||       ||  0.3  ||       ||       ||       ||  0.7  || cmp rcx, 0x0
+  3   ||    1    ||  40.9   ||  44.0   ||  0.6  ||  0.4  ||       ||       ||       ||       || add rbx, rax
+  4   ||    1    ||   2.5   ||   4.9   ||       ||       ||       ||       ||       ||  1.0  || jmp 0x5
+  6   ||    1    ||  41.5   ||  43.3   ||  0.8  ||  0.2  ||       ||       ||       ||       || add rbx, rbx
+
+
+Right branch analysis:
+
+Block throughput: 2.00 cycles
+Block throughput with perfect front end: 2.00 cycles
+Block throughput with non-blocking ports: 2.00 cycles
+Block throughput with perfect front end and non-blocking ports: 2.00 cycles
+Microops per cycle: 2.00
+
+Analysis for architecture: SNB
+
+Line  ||   Num   ||   had   || caused  ||            Used Ports
+      ||   Uops  || to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||
+------------------------------------------------------------------------------------------------
+  0   ||    1    ||         ||   0.3   ||  0.5  ||  0.2  ||       ||       ||       ||  0.2  || mov rax, 0x1
+  1   ||    1    ||         ||         ||  0.2  ||  0.5  ||       ||       ||       ||  0.3  || cmp rcx, 0x0
+  5   ||    1    ||  45.4   ||  45.6   ||  0.3  ||  0.3  ||       ||       ||       ||  0.4  || add rbx, rax
+  6   ||    1    ||  45.6   ||  45.4   ||  0.3  ||  0.3  ||       ||       ||       ||  0.4  || add rbx, rbx
+\end{Verbatim}
 
 
 

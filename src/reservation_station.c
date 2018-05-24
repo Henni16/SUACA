@@ -5,7 +5,7 @@
 #include "xmlParser.h"
 
 
-bool *compute_needed_instructions(graph_t *cfg, int branch) {
+bool *compute_needed_instructions(graph_t *cfg, int branch, single_list_t *list) {
     bool *needed = calloc(cfg->size, sizeof(bool));
     if (branch == -1) {
         for (int i = 0; i < cfg->size; ++i) {
@@ -20,12 +20,13 @@ bool *compute_needed_instructions(graph_t *cfg, int branch) {
         if (!branched && cur->num_successors > 1) {
             branched = true;
             cur_line = cur->successors[branch].line;
-        } else if (!cur->num_successors){
-            needed[cur_line] = true;
-            break;
         } else {
-            needed[cur_line] = true;
-            cur_line = cur->successors[0].line;
+            if (!is_branch_instruction(&list->array[cur_line]))
+                needed[cur_line] = true;
+            if (cur->num_successors)
+                cur_line = cur->successors[0].line;
+            else
+                break;
         }
         cur = cfg->nodes[cur_line];
     }
@@ -39,7 +40,7 @@ void create_initial_state(graph_t *dependencies, single_list_t *insts, int num_i
     sim_inst_t *prev = NULL;
     sim_inst_t **all =  malloc(station->num_insts * num_iterations * sizeof(sim_inst_t*));
     station->done_insts = newSimInstList(station->num_insts);
-    bool *needed = compute_needed_instructions(cfg, branch);
+    bool *needed = compute_needed_instructions(cfg, branch, insts);
     //build all sim insts
     for (int i = 0; i < station->num_insts * num_iterations; i++) {
         int mod_i = i % station->num_insts;
