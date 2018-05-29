@@ -422,7 +422,9 @@ The most significant change is that the non-blocking ports analysis no longer ex
 
 
 \section{Detailed information}
-\suaca can also deliver some detailed information about one particular line. This can be useful to determine how a specific instruction causes and experiences a delay. The following table shows the result of a run on our example program with $200$ iterations and details for line $0$.
+\label{sec:detail}
+
+\suaca\ can also deliver some detailed information about one particular line. This can be useful to determine how a specific instruction causes and experiences a delay. The following table shows the result of a run on our example program with $200$ iterations and details for line $0$.
 
 \begin{Verbatim}[fontsize=\scriptsize]
 Detailed delay information for instruction: mov rax, 0x1 in line 0
@@ -503,8 +505,8 @@ However this is not always the case as an instruction might consist of more than
 
 \section{Branch analysis}
 
-Finally \suaca is able to analyze different branches. As we have seen in \autoref{fig:cfg} and \autoref{fig:woloop} the ``normal'' analysis already considers branches for it's dependencies. However, as the effect of the instructions will be completely ignored in the simulation the branches won't have any other effect.\\
-With the $-b$ flag one can trigger the actual branch analysis which will perform two simulations, one for each branch. This will always consider the first $jump$ instruction and this one only. It won't consider every single possible path through a program with multiple branches. We will now consider the branching analysis of our example program, again with the Sandy Bridge architecture and $200$ iterations:
+Finally \suaca\ is able to analyze different branches. As we have seen in \autoref{fig:cfg} and \autoref{fig:woloop} the ``normal'' analysis already considers branches for it's dependencies. However, as the effect of the instructions will be completely ignored in the simulation the branches won't have any other effect.\\
+With the $-b$ flag one can trigger the actual branch analysis which will perform two simulations, one for each branch. This will always consider the first $jump$ instruction and this one only. It won't consider every single possible path through a program with multiple branches. This one $jump$ instruction, as well as the $jump$ instruction that's typically in one of the two branches, will be excluded from the analysis as \suaca\ expects the processor to perform branch prediction. We will now consider the branching analysis of our example program, again with the Sandy Bridge architecture and $200$ iterations:
 
 \begin{Verbatim}[fontsize=\scriptsize]
 Left branch analysis:
@@ -513,18 +515,17 @@ Block throughput: 2.00 cycles
 Block throughput with perfect front end: 2.00 cycles
 Block throughput with non-blocking ports: 2.00 cycles
 Block throughput with perfect front end and non-blocking ports: 2.00 cycles
-Microops per cycle: 2.49
+Microops per cycle: 2.00
 
 Analysis for architecture: SNB
 
 Line  ||   Num   ||   had   || caused  ||            Used Ports
       ||   Uops  || to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||
 ------------------------------------------------------------------------------------------------
-  0   ||    1    ||   2.4   ||   5.8   ||  0.3  ||  0.8  ||       ||       ||       ||       || mov rax, 0x1
-  1   ||    1    ||   2.5   ||   4.2   ||       ||  0.3  ||       ||       ||       ||  0.7  || cmp rcx, 0x0
-  3   ||    1    ||  40.9   ||  44.0   ||  0.6  ||  0.4  ||       ||       ||       ||       || add rbx, rax
-  4   ||    1    ||   2.5   ||   4.9   ||       ||       ||       ||       ||       ||  1.0  || jmp 0x5
-  6   ||    1    ||  41.5   ||  43.3   ||  0.8  ||  0.2  ||       ||       ||       ||       || add rbx, rbx
+  0   ||    1    ||         ||   0.3   ||  0.5  ||  0.2  ||       ||       ||       ||  0.2  || mov rax, 0x1
+  1   ||    1    ||         ||         ||  0.2  ||  0.5  ||       ||       ||       ||  0.3  || cmp rcx, 0x0
+  3   ||    1    ||  45.4   ||  45.6   ||  0.3  ||  0.3  ||       ||       ||       ||  0.4  || add rbx, rax
+  6   ||    1    ||  45.6   ||  45.4   ||  0.3  ||  0.3  ||       ||       ||       ||  0.4  || add rbx, rbx
 
 
 Right branch analysis:
@@ -546,7 +547,8 @@ Line  ||   Num   ||   had   || caused  ||            Used Ports
   6   ||    1    ||  45.6   ||  45.4   ||  0.3  ||  0.3  ||       ||       ||       ||  0.4  || add rbx, rbx
 \end{Verbatim}
 
-
+This kind of information can be useful to determine which of the two branches is more favorable for the execution. It can also be used to see if there are any significant differences between the two at all in order to prevent side channel attacks.\\
+One can also use this in combination with the detailed analysis as \suaca\ will tell you the original line of all instructions in both parts of the branching analysis.
 
 \section{Auxiliary}
 The remaining options are:
@@ -641,7 +643,7 @@ Now we want to take a look at the control flow sensitive algorithm \suaca\ actua
                     Map[$r$] = LineOf(i)\;
                 }
             }
-            Node $=$ Successor(Node, 0)\;
+            Node $\leftarrow$ Successor(Node, 0)\;
             \If{numSuccessors(Node) $>$ 1} {
                 \dep{CFG, DG, Map, Successor(Node, 1)}\; 
             }
@@ -668,8 +670,107 @@ For this algorithm we assume no backbranches, i.e.\ no loops, inside the program
 
 When telling \suaca\ to run the program in multiple loops we need to adjust the dependency analysis algorithm as there can arise some ``loop dependencies''. To solve this, we'll simply consider the program twice. So we'll append a copy of the program to itself, compute the $CFG$ and then run the algorithm above. Because we know the original length of our program we can extract all ``loop dependencies'' from the resulting dependency graph.
 
+
+\section{Simulation the front end}
+\label{sec:simfrontend}
+
+Although our main task is to simulate the reservation station we still want to consider the front end in our analysis. Depending on the micro architecture the front end is able to produce a certain amount of \microops\ every cycle. For example the Sandy Bridge architecture will produce $4$ \microops\ per cycle. However, we still have to consider the capacity of the reservation station as the front end might be faster than the execution itself. The reservation station of the Sandy Bridge architecture has a maximum capacity of $54$ \microops.\\
+We will now briefly discuss how our simulation actually performs those loads.
+
+\begin{algorithm}[H]
+    \SetAlgoLined
+    \caption{Load instructions into reservation station}
+    List $:=$ List of all instructions\;
+    Waiting $:=$ First element of List that is not fully loaded\;
+    Loadable $:= max(Loads\ per\ cycle, remaining\ space\ in\ station)$\;
+    \While{Loadable $> 0$} {
+        loaded $:=$ load\microops(Waiting, Loadable)\;
+        Loadable $\leftarrow$ Loadable $-$ loaded\;
+        \eIf{fullyLoaded(Waiting)} {
+            Waiting $\leftarrow$ List.GetNextElement(Waiting)\;
+        } {
+            break\;
+        }
+    }
+\end{algorithm}
+
+Where
+\begin{itemize}
+    \item load\microops(Waiting, $x$) loads up to $x$ \microops\ of Waiting and returns the number of \microops\ that were actually loaded.
+    \item $fullyLoaded(Waiting)$ returns true if all \microops\ of Waiting have been loaded into the reservation station.
+    \item $List.GetNextElement(Waiting)$ returns the successor element of $Waiting$ in List.
+\end{itemize}
+
+So it is possible that an instruction is partially (i.e.\ only some of its \microops) loaded into the reservation station.
+
 \section{Choosing the ports}
 \label{sec:chooseport}
+
+In this section we are going to discuss how exactly the ports which an instruction uses are chosen. As we've seen in \autoref{lst:xml} we know of how many \microops\ an instruction consists and which port those \microops\ want to use. As seen in \autoref{sec:simfrontend} an instruction can be loaded partially, which we will have to consider here.\\
+The following algorithm contains several crucial details to the simulation. First we will see how \suaca\ tries to contribute all \microops\ equally over all ports. It will also demonstrate the exact situations in which we will execute an instruction. Lastly it will explain how the \textbf{had to wait} and \textbf{caused to wait} columns we introduced in \autoref{sec:plain} are computed. 
+
+\begin{algorithm}[H]
+    \SetAlgoLined
+    \caption{Chose ports for loaded instructions}
+    \SetKwInOut{Input}{Input}
+    \Input{Instruction $:=$ First element in Instructionqueue}
+    \While{loaded\_\microops(Instruction) $> 0$} {
+        \eIf{$!all\_fathers\_done(Instruction)$} {
+            Instruction.has\_to\_wait++\;
+            \ForEach{Father $\in$ Fathers(Instruction)} {
+                Father.caused\_to\_wait++\;
+                Father.caused\_to\_wait\_depedency(Instruction)++\;
+                Instruction.had\_to\_wait\_depedency(Father)++\;
+            }
+        } {
+            Executable $:= true$\;
+            \If{!is\_fully\_loaded(Instruction)}{Executable $\leftarrow false$\;}
+            \ForEach{\microop\ $\mu$ $\in$ loaded\microops(Instruction)} {
+                Success $:=$ assign\_to\_ports($\mu$)\;
+                \If{!Success} {
+                    Executable $\leftarrow false$\;
+                }
+            }
+            \eIf{Executable} {
+                add\_to\_executionlist(Instruction)\;
+            }{
+                Blamed $:=$ Set of instructions\;
+                \ForEach{p $\in$ usable\_ports(Instruction)} {
+                    \If{p.using\_instruction() $\neq$ Instruction \textbf{and} !Blamed.contains(p.using\_instruction())} {
+                        p.using\_instruction().caused\_to\_wait++\;
+                        p.using\_instruction().caused\_to\_wait\_port(p)\;
+                        Instruction.had\_to\_wait\_port(p)\;
+                        Blamed.add(p.using\_instruction())\;
+                    }
+                }
+                Instruction.has\_to\_wait++\;
+            }          
+        }
+        Instruction $\leftarrow$ Instructionqueue.next(Instruction)\;
+    }
+\end{algorithm}
+
+~\\[-1em]
+\begin{algorithm}[H]
+    \label{alg:assign}
+    \SetAlgoLined
+    \caption{Assign \microop\ to port}
+    \SetKwInOut{Input}{Input}
+    \Input{\microop\ $\mu$}
+    \ForEach{p $\in$ PortQueue} {
+        \If{$\mu$.can\_use(p) \textbf{and} p.is\_free()} {
+            p.uses($\mu$)\;
+            \Return $true$\;
+        }
+    }
+    \Return $false$\;
+\end{algorithm}
+
+So this algorithm iterates over all instructions in program order as long as the current instruction is at least partially loaded. For each instruction it will first check if all of its dependencies have been resolved. If not it can't be executed and the delay counters have to be increased. Notice that we have separate counters for the cumulative delays and the special delays, that are only needed for the detailed analysis (\autoref{sec:detail}). We will see the same behavior for the ports and this explains why the special delays won't always sum up to the cumulative ones.\\
+If all dependencies have been resolved \suaca\ will try to assign all \microops\ of the instruction to a port. The function \textbf{\emph{assign\_to\_ports(\microop)}} is described in \autoref{alg:assign}. This function will iterate over all ports in prior usage order and assign the \microop\ if possible. More precisely \emph{PortQueue} contains all ports and is sorted by usage throughout the whole simulation. If possible it will assign the \microop\ to the port and return a success. If no usable port was free it will return a fail.\\
+We can observe that this is a greedy algorithm that is obviously not optimal in regards to the distribution of all \microops\ over the ports.
+
+
 
 \section{Executing applicable instructions}
 

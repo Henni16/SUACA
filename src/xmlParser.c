@@ -278,9 +278,10 @@ bool parse_architecture(FILE *file, inst_info_t *info, int numports) {
                 split_attribute(buff, &att);
                 if (!strcmp(att.attribute, "total_uops")) {
                     // TODO ask Andreas
-                    int tmp = atoi(att.value);
-                    if (tmp > info->num_micro_ops)
-                        info->num_micro_ops = tmp;
+//                    int tmp = atoi(att.value);
+//                    if (tmp > info->num_micro_ops)
+//                        info->num_micro_ops = tmp;
+                    info->num_micro_ops = atoi(att.value);
                     if (att.rest) {
 #if XML_DEBUG > 0
                         printf("No measurement for Instruction: %s on architecture: %s\n", xed_iform_enum_t2str(iform), ARCHITECTURE_NAME);

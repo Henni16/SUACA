@@ -57,7 +57,7 @@ void create_initial_state(graph_t *dependencies, single_list_t *insts, int num_i
         inst_info_t *info = table_info[index];
         if (info == NULL) {
             if (!station->done_insts->arr[mod_i] && print_unsupported)
-                printf("Unsupported instruction found in line: %i  instruction was: %s\n", i + 1,
+                printf("Unsupported instruction found in line: %i  instruction was: %s\n", i,
                        xed_iform_enum_t2str(index));
             all[i] = newSimInst(mod_i, NULL, 0, 0, 0, 0, 0, 0);
             all[i]->unsupported = true;
@@ -133,7 +133,12 @@ void perform_cycle(station_t *station) {
 
 void put_executables_into_ports(station_t *station) {
     sim_inst_t *cur = station->station_queue;
-    while (cur != NULL && cur->micro_ops_loaded > 0) {
+    while (cur != NULL && (cur->micro_ops_loaded > 0 || !cur->num_micro_ops)) {
+        if (!cur->num_micro_ops) {
+            execute_list_add(&station->to_exec, cur);
+            cur = cur->next;
+            continue;
+        }
         if (!all_fathers_done(cur)) {
             cur->cycles_delayed++;
             for (int i = 0; i < cur->fathers_todo; ++i) {
