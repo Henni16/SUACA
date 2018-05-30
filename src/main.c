@@ -130,6 +130,8 @@ int perform_simulation(station_t *station, single_list_t *list, bool print) {
     return num_cycles;
 }
 
+void validate_table(single_list_t *insts, inst_info_t **table);
+
 int parse_stuff(single_list_t *insts) {
     char station_file[strlen(arch_name) + strlen(STATION_LOC) + strlen(".arch") + 1];
     build_station_file_string(station_file, arch_name);
@@ -151,10 +153,32 @@ int parse_stuff(single_list_t *insts) {
         hashset_t *set = create_hashset(insts);
         printf("Parsing measurement file...\n");
         table_info = parse_instruction_file(TABLE, arch_name, station->num_ports, set);
+        validate_table(insts, table_info);
         printf("Done parsing!\n");
         hashset_free(set);
         if (table_info == NULL) {
             return 0;
+        }
+    }
+}
+
+void validate_table(single_list_t *insts, inst_info_t **table) {
+    inst_info_t *info;
+    port_ops_t *po;
+    int sum;
+    for (int i = 0; i < insts->single_loop_size; ++i) {
+        info = table[xed_decoded_inst_get_iform_enum(&insts->array[i])];
+        if (!info) continue;
+        po = info->micro_ops;
+        sum = 0;
+        while (po) {
+            sum += po->numops;
+            po = po->next;
+        }
+        if (sum != info->num_micro_ops) {
+            printf("Warning! Given number of Uops for instruction %s was %i, but sum of Uops was %i!\n",
+                   xed_iform_enum_t2str(xed_decoded_inst_get_iform_enum(&insts->array[i])), info->num_micro_ops, sum);
+            info->num_micro_ops = sum;
         }
     }
 }
@@ -164,7 +188,7 @@ void graphs_and_map(single_list_t *list, int index, int branch) {
         if (!add_loop_instructions(list)) {
             printf("Aborting analysis!\n");
         }
-    } else if (branch != 1){
+    } else if (branch != 1) {
         list->single_loop_size = list->size;
     }
     graph_t *g = build_controlflowgraph(list);
