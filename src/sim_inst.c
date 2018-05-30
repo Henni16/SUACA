@@ -218,8 +218,7 @@ print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int line
     int lat2 = 0;
     printf(" Maximum latency: %i\n\n", inst->latency);
     printf(" Latencies for dependencies:\n");
-    printf("  Line || %i -> Line || Line -> %i\n", inst->line, inst->line);
-    printf(" ----------------------------------\n");
+    bool dep = false;
     for (int i = 0; i < list->size; ++i) {
         cur = list->arr[i];
         for (int j = 0; j < inst->num_dep_children; ++j) {
@@ -233,6 +232,11 @@ print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int line
             }
         }
         if (lat1 || lat2) {
+            if (!dep) {
+                printf("  Line || %i -> Line || Line -> %i\n", inst->line, inst->line);
+                printf(" ----------------------------------\n");
+                dep = true;
+            }
             print_conditional_spaces(i);
             printf(" %i   ||", i);
             print_conditional_spaces(lat1);
@@ -242,6 +246,9 @@ print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int line
         }
         lat1 = 0;
         lat2 = 0;
+    }
+    if (!dep) {
+        printf(" This instruction doesn't have any dependencies!\n");
     }
     printf("\n\n");
     printf(" Delay caused by dependencies:\n");

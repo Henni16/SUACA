@@ -7,13 +7,16 @@ int main(int argc, char** argv) {
       "movl $111, %ebx;"
   ".byte 0x64, 0x67, 0x90;"
   ".intel_syntax noprefix;"
+//
+//  "add RBX, 6;"
+//  "add RAX, RBX;"
+//  "add RAX, RBX;"
+//  "add RAX, RBX;"
+//  "add RAX, RBX;"
+//  "add RBX, RBX;"
+//  
+  "cmp RAX, 6;"
 
-  "add RBX, 6;"
-  "add RAX, RBX;"
-  "add RAX, RBX;"
-  "add RAX, RBX;"
-  "add RAX, RBX;"
-  "add RBX, RBX;"
 
   ".att_syntax prefix;"
   "movl $222, %ebx;"

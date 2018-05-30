@@ -158,13 +158,20 @@ void put_executables_into_ports(station_t *station) {
                 if (po->numops) {
                     fits = false;
                 }
+                // this part is already in the port pipeline
+                if (!po->loaded_ops) {
+                    po = po->next;
+                    continue;
+                }
                 int arr_len = 0;
+                hashset_t *blamable = new_hashset(station->num_ports);
                 // check which ports are possible
                 for (int i = 0; i < station->num_ports; ++i) {
                     if (po->usable_ports[i] && !station->ports[i]) {
                         insert_sorted(will_use, &arr_len, i, station);
                     } else if (po->usable_ports[i]) {
                         fits_single = false;
+                        insert_into_hashset(blamable, i);
                     }
                 }
                 // assign the microops to the least used ports
@@ -184,11 +191,12 @@ void put_executables_into_ports(station_t *station) {
                 if (!fits_single) {
                     fits = false;
                     for (int i = 0; i < station->num_ports; ++i) {
-                        if (po->usable_ports[i] && station->ports[i]->id != cur->id) {
+                        if (hashset_contains(blamable, i)) {
                             insert_into_hashset(would_like_to_use, i);
                         }
                     }
                 }
+                hashset_free(blamable);
                 po = po->next;
             }
             if (fits) {

@@ -213,7 +213,7 @@ end:
 Running \suaca\ without any of the options above will result in the following output:
 
 
-\begin{Verbatim}[fontsize=\relsize{-2}]
+\begin{Verbatim}[fontsize=\tiny]
 Block throughput: 3.00 cycles
 Block throughput with perfect front end: 3.00 cycles
 Block throughput with non-blocking ports: 3.00 cycles
@@ -233,6 +233,7 @@ Analysis for architecture: SNB
   5   ||    1    ||         ||   1.0   ||       ||  1.0  ||       ||       ||       ||       || add rbx, rax
   6   ||    1    ||   1.0   ||         ||  1.0  ||       ||       ||       ||       ||       || add rbx, rbx
 \end{Verbatim}
+
 
 At the beginning one will notice the following values:
 \begin{itemize}
@@ -259,7 +260,7 @@ A closer look at the concrete values of this particular run reveals that the sum
 \label{sec:loop}
 As we mentioned above the major use case of \iaca\ is analyzing an innermost loop. While \iaca\ will therefore always assume a loop (and ``choose'' the number of iterations) when analyzing a program \suaca\ will give the user the option to run the simulation in a loop with the $--loop\ x$ flag. First consider the \suaca\ run of our example program with the flag $--loop\ 200$ set:
 
-\begin{Verbatim}[fontsize=\scriptsize]
+\begin{Verbatim}[fontsize=\tiny]
 Block throughput: 2.34 cycles
 Block throughput with perfect front end: 2.34 cycles
 Block throughput with non-blocking ports: 2.00 cycles
@@ -396,7 +397,7 @@ When \suaca\ is called with at least $2$ loops it will also track all ``loop dep
 As previously discussed one of the big a advantages of \suaca\ is that one can easily add new architectures that the analysis is based on.\\
 The $--arch\ x$ option gives the user the ability to choose a specific micro-architecture. For our example we will use Intel's Coffee Lake micro-architecture instead of the Sandy Bridge micro-architecture we used previously (the first two columns are left out to improve readability):
 
-\begin{Verbatim}[fontsize=\scriptsize]
+\begin{Verbatim}[fontsize=\tiny]
 Block throughput: 2.00 cycles
 Block throughput with perfect front end: 2.00 cycles
 Block throughput with non-blocking ports: 2.00 cycles
@@ -509,7 +510,7 @@ However this is not always the case as an instruction might consist of more than
 Finally \suaca\ is able to analyze different branches. As we have seen in \autoref{fig:cfg} and \autoref{fig:woloop} the ``normal'' analysis already considers branches for it's dependencies. However, as the effect of the instructions will be completely ignored in the simulation the branches won't have any other effect.\\
 With the $-b$ flag one can trigger the actual branch analysis which will perform two simulations, one for each branch. This will always consider the first $jump$ instruction and this one only. It won't consider every single possible path through a program with multiple branches. This one $jump$ instruction, as well as the $jump$ instruction that's typically in one of the two branches, will be excluded from the analysis as \suaca\ expects the processor to perform branch prediction. We will now consider the branching analysis of our example program, again with the Sandy Bridge architecture and $200$ iterations:
 
-\begin{Verbatim}[fontsize=\scriptsize]
+\begin{Verbatim}[fontsize=\tiny]
 Left branch analysis:
 
 Block throughput: 2.00 cycles
@@ -661,9 +662,7 @@ Where
 
 This time we'll ``climb along'' the $CFG$. If we never face a branch, i.e.\ $numSuccessors()$ never returns a value greater $1$, this algorithm will exactly the same as the one we have just seen.\\
 In the case of $numSuccessors() > 1$ we'll make another call of $Dep-Analysis$ on the ``right branch''. From there on there will be $2$ analyses, one for every branch in the $CFG$. Each analysis has its own $Map$ as there can be different writes on each branch. Note that we won't join the two analyses as we would need to find the first mutual descendant.\\
-
 In the worst case every instruction is a branch, so we would spawn a new function for every one of them. This leads to a runtime of $\mathcal{O}(n^2*m)$.\\
-
 For this algorithm we assume no backbranches, i.e.\ no loops, inside the program. In practice \suaca\ will simply check for every branch if it is a backbranch and should the situation arise ignore it.
 
 
@@ -727,13 +726,13 @@ The following algorithm contains several crucial details to the simulation. Firs
             Executable $:= true$\;
             \If{!is\_fully\_loaded(Instruction)}{Executable $\leftarrow false$\;}
             \ForEach{\microop\ $\mu$ $\in$ loaded\microops(Instruction)} {
-                Success $:=$ assign\_to\_ports($\mu$)\;
+                Success $:=$ assign\_to\_ports($\mu$, Instruction)\;
                 \If{!Success} {
                     Executable $\leftarrow false$\;
                 }
             }
             \eIf{Executable} {
-                add\_to\_executionlist(Instruction)\;
+                add\_to\_executionlist(Instruction)\; \label{line:if}
             }{
                 Blamed $:=$ Set of instructions\;
                 \ForEach{p $\in$ usable\_ports(Instruction)} {
@@ -757,23 +756,37 @@ The following algorithm contains several crucial details to the simulation. Firs
     \SetAlgoLined
     \caption{Assign \microop\ to port}
     \SetKwInOut{Input}{Input}
-    \Input{\microop\ $\mu$}
+    \Input{\microop\ $\mu$, Instruction $I$}
+    Success $\leftarrow true$\;
     \ForEach{p $\in$ PortQueue} {
-        \If{$\mu$.can\_use(p) \textbf{and} p.is\_free()} {
+        \uIf{$\mu$.can\_use(p) \textbf{and} p.is\_free()} {
             p.uses($\mu$)\;
             \Return $true$\;
         }
+        \ElseIf{$\mu$.can\_use(p) \textbf{and} p.using\_instruction() $\neq I$} {
+            Success $\leftarrow false$
+        }
     }
-    \Return $false$\;
+    \Return Success\;
 \end{algorithm}
 
-So this algorithm iterates over all instructions in program order as long as the current instruction is at least partially loaded. For each instruction it will first check if all of its dependencies have been resolved. If not it can't be executed and the delay counters have to be increased. Notice that we have separate counters for the cumulative delays and the special delays, that are only needed for the detailed analysis (\autoref{sec:detail}). We will see the same behavior for the ports and this explains why the special delays won't always sum up to the cumulative ones.\\
-If all dependencies have been resolved \suaca\ will try to assign all \microops\ of the instruction to a port. The function \textbf{\emph{assign\_to\_ports(\microop)}} is described in \autoref{alg:assign}. This function will iterate over all ports in prior usage order and assign the \microop\ if possible. More precisely \emph{PortQueue} contains all ports and is sorted by usage throughout the whole simulation. If possible it will assign the \microop\ to the port and return a success. If no usable port was free it will return a fail.\\
-We can observe that this is a greedy algorithm that is obviously not optimal in regards to the distribution of all \microops\ over the ports.
+So this algorithm iterates over all instructions in program order as long as the current instruction is at least partially loaded. For each instruction it will first check if all of its dependencies have been resolved. If not it can't be executed and the delay counters have to be increased. Notice that we have separate counters for the cumulative delays and the special delays, which are only needed for the detailed analysis (\autoref{sec:detail}). We will see the same behavior for the ports and this explains why the special delays won't always sum up to the cumulative ones.\\
+If all dependencies have been resolved \suaca\ will try to assign all \microops\ of the instruction to a port. The function \textbf{\emph{assign\_to\_ports(\microop, Instruction)}} is described in \autoref{alg:assign}. This function will iterate over all ports in prior usage order and assign the \microop\ if possible. More precisely \emph{PortQueue} contains all ports and is sorted by usage throughout the whole simulation. If possible it will assign the \microop\ to the port and return a success. If no usable port was free it will return a fail unless all ports were blocked by the instruction itself.\\
+We can observe that this is a greedy algorithm that is obviously not optimal in regards to the distribution of all \microops\ over the ports. However, we assume that this greedy algorithm comes close to what the reservation stations are doing in reality.\\
+If the assignment of a single \microop\ failed the flag \emph{Executable} will be set to \emph{false}. As we can see in \autoref{line:if} the instruction will only added to the execution list (which we will further discuss in \autoref{sec:execute}) if this flag is set. This means that an instruction is only executed if all of its \microops\ could be assigned to a port. We are doing this, because of our measurements. Those will run the instructions ``in a vacuum'', i.e.\ there simply are no other instructions that might block a port (the instruction itself however might do so, that's why we are excluding this case in the \emph{assign\_to\_ports} function). So we will always measure the best case latency for every instruction. As we don't know if there is an order in which the instructions \microops\ have to be executed, or if they can be executed simultaneously, we have to assume a delay as soon as a single \microop\ is denied. As we need some more information about the actual execution of our instructions we will further discuss this in \autoref{sec:latency}.\\
+
+
 
 
 
 \section{Executing applicable instructions}
+\label{sec:execute}
+
+
+\section{Computation of latency}
+\label{sec:latency}
+
+\chapter{Evaluation}
 
 \bibliographystyle{alpha}
 {\small \bibliography{thesis}}
