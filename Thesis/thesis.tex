@@ -148,6 +148,10 @@ Abstract
 %----------------------------------------------------------------------------------------
 
 \chapter{Introduction}
+
+
+\section{Measurements}
+\label{sec:measurements}
 \begin{lstlisting}[language=XML, basicstyle=\ttfamily\scriptsize, breaklines=true, label=lst:xml]
 <instruction ... iform="ADD_LOCK_MEMv_GPRv" ...>
 <operand idx="2" type="reg" ...>RAX,RCX,RDX,RBX,...</operand>
@@ -735,8 +739,8 @@ The following algorithm contains several crucial details to the simulation. Firs
                 add\_to\_executionlist(Instruction)\; \label{line:if}
             }{
                 Blamed $:=$ Set of instructions\;
-                \ForEach{p $\in$ usable\_ports(Instruction)} {
-                    \If{p.using\_instruction() $\neq$ Instruction \textbf{and} !Blamed.contains(p.using\_instruction())} {
+                \ForEach{p $\in$ blocked\_ports(Instruction)} {
+                    \If{!Blamed.contains(p.using\_instruction())} {
                         p.using\_instruction().caused\_to\_wait++\;
                         p.using\_instruction().caused\_to\_wait\_port(p)\;
                         Instruction.had\_to\_wait\_port(p)\;
@@ -759,22 +763,23 @@ The following algorithm contains several crucial details to the simulation. Firs
     \Input{\microop\ $\mu$, Instruction $I$}
     Success $\leftarrow true$\;
     \ForEach{p $\in$ PortQueue} {
-        \uIf{$\mu$.can\_use(p) \textbf{and} p.is\_free()} {
+        \If{$\mu$.can\_use(p) \textbf{and} p.is\_free()} {
             p.uses($\mu$)\;
             \Return $true$\;
-        }
-        \ElseIf{$\mu$.can\_use(p) \textbf{and} p.using\_instruction() $\neq I$} {
-            Success $\leftarrow false$
         }
     }
     \Return Success\;
 \end{algorithm}
 
 So this algorithm iterates over all instructions in program order as long as the current instruction is at least partially loaded. For each instruction it will first check if all of its dependencies have been resolved. If not it can't be executed and the delay counters have to be increased. Notice that we have separate counters for the cumulative delays and the special delays, which are only needed for the detailed analysis (\autoref{sec:detail}). We will see the same behavior for the ports and this explains why the special delays won't always sum up to the cumulative ones.\\
-If all dependencies have been resolved \suaca\ will try to assign all \microops\ of the instruction to a port. The function \textbf{\emph{assign\_to\_ports(\microop, Instruction)}} is described in \autoref{alg:assign}. This function will iterate over all ports in prior usage order and assign the \microop\ if possible. More precisely \emph{PortQueue} contains all ports and is sorted by usage throughout the whole simulation. If possible it will assign the \microop\ to the port and return a success. If no usable port was free it will return a fail unless all ports were blocked by the instruction itself.\\
+If all dependencies have been resolved \suaca\ will try to assign all \microops\ of the instruction to a port. To achieve this the algorithm will iterate over all \microops\ that have been loaded into the reservation station. Note that this will ignore all \microops\ that have been put into a port already. The function \textbf{\emph{assign\_to\_ports(\microop, Instruction)}} is described in \autoref{alg:assign}. This function will iterate over all ports in prior usage order and assign the \microop\ if possible. More precisely \emph{PortQueue} contains all ports and is sorted by usage throughout the whole simulation. If possible it will assign the \microop\ to the port and return a success. If no usable port was free it will return a fai.\\
 We can observe that this is a greedy algorithm that is obviously not optimal in regards to the distribution of all \microops\ over the ports. However, we assume that this greedy algorithm comes close to what the reservation stations are doing in reality.\\
-If the assignment of a single \microop\ failed the flag \emph{Executable} will be set to \emph{false}. As we can see in \autoref{line:if} the instruction will only added to the execution list (which we will further discuss in \autoref{sec:execute}) if this flag is set. This means that an instruction is only executed if all of its \microops\ could be assigned to a port. We are doing this, because of our measurements. Those will run the instructions ``in a vacuum'', i.e.\ there simply are no other instructions that might block a port (the instruction itself however might do so, that's why we are excluding this case in the \emph{assign\_to\_ports} function). So we will always measure the best case latency for every instruction. As we don't know if there is an order in which the instructions \microops\ have to be executed, or if they can be executed simultaneously, we have to assume a delay as soon as a single \microop\ is denied. As we need some more information about the actual execution of our instructions we will further discuss this in \autoref{sec:latency}.\\
+If the assignment or the load of a single \microop\ failed the flag \emph{Executable} will be set to \emph{false}. As we can see in \autoref{line:if} the instruction will only added to the execution list (which we will further discuss in \autoref{sec:execute}) if this flag is set. This means that an instruction is only executed if all of its \microops\ could be assigned to a port. We are doing this, because of our measurements. As we've seen in \autoref{sec:measurements} those will always contain the best case for latency. The biggest problem we face here is the missing information about the \microops. We don't know anything about the dependencies between them and so we don't know if there is an order in which those have to be executed, or if they can be executed simultaneously. So we have to assume a delay as soon as a single \microop\ is denied a port although that might not actually be the case in reality. This means that we will potentially overestimate the latency of a single instruction although it is possible that \suaca\ will actually underestimate the throughput of a program as one can note in the following examples.\\
 
+
+Consider two instructions \emph{X} and \emph{Y}. \emph{X} consists of two \microops\ one of which can use port $0$ the other can use port $1$. \emph{Y} only consists of one which can use port $1$. \emph{X} is in front of \emph{Y} in program order, both are fully loaded, not dependent on each other and have a latency of $2$ cycles.\\
+What \suaca\ ``doesn't know'' is that the the second \microop\ (port $1$) of \emph{X} depends on the first (port $0$). So the simulation will do the following: In the first cycle it will assign \emph{X} to ports $0$ and $1$. There is no port left for \emph{Y} so it won't be added to the execution list. This will happen in the second cycle and as \emph{Y}'s latency was two cycles \suaca\ will compute a throughput of three cycles (as \emph{X} was executed in the first and second).\\
+However, in reality \emph{X} won't block port $1$ in the first cycle as this particular \microop\ depends on the one that uses port $0$. So in the first cycle \emph{X} will only use port $0$. \emph{Y} can then freely use port $1$. In the second cycle \emph{X} can then use port $1$. No port was ever blocked so there simply won't be a delay, both instructions could be executed simultaneously. So the ``real throughput'' of our example would be two cycles. 
 
 
 
@@ -782,9 +787,6 @@ If the assignment of a single \microop\ failed the flag \emph{Executable} will b
 \section{Executing applicable instructions}
 \label{sec:execute}
 
-
-\section{Computation of latency}
-\label{sec:latency}
 
 \chapter{Evaluation}
 
