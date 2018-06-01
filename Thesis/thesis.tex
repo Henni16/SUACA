@@ -159,10 +159,12 @@ A crucial part of \suaca's functionality are the measurements provided by \cite{
 <instruction ... iform="ADD_LOCK_MEMv_GPRv" ...>
     <operand idx="2" type="reg" ...>RAX,RCX,RDX,RBX,...</operand>
     <operand idx="3" type="flag" ...>OF</operand>
+    <operand idx="4" type="flag" ...>SF</operand>
     ...
     <architecture name="NHM">
         <measurement port15="2" port2="1" port3="1" port4="1" total_uops="5">
-            <latency cycles="19" startOp="2" targetOp="3"/>
+            <latency cycles="19" ... targetOp="3"/>
+            <latency cycles="19" ... targetOp="4">
             ...
         <\measurement>
     </architecture>
@@ -172,10 +174,10 @@ A crucial part of \suaca's functionality are the measurements provided by \cite{
 We dotted out some unnecessary or redundant information. As we can see in the first line this is the information for the instruction with the \emph{iform} ``ADD\_LOCK\_MEMv\_GPR''. \emph{iform} is an enum from the XED Library (\cite{xed}) that is used to identify instructions. We can extract the following information from our snippet:
 
 \begin{itemize}
-    \item The \emph{RAX, RCX, RDX, \dots} registers are possible operands and have the id $2$. We only need the mapping of $id \rightarrow register$ here as the xed library will tell us which operands are actually used in the analyzed programs.
+    \item One of the \emph{RAX, RCX, RDX, \dots} registers is an operand and they have the id $2$. We only need the mapping of $id \rightarrow register$ here as the xed library will tell us which operands are actually used in the analyzed programs. Similarly the flags also have their ids. The flags are the single bits of the \emph{RFLAGS} register in \emph{X86}.
     \item We have some measurements for the intel nahelem architecture.
-    \item The instruction consists of $5$ \microops. Two of which can use ports $1$ and $5$. One each can use port $2$, port $3$ and port $4$.
-    \item 
+    \item When simulating NHM the instruction consists of $5$ \microops. Two of which can use ports $1$ and $5$. One each can use port $2$, port $3$ and port $4$.
+    \item It will take $19$ cycles to compute the result for the operand with id $3$. Most instructions have several latency items, depending on the number and kind of operands. In our case there is no information for operand $2$ as the instruction won't write to those registers. However, the latency for the operand with id $4$ is also $19$ cycles. Some instructions actually produce their results in a specific order. It might be that one operand is available after $3$ cycles and another one after $5$, so an instruction that only needs the first of those operands only has to wait $3$ cycles whereas another one that needs the second operand has to wait $5$. \suaca\ can simulate this behavior as it knows which operand is causing the dependency. When simulating the whole instruction \suaca\ takes the maximum of those values.
 \end{itemize}
 
 

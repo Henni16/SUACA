@@ -184,8 +184,8 @@ print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int num_por
 
 
 void print_conditional_spaces(double i) {
-    if (i < 100) {
-        if (i < 10) {
+    if (i <= 99.95) {
+        if (i <= 9.95) {
             printf(" ");
         }
         printf(" ");
