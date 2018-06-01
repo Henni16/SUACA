@@ -152,19 +152,31 @@ Abstract
 
 \section{Measurements}
 \label{sec:measurements}
-\begin{lstlisting}[language=XML, basicstyle=\ttfamily\scriptsize, breaklines=true, label=lst:xml]
+
+A crucial part of \suaca's functionality are the measurements provided by \cite{Andreas}. Consider this snippet from the XML-measurement-file file:
+
+\begin{lstlisting}[language=XML, basicstyle=\ttfamily\scriptsize, breaklines=false]
 <instruction ... iform="ADD_LOCK_MEMv_GPRv" ...>
-<operand idx="2" type="reg" ...>RAX,RCX,RDX,RBX,...</operand>
-<operand idx="3" type="flag" ...>OF</operand>
-...
-<architecture name="NHM">
-<measurement ... port15="2" port2="1" port3="1" port4="1" total_uops="5">
-<latency ... cycles="19" startOp="2" targetOp="3"/>
-...
-<\measurement>
-</architecture>
+    <operand idx="2" type="reg" ...>RAX,RCX,RDX,RBX,...</operand>
+    <operand idx="3" type="flag" ...>OF</operand>
+    ...
+    <architecture name="NHM">
+        <measurement port15="2" port2="1" port3="1" port4="1" total_uops="5">
+            <latency cycles="19" startOp="2" targetOp="3"/>
+            ...
+        <\measurement>
+    </architecture>
 <\instruction>
 \end{lstlisting}
+
+We dotted out some unnecessary or redundant information. As we can see in the first line this is the information for the instruction with the \emph{iform} ``ADD\_LOCK\_MEMv\_GPR''. \emph{iform} is an enum from the XED Library (\cite{xed}) that is used to identify instructions. We can extract the following information from our snippet:
+
+\begin{itemize}
+    \item The \emph{RAX, RCX, RDX, \dots} registers are possible operands and have the id $2$. We only need the mapping of $id \rightarrow register$ here as the xed library will tell us which operands are actually used in the analyzed programs.
+    \item We have some measurements for the intel nahelem architecture.
+    \item The instruction consists of $5$ \microops. Two of which can use ports $1$ and $5$. One each can use port $2$, port $3$ and port $4$.
+    \item 
+\end{itemize}
 
 
 
@@ -178,7 +190,9 @@ Abstract
 %----------------------------------------------------------------------------------------
 
 \chapter{Functionality of SUACA}
-In this chapter we're going to explain and show the full functionality of \suaca. First we will take a look at the command line interface and then see an example run of each available option.\\
+In this chapter we're going to explain and show the full functionality of \suaca. First we will take a look at the command line interface and then see an example run of each available option.
+
+\section{The command line interface}
 The CLI of works as follows:\\
 \[
 suaca\ [option]\ path\_to\_file
@@ -216,8 +230,8 @@ end:
 \label{sec:plain}
 Running \suaca\ without any of the options above will result in the following output:
 
-
-\begin{Verbatim}[fontsize=\tiny]
+\begin{center}
+\begin{BVerbatim}[fontsize=\tiny]
 Block throughput: 3.00 cycles
 Block throughput with perfect front end: 3.00 cycles
 Block throughput with non-blocking ports: 3.00 cycles
@@ -236,7 +250,8 @@ Analysis for architecture: SNB
   4   ||    1    ||   1.0   ||         ||       ||       ||       ||       ||       ||  1.0  || jmp 0x5
   5   ||    1    ||         ||   1.0   ||       ||  1.0  ||       ||       ||       ||       || add rbx, rax
   6   ||    1    ||   1.0   ||         ||  1.0  ||       ||       ||       ||       ||       || add rbx, rbx
-\end{Verbatim}
+\end{BVerbatim}
+\end{center}
 
 
 At the beginning one will notice the following values:
@@ -264,7 +279,8 @@ A closer look at the concrete values of this particular run reveals that the sum
 \label{sec:loop}
 As we mentioned above the major use case of \iaca\ is analyzing an innermost loop. While \iaca\ will therefore always assume a loop (and ``choose'' the number of iterations) when analyzing a program \suaca\ will give the user the option to run the simulation in a loop with the $--loop\ x$ flag. First consider the \suaca\ run of our example program with the flag $--loop\ 200$ set:
 
-\begin{Verbatim}[fontsize=\tiny]
+\begin{center}
+\begin{BVerbatim}[fontsize=\tiny]
 Block throughput: 2.34 cycles
 Block throughput with perfect front end: 2.34 cycles
 Block throughput with non-blocking ports: 2.00 cycles
@@ -283,7 +299,8 @@ Analysis for architecture: SNB
    4   ||    1    ||  16.8   ||  20.4   ||       ||       ||       ||       ||       ||  1.0  || jmp 0x5
    5   ||    1    ||  15.2   ||  28.9   ||  0.3  ||  0.7  ||       ||       ||       ||       || add rbx, rax
    6   ||    1    ||  15.8   ||  43.9   ||  1.0  ||       ||       ||       ||       ||       || add rbx, rbx
-\end{Verbatim}
+\end{BVerbatim}
+\end{center}
 
 When running the simulation in a loop the following values will become averages per iteration:
 
@@ -401,7 +418,8 @@ When \suaca\ is called with at least $2$ loops it will also track all ``loop dep
 As previously discussed one of the big a advantages of \suaca\ is that one can easily add new architectures that the analysis is based on.\\
 The $--arch\ x$ option gives the user the ability to choose a specific micro-architecture. For our example we will use Intel's Coffee Lake micro-architecture instead of the Sandy Bridge micro-architecture we used previously (the first two columns are left out to improve readability):
 
-\begin{Verbatim}[fontsize=\tiny]
+\begin{center}
+\begin{BVerbatim}[fontsize=\tiny]
 Block throughput: 2.00 cycles
 Block throughput with perfect front end: 2.00 cycles
 Block throughput with non-blocking ports: 2.00 cycles
@@ -420,10 +438,10 @@ Analysis for architecture: CFL
    5.1   ||   9.1   ||  0.2  ||       ||       ||       ||       ||       ||  0.8  ||       || jmp 0x5
   42.8   ||  51.6   ||  0.7  ||  0.1  ||       ||       ||       ||  0.2  ||  0.0  ||       || add rbx, rax
   43.6   ||  90.8   ||  0.1  ||  0.2  ||       ||       ||       ||  0.7  ||  0.0  ||       || add rbx, rbx
-\end{Verbatim}
+\end{BVerbatim}
+\end{center}
 
-The most significant change is that the non-blocking ports analysis no longer experiences an improvement in runtime. This is due to the larger number of ports in the Coffee Lake architecture. We can now instead observe that the three $add$ instructions, or more so their dependencies on each other, are responsible for most of the delays. 
-
+The most significant change is that the non-blocking ports analysis no longer experiences an improvement in runtime. This is due to the larger number of ports in the Coffee Lake architecture. We can now instead observe that the three $add$ instructions, or more so their dependencies on each other, are responsible for most of the delays.
 
 
 
@@ -432,39 +450,42 @@ The most significant change is that the non-blocking ports analysis no longer ex
 
 \suaca\ can also deliver some detailed information about one particular line. This can be useful to determine how a specific instruction causes and experiences a delay. The following table shows the result of a run on our example program with $200$ iterations and details for line $0$.
 
-\begin{Verbatim}[fontsize=\scriptsize]
+\begin{center}
+\begin{BVerbatim}[fontsize=\scriptsize]
 Detailed delay information for instruction: mov rax, 0x1 in line 0
 
-Maximum latency: 1
-
-Latencies for dependencies:
-
-Line || 0 -> Line || Line -> 0
-----------------------------------
- 3   ||     1     ||     0
- 5   ||     1     ||     0
-
-
-Delay caused by dependencies:
-
-Line || was delayed || has delayed
-----------------------------------
- 3   ||    15.2     ||     0.0
- 5   ||    14.5     ||     0.0
-
-
-Delay caused by blocked ports:
-
-Port || was delayed || has delayed
-----------------------------------
- 0   ||     0.0     ||    15.1
- 1   ||    13.5     ||    15.1
- 5   ||     0.0     ||    15.1
-\end{Verbatim}
+                Maximum latency: 1
+                
+                Latencies for dependencies:
+                
+                Line || 0 -> Line || Line -> 0
+                ----------------------------------
+                 3   ||     1     ||     0
+                 5   ||     1     ||     0
+                
+                
+                Delay caused by dependencies:
+                
+                Line || was delayed || has delayed
+                ----------------------------------
+                 3   ||    15.2     ||     0.0
+                 5   ||    14.5     ||     0.0
+                
+                
+                Delay caused by blocked ports:
+                
+                Port || was delayed || has delayed
+                ----------------------------------
+                 0   ||     0.0     ||    15.1
+                 1   ||    13.5     ||    15.1
+                 5   ||     0.0     ||    15.1
+\end{BVerbatim}
+\end{center}
 
 In order to get a better understanding of those values we will split the output and explain them step by step.
 
-\begin{Verbatim}[fontsize=\scriptsize]
+\begin{center}
+\begin{BVerbatim}[fontsize=\scriptsize]
 Maximum latency: 1
 
 Latencies for dependencies:
@@ -473,13 +494,14 @@ Line || 0 -> Line || Line -> 0
 ----------------------------------
  3   ||     1     ||     0
  5   ||     1     ||     0
-\end{Verbatim}
+\end{BVerbatim}
+\end{center}
 
 First we can see that this instruction has a maximum latency of one cycle. This value can differ from those of the table below as we have seen in ~\autoref{lst:xml}.\\
 The table itself shows the latencies \suaca\ used for the dependencies. The second column show the delay from the analyzed line to the line given in the first column and the third row shows the delay in the other direction. In our case lines $3$ and $5$ depend on line $0$ (see ~\autoref{fig:wloop}) and we can see here that those lines actually have to wait one cycle for line $0$ to be finished and line $0$ itself is independent of the other two.\\
 
-
-\begin{Verbatim}[fontsize=\scriptsize]
+\begin{center}
+\begin{BVerbatim}[fontsize=\scriptsize]
 Delay caused by blocked ports:
 
 Port || was delayed || has delayed
@@ -487,12 +509,13 @@ Port || was delayed || has delayed
 0   ||     0.0     ||    15.1
 1   ||    13.5     ||    15.1
 5   ||     0.0     ||    15.1
-\end{Verbatim}
+\end{BVerbatim}
+\end{center}
 
 This table now shows, that lines $3$ and $5$ actually are delayed by our analyzed line. On average line $3$ has to wait $15.2$ cycles for line $0$ to be finished while line $5$ has to wait $14.5$ cycles. Of course both of them don't cause any delay on line $0$ as there is no dependence.\\
 
-
-\begin{Verbatim}[fontsize=\scriptsize]
+\begin{center}
+\begin{BVerbatim}[fontsize=\scriptsize]
 Delay caused by blocked ports:
 
 Port || was delayed || has delayed
@@ -500,7 +523,8 @@ Port || was delayed || has delayed
  0   ||     0.0     ||    15.1
  1   ||    13.5     ||    15.1
  5   ||     0.0     ||    15.1
-\end{Verbatim}
+\end{BVerbatim}
+\end{center}
 
 Finally \suaca\ also tells you how much delay was caused by the ports. First consider that the $mov$ instruction in line $0$ can, in theory, use ports $0, 1$ and $5$. In our case it causes a delay of $13.5$ cycles per iteration on another instruction, because it uses port $1$. It doesn't cause any delay on the other two ports that it might use simply because it always uses port $1$ in our particular case (see ~\autoref{sec:loop}). The second column tells us that line $0$ experiences a delay of $15.1$ cycles per iteration because all three usable ports were blocked. The $mov$ instruction we're considering here only consists of a single \microop\ which leads to all three of those values being identical.\\
 More precisely the $mov$ instruction can only be delayed by blocked ports if all three of its usable ports are blocked, otherwise it would just chose the free one. So all three of those blocked ports are responsible hence the three identical values.\\
@@ -514,7 +538,8 @@ However this is not always the case as an instruction might consist of more than
 Finally \suaca\ is able to analyze different branches. As we have seen in \autoref{fig:cfg} and \autoref{fig:woloop} the ``normal'' analysis already considers branches for it's dependencies. However, as the effect of the instructions will be completely ignored in the simulation the branches won't have any other effect.\\
 With the $-b$ flag one can trigger the actual branch analysis which will perform two simulations, one for each branch. This will always consider the first $jump$ instruction and this one only. It won't consider every single possible path through a program with multiple branches. This one $jump$ instruction, as well as the $jump$ instruction that's typically in one of the two branches, will be excluded from the analysis as \suaca\ expects the processor to perform branch prediction. We will now consider the branching analysis of our example program, again with the Sandy Bridge architecture and $200$ iterations:
 
-\begin{Verbatim}[fontsize=\tiny]
+\begin{center}
+\begin{BVerbatim}[fontsize=\tiny]
 Left branch analysis:
 
 Block throughput: 2.00 cycles
@@ -551,7 +576,8 @@ Line  ||   Num   ||   had   || caused  ||            Used Ports
   1   ||    1    ||         ||         ||  0.2  ||  0.5  ||       ||       ||       ||  0.3  || cmp rcx, 0x0
   5   ||    1    ||  45.4   ||  45.6   ||  0.3  ||  0.3  ||       ||       ||       ||  0.4  || add rbx, rax
   6   ||    1    ||  45.6   ||  45.4   ||  0.3  ||  0.3  ||       ||       ||       ||  0.4  || add rbx, rbx
-\end{Verbatim}
+\end{BVerbatim}
+\end{center}
 
 This kind of information can be useful to determine which of the two branches is more favorable for the execution. It can also be used to see if there are any significant differences between the two at all in order to prevent side channel attacks.\\
 One can also use this in combination with the detailed analysis as \suaca\ will tell you the original line of all instructions in both parts of the branching analysis.
@@ -738,7 +764,7 @@ The following algorithm contains several crucial details to the simulation. Firs
             \eIf{Executable} {
                 add\_to\_executionlist(Instruction)\; \label{line:if}
             }{
-                Blamed $:=$ Set of instructions\;
+                Blamed $:=$ Set of instructions\; \label{line:else}
                 \ForEach{p $\in$ blocked\_ports(Instruction)} {
                     \If{!Blamed.contains(p.using\_instruction())} {
                         p.using\_instruction().caused\_to\_wait++\;
@@ -772,26 +798,67 @@ The following algorithm contains several crucial details to the simulation. Firs
 \end{algorithm}
 
 So this algorithm iterates over all instructions in program order as long as the current instruction is at least partially loaded. For each instruction it will first check if all of its dependencies have been resolved. If not it can't be executed and the delay counters have to be increased. Notice that we have separate counters for the cumulative delays and the special delays, which are only needed for the detailed analysis (\autoref{sec:detail}). We will see the same behavior for the ports and this explains why the special delays won't always sum up to the cumulative ones.\\
-If all dependencies have been resolved \suaca\ will try to assign all \microops\ of the instruction to a port. To achieve this the algorithm will iterate over all \microops\ that have been loaded into the reservation station. Note that this will ignore all \microops\ that have been put into a port already. The function \textbf{\emph{assign\_to\_ports(\microop, Instruction)}} is described in \autoref{alg:assign}. This function will iterate over all ports in prior usage order and assign the \microop\ if possible. More precisely \emph{PortQueue} contains all ports and is sorted by usage throughout the whole simulation. If possible it will assign the \microop\ to the port and return a success. If no usable port was free it will return a fai.\\
+If all dependencies have been resolved \suaca\ will try to assign all \microops\ of the instruction to a port. To achieve this the algorithm will iterate over all \microops\ that have been loaded into the reservation station. Note that this will ignore all \microops\ that have been put into a port already. The function \textbf{\emph{assign\_to\_ports(\microop, Instruction)}} is described in algorithm \ref{alg:assign}. This function will iterate over all ports in prior usage order and assign the \microop\ if possible. More precisely \emph{PortQueue} contains all ports and is sorted by usage throughout the whole simulation. If possible it will assign the \microop\ to the port and return a success. If no usable port was free it will return a fail. If all \microops\ of an instruction are currently in the port pipeline this algorithm will basically just put the instruction into the execution list.\\
 We can observe that this is a greedy algorithm that is obviously not optimal in regards to the distribution of all \microops\ over the ports. However, we assume that this greedy algorithm comes close to what the reservation stations are doing in reality.\\
 If the assignment or the load of a single \microop\ failed the flag \emph{Executable} will be set to \emph{false}. As we can see in \autoref{line:if} the instruction will only added to the execution list (which we will further discuss in \autoref{sec:execute}) if this flag is set. This means that an instruction is only executed if all of its \microops\ could be assigned to a port. We are doing this, because of our measurements. As we've seen in \autoref{sec:measurements} those will always contain the best case for latency. The biggest problem we face here is the missing information about the \microops. We don't know anything about the dependencies between them and so we don't know if there is an order in which those have to be executed, or if they can be executed simultaneously. So we have to assume a delay as soon as a single \microop\ is denied a port although that might not actually be the case in reality. This means that we will potentially overestimate the latency of a single instruction although it is possible that \suaca\ will actually underestimate the throughput of a program as one can note in the following examples.\\
 
 
 Consider two instructions \emph{X} and \emph{Y}. \emph{X} consists of two \microops\ one of which can use port $0$ the other can use port $1$. \emph{Y} only consists of one which can use port $1$. \emph{X} is in front of \emph{Y} in program order, both are fully loaded, not dependent on each other and have a latency of $2$ cycles.\\
 What \suaca\ ``doesn't know'' is that the the second \microop\ (port $1$) of \emph{X} depends on the first (port $0$). So the simulation will do the following: In the first cycle it will assign \emph{X} to ports $0$ and $1$. There is no port left for \emph{Y} so it won't be added to the execution list. This will happen in the second cycle and as \emph{Y}'s latency was two cycles \suaca\ will compute a throughput of three cycles (as \emph{X} was executed in the first and second).\\
-However, in reality \emph{X} won't block port $1$ in the first cycle as this particular \microop\ depends on the one that uses port $0$. So in the first cycle \emph{X} will only use port $0$. \emph{Y} can then freely use port $1$. In the second cycle \emph{X} can then use port $1$. No port was ever blocked so there simply won't be a delay, both instructions could be executed simultaneously. So the ``real throughput'' of our example would be two cycles. 
+However, in reality \emph{X} won't block port $1$ in the first cycle as this particular \microop\ depends on the one that uses port $0$. So in the first cycle \emph{X} will only use port $0$. \emph{Y} can then freely use port $1$. In the second cycle \emph{X} can then use port $1$. No port was ever blocked so there simply won't be a delay, both instructions could be executed simultaneously. So the ``real throughput'' of our example would be two cycles.\\
 
+Now we will consider the same example but with switched instruction order of \emph{X} and \emph{Y}. In this case \suaca\ will first assign \emph{Y}'s \microop\ to port $1$. It will then try to assign \emph{X}, but it will only be able to assign the first \microop\ to port $0$ as port $1$ is blocked. As discussed before \emph{X} will therefore not be added to the execution list. In the second cycle the leftover of \emph{X} will be assigned to a port and the execution will start. As the latency was two cycles the simulation will stop after the third cycle.\\
+Again this is an overestimation of the reality. Due to the dependency of the second \microop\ of \emph{X} it doesn't matter that \emph{Y} blocks port $1$ in the first cycle. \emph{X} only needs port $0$ in the first cycle and in the second cycle it can then freely use port $1$. Again the ``real throughput'' of our example would be two cycles.\\
 
+Finally we will construct an example were our simulation actually underestimates the throughput. We can once more use our two instructions \emph{X} and \emph{Y}. This time we assume that \emph{Y} can't be executed in the first cycle, because of a dependency. Our simulation basically works like in our first case, except for the reason why \emph{Y} can't be executed. So it will compute a throughput of three cycles for those two instructions.\\
+In reality \emph{Y} will be denied port $1$ in the second cycle as it will by used by \emph{X}. So the execution will start in the third cycle and end in the fourth.\\
+
+Note that it is still impossible that the latency of a single instruction is underestimated as we will always simulation the execution of at least as many cycles as we measured under a best case scenario.\\
+
+Ultimately we will consider the rest of the algorithm starting in \autoref{line:else}. This part will increase the counters similar to what we've seen at the start of the algorithm. Notable here is the function \textbf{\emph{blocked\_ports(Instruction)}} that will return all ports that have been blocked during the assignment phase.
+
+%TODO explain groups of microops
 
 
 \section{Executing applicable instructions}
 \label{sec:execute}
 
+\begin{algorithm}[H]
+    \SetAlgoLined
+    \caption{Execute applicable instructions}
+    \ForEach{I $\in$ Executionlist} {
+        I.executed\_cycles$++$\;
+        \If{I.executed\_cycles $=$ I.latency} {
+            Instructionqueue.remove(I)\;
+        }
+        inform\_children\_im\_done(I)\;
+    }
+    Executionlist.clear()\;
+\end{algorithm}
+
+This part is rather simple. Every instruction knows its latency and how many cycles it has been executed. This value gets increased and if the latency is hit it will be removed from the Instructionqueue. The most interesting part here is the function \textbf{\emph{inform\_children\_im\_done(Instruction)}}. As we've seen in \autoref{sec:measurements} the children of an instruction don't necessarily have to wait for the instruction to finish. Sometimes they only need part of the results, which are available earlier. So this function will iterate over all children and check if the execution is advanced enough and if so ``release the dependency''. Finally we have to clear the execution list as we will fill it again in the next cycle.
+
+\section{Performing a cycle}
+
+Lastly we want to briefly discuss how a whole cycle is performed. \suaca\ will run each of the three simulation algorithms we explained above. It will then free up all ports, that were used during the cycle, in order to enable the port pipelining. A short pseudo code representation can be found below.
+
+\begin{algorithm}[H]
+    \SetAlgoLined
+    \caption{Perform a whole cycle}
+    load\_instructions()\;
+    choose\_ports()\;
+    execute\_instructions()\;
+    \ForEach{p $\in$ Ports} {
+        p.clear()\;
+    }
+\end{algorithm}
+
+The interesting observation here is that an instruction can actually get loaded, put into a port and then executed within a single cycle, due to the order of the function calls.
 
 \chapter{Evaluation}
 
-\bibliographystyle{alpha}
-{\small \bibliography{thesis}}
+\bibliographystyle{ieeetr}
+{\small \bibliography{cites}}
 
 
 \end{document}

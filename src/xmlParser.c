@@ -277,10 +277,6 @@ bool parse_architecture(FILE *file, inst_info_t *info, int numports) {
             } else {
                 split_attribute(buff, &att);
                 if (!strcmp(att.attribute, "total_uops")) {
-                    // TODO ask Andreas
-//                    int tmp = atoi(att.value);
-//                    if (tmp > info->num_micro_ops)
-//                        info->num_micro_ops = tmp;
                     info->num_micro_ops = atoi(att.value);
                     if (att.rest) {
 #if XML_DEBUG > 0
@@ -305,14 +301,17 @@ bool parse_architecture(FILE *file, inst_info_t *info, int numports) {
             }
             continue;
         }
+        bool is_upper_bound = false;
         while (fscanf(file, "%s", buff) != EOF) {
             split_attribute(buff, &att);
             if (!strcmp(att.attribute, "cycles")) {
                 cycles = atoi(att.value);
             } else if (!strcmp(att.attribute, "targetOp")) {
-                set_cycles(info, cycles, atoi(att.value));
+                set_cycles(info, cycles, atoi(att.value), is_upper_bound);
                 skip_cur_element(file);
                 break;
+            } else if (!strcmp(att.attribute, "isUpperBound")) {
+                is_upper_bound = atoi(att.value);
             }
         }
     }
@@ -320,10 +319,12 @@ bool parse_architecture(FILE *file, inst_info_t *info, int numports) {
 }
 
 
-void set_cycles(inst_info_t *info, int cycles, int id) {
+void set_cycles(inst_info_t *info, int cycles, int id, bool upper_bound) {
     latency_reg_t *latreg = info->latencies;
     while (latreg != NULL) {
-        if (latreg->id == id && cycles > latreg->latency) {
+        if (latreg->id == id) {
+            if (!latreg->is_upper_bound && upper_bound || cycles < latreg->latency) return;
+            latreg->is_upper_bound = upper_bound;
             latreg->latency = cycles;
             return;
         }

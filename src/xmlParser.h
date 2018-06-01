@@ -16,6 +16,7 @@
 
 typedef struct latency_reg_s {
     int latency;
+    bool is_upper_bound;
     //just for parsing
     int id;
     int numregs;
@@ -72,7 +73,7 @@ bool parse_architecture(FILE *file, inst_info_t *info, int numports);
 /*
  * sets the latency for the operand of the id
  */
-void set_cycles(inst_info_t *info, int cycles, int id);
+void set_cycles(inst_info_t *info, int cycles, int id, bool upper_bound);
 
 void parse_ports(attribute_value_t *att, port_ops_t *po);
 
