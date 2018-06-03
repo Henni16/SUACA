@@ -157,15 +157,19 @@ Abstract
 
 \begin{wrapfigure}[25]{l}{0.6\textwidth}
     \includegraphics[width=0.6\textwidth]{Intel_Nehalem_arch}
-    \caption{Intel Nehalem architecture} 
+    \caption{Intel Nehalem architecture \cite{nehalem}}
+    \label{fig:NHMfull}
 \end{wrapfigure}
-\lipsum[1]
+
+In order to understand some of our computations one first needs some basic knowledge about Intel's microarchitectures. They use the \emph{X86} instruction set. However, they don't execute those instructions directly. They will translate them into a sequence of so called \microops, which can then be executed. Unfortunately there is little to no documentation about those \microops, neither about the functionality of an individual one nor about their interaction with each other. From our measurements we can conclude that each microarchitecture has its own \microops which makes it even harder to find reliable information.\\ \autoref{fig:NHMfull} shows a sketch of the Nehalem architecture. We can see the decoders which are responsible for the translation of the \microops, but most of this sketch is not of particular interest for us. In our simulation we will consider most of this as the ``front end'' which will only be simulated by the number of \microops\ it produces each cycle. Our interest lies in the gray dotted rectangle shown by \autoref{fig:NHMdetail}.
 
 \begin{wrapfigure}[15]{r}{0.6\textwidth}
     \includegraphics[clip, trim=0.5cm 2cm 9.78cm 20cm,width=0.6\textwidth]{Intel_Nehalem_arch}
-    \caption{Detailed view} 
+    \caption{Detailed view}
+    \label{fig:NHMdetail}
 \end{wrapfigure}
-\lipsum[1]
+
+This figure shows the reservation station (or scheduler). It is responsible for the distribution of the \microops\ over the ports. As mentioned before, each cycle a certain amount of those will be loaded into the reservation station. How many depends on the architecture, in the case of Nehalem it's $4$. The capacity also depends on the specific architecture. The important property we can observe from this figure are the ports. Each port can be seen as a pipeline that a \microop\ can run through in order to be executed. On the ports themselves lie the actual execution units of the processor like the \emph{ALU}, \emph{MULTIPLEXER} and so on. Every port can hold a single \microop\ per cycle and they support pipelining. So they will be free again in the next cycle. The only exception from this is the \emph{DIVIDER} unit which is slow at executing and can block a port for multiple cycles.
 
 \section{Measurements}
 \label{sec:measurements}
