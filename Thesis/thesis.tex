@@ -9,10 +9,13 @@
 \usepackage{relsize}
 \usepackage{paralist}
 \usepackage{graphicx}
+\usepackage[super]{nth}
 \usepackage{relsize}
 \usepackage[linesnumbered, ruled]{algorithm2e}
 \usepackage[section]{placeins}
 \usepackage{pdfpages}
+\usepackage{biblatex}
+\addbibresource{cites.bib}
 
 
 
@@ -36,7 +39,8 @@
         postbreak=\mbox{{ }}}
 
 \usepackage{makeidx}          % wir wollen auch einen Index
-\usepackage{hyperref} 
+\usepackage{hyperref}
+%\renewcommand*{\figureautorefname}{figure}
 \usepackage{tikz}
 \usetikzlibrary{matrix,backgrounds, shapes, arrows.meta}
 \tikzset{mynode/.style={draw, ellipse, thick, line width = 2pt}}
@@ -151,6 +155,17 @@ Abstract
 
 \chapter{Introduction}
 
+\section{Motivation}
+
+Knowing your machine is a major advantage when trying to optimize high-performance scientific code. \iaca\ \cite{iaca} is a tool by Intel to analyze \emph{X86} machine code with respect to a specific microarchitecture. However, it has some drawbacks that often times prevent it from being useful in practice. The main reason is that doesn't support the newest processors. \iaca\ $3.0$, which released in late 2017, supports the \nth{4} (Haswell) to the \nth{6} (Skylake) generation of Intel microarchitectures. Skylake was released in 2015. \iaca\ $2.3$ additionally supports the \nth{2} (Sandy Bridge) and the \nth{3} (Ivy Bridge) generation. So at the time of writing \iaca\ is about three years behind and further development remains unclear.\\
+The second complication is that \iaca\ is closed source. Its user guide \cite{userguide} is the only documentation it has which provides little to no information about how it actually computes its output. As a result a user will often find himself wondering how its output fits the analyzed program.\\
+In this work we present \suaca\ (Saarland University Architecture Code Analyzer), an open source alternative. It uses measurements provided by \cite{Andreas} which are parsed during runtime. This way a user doesn't rely on a software update of the tool as he can simply perform the measurements on his own, should we not already support his microarchitecture. Note that this is only possible with Intel architectures so far. At the time of writing \suaca\ supports all Intel microarchitectures from the \nth{1} (Nehalem) to the \nth{8} (Coffee Lake) generation, except for the server variant of Skylake.
+
+
+\section{Scope of work}
+
+In 
+
 
 \section{Intel's microarchitectures}
 
@@ -161,7 +176,9 @@ Abstract
     \label{fig:NHMfull}
 \end{wrapfigure}
 
-In order to understand some of our computations one first needs some basic knowledge about Intel's microarchitectures. They use the \emph{X86} instruction set. However, they don't execute those instructions directly. They will translate them into a sequence of so called \microops, which can then be executed. Unfortunately there is little to no documentation about those \microops, neither about the functionality of an individual one nor about their interaction with each other. From our measurements we can conclude that each microarchitecture has its own \microops which makes it even harder to find reliable information.\\ \autoref{fig:NHMfull} shows a sketch of the Nehalem architecture. We can see the decoders which are responsible for the translation of the \microops, but most of this sketch is not of particular interest for us. In our simulation we will consider most of this as the ``front end'' which will only be simulated by the number of \microops\ it produces each cycle. Our interest lies in the gray dotted rectangle shown by \autoref{fig:NHMdetail}.
+
+In order to understand some of our computations one also needs some basic knowledge about Intel's microarchitectures. They use the \emph{X86} instruction set. However, they don't execute those instructions directly. They will translate them into a sequence of so called \microops, which can then be executed. Unfortunately there is little to no documentation about those \microops, neither about the functionality of an individual one nor about their interaction with each other. From our measurements we can conclude that each microarchitecture has its own \microops which makes it even harder to find reliable information.\\ \autoref{fig:NHMfull} shows a sketch of the Nehalem architecture. We can see the decoders which are responsible for the translation of the \microops, but most of this sketch is not of particular interest for us. In our simulation we will consider most of this as the ``front end'' which will only be simulated by the number of \microops\ it produces each cycle. Our interest lies in the gray dotted rectangle shown by \autoref{fig:NHMdetail}.
+
 
 \begin{wrapfigure}[15]{r}{0.6\textwidth}
     \includegraphics[clip, trim=0.5cm 2cm 9.78cm 20cm,width=0.6\textwidth]{Intel_Nehalem_arch}
@@ -174,7 +191,7 @@ This figure shows the reservation station (or scheduler). It is responsible for 
 \section{Measurements}
 \label{sec:measurements}
 
-A crucial part of \suaca's functionality are the measurements provided by \cite{Andreas}. Consider this snippet from the XML-measurement-file file:
+As mentioned before a crucial part of \suaca's functionality are the measurements provided by \cite{Andreas}. Consider this snippet from the XML-measurement-file file:
 
 \begin{lstlisting}[language=XML, basicstyle=\ttfamily\scriptsize, breaklines=false]
 <instruction ... iform="ADD_LOCK_MEMv_GPRv" ...>
@@ -300,7 +317,7 @@ A closer look at the concrete values of this particular run reveals that the sum
 
 \section{Loop analysis}
 \label{sec:loop}
-As we mentioned above the major use case of \iaca\ is analyzing an innermost loop. While \iaca\ will therefore always assume a loop (and ``choose'' the number of iterations) when analyzing a program \suaca\ will give the user the option to run the simulation in a loop with the $--loop\ x$ flag. First consider the \suaca\ run of our example program with the flag $--loop\ 200$ set:
+As we mentioned above the major use case of \iaca\ is analyzing an innermost loop. While \iaca\ will therefore always assume a loop (and ``choose'' the number of iterations) \suaca\ will give the user the option to run the simulation in a loop with the $--loop\ x$ flag. First consider the \suaca\ run of our example program with the flag $--loop\ 200$ set:
 
 \begin{center}
 \begin{BVerbatim}[fontsize=\tiny]
@@ -372,8 +389,7 @@ The control flow graph is mainly used to compute the correct dependency graph. T
 \FloatBarrier
 
 \section{Dependencygraph}
-The dependency graph describes all register dependencies that occur in the program. An edge from node $A$ to node $B$ means that the instruction represented by $B$ depends on the instruction represented by $A$. \suaca\ will only track read-after-write dependencies. Whenever an instruction uses a memory address \suaca\ will try to extract all used registers. It won't keep track of the stack as this would often times require runtime specific information. The detailed algorithm that is used to generate this graph can be seen at ~\autoref{sec:depanalysis}.\\
-First consider this graph that will be generated in the ``single loop case'' in \autoref{fig:woloop}.\\
+The dependency graph describes all register dependencies that occur in the program. An edge from node $A$ to node $B$ means that the instruction represented by $B$ depends on the instruction represented by $A$. \suaca\ will only track read-after-write dependencies. Whenever an instruction uses a memory address \suaca\ will try to extract all used registers. It won't keep track of the stack as this would often times require runtime specific information. The detailed algorithm that is used to generate this graph can be seen at ~\autoref{sec:depanalysis}. First consider this graph that will be generated in the ``single loop case'' in \autoref{fig:woloop}.\\
 
 
 \begin{figure}
@@ -880,8 +896,9 @@ The interesting observation here is that an instruction can actually get loaded,
 
 \chapter{Evaluation}
 
-\bibliographystyle{ieeetr}
-{\small \bibliography{cites}}
+%\bibliographystyle{ieeetr}
+%{\small \bibliography{cites}}
+\printbibliography
 
 
 \end{document}
