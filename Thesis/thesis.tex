@@ -5,7 +5,7 @@
 \usepackage{amssymb}
 \usepackage{amsthm}
 \usepackage[fleqn]{amsmath}
-\usepackage{xcolor}
+\usepackage[dvipsnames]{xcolor}
 \usepackage{relsize}
 \usepackage{paralist}
 \usepackage{graphicx}
@@ -34,10 +34,34 @@
 \usepackage{phdthesis}
 \setlength{\headheight}{15pt}
 \usepackage{listings}
+\lstdefinelanguage{myLang}
+{
+    % list of keywords
+    morekeywords={
+        movl,
+        byte,
+        mov,
+        cmp,
+        jne,
+        add,
+        jmp,
+        else,
+        end
+    },
+    sensitive=false, % keywords are not case-sensitive
+    morecomment=[l]{//}, % l is for line comment
+}
 \lstset{showspaces=false,showstringspaces=false,breaklines=true,breakindent=0pt,
         prebreak={},
-        postbreak=\mbox{{ }}}
-
+        postbreak=\mbox{{ }},
+    escapeinside={(*@}{@*)},
+    language=C,
+    basicstyle=\ttfamily,
+    keywordstyle=\color{blue}\ttfamily,
+    stringstyle=\color{red}\ttfamily,
+    commentstyle=\color{green}\ttfamily,
+    morecomment=[l][\color{magenta}]{\#}
+}
 \usepackage{makeidx}          % wir wollen auch einen Index
 \usepackage{hyperref}
 %\renewcommand*{\figureautorefname}{figure}
@@ -55,7 +79,8 @@
 \tikzset{bright/.style = {bend right=23, ->}}
 \tikzset{bleft/.style = {bend left=23, ->}}
 
-
+\definecolor{light-gray}{gray}{0.95}
+\usepackage{mdframed}
 \usepackage{pgfplots}
 \usepackage{changepage}
 \usepackage{fancyvrb}
@@ -161,10 +186,46 @@ Knowing your machine is a major advantage when trying to optimize high-performan
 The second complication is that \iaca\ is closed source. Its user guide \cite{userguide} is the only documentation it has which provides little to no information about how it actually computes its output. As a result a user will often find himself wondering how its output fits the analyzed program.\\
 In this work we present \suaca\ (Saarland University Architecture Code Analyzer), an open source alternative. It uses measurements provided by \cite{Andreas} which are parsed during runtime. This way a user doesn't rely on a software update of the tool as he can simply perform the measurements on his own, should we not already support his microarchitecture. Note that this is only possible with Intel architectures so far. At the time of writing \suaca\ supports all Intel microarchitectures from the \nth{1} (Nehalem) to the \nth{8} (Coffee Lake) generation, except for the server variant of Skylake.
 
-
+\newpage
 \section{Scope of work}
 
-In 
+Like mentioned before we will present a tool that is able to analyze given \emph{X86} assembler code in respect to a specific microarchitecture. Just like \iaca\ our tool is able to find byte markers inside a compiled file and analyze the code in between. Those markers can be inserted in two different ways: inserting them by hand in the assembler code or use the \emph{iacaMarks.h} header in your \emph{C} code. First take a look at the assembly variant:
+
+\begin{mdframed}[backgroundcolor=light-gray, roundcorner=10pt,leftmargin=1, rightmargin=1, innerleftmargin=15, innertopmargin=1,innerbottommargin=1, outerlinewidth=1, linecolor=light-gray]
+\begin{lstlisting}[language={myLang}]
+ movl $111, %ebx
+.byte 0x64, 0x67, 0x90
+
+    //Some code here
+    
+ movl $222, %ebx
+.byte 0x64, 0x67, 0x90
+\end{lstlisting}
+\end{mdframed}
+
+When using a loop \emph{C} code one can easily insert the markers defined in the \emph{iacaMarks.h} header like this:
+
+\begin{mdframed}[backgroundcolor=light-gray, roundcorner=10pt,leftmargin=1, rightmargin=1, innerleftmargin=15, innertopmargin=1,innerbottommargin=1, outerlinewidth=1, linecolor=light-gray]
+\begin{lstlisting}
+#include "iacaMarks.h"
+
+int main(void) {
+
+    while (condition) {
+        (*@\textcolor{Green}{IACA\_START}  @*)
+        //Some code here
+    }
+    (*@\textcolor{Green}{IACA\_END}  @*)
+
+    return 0;
+}
+\end{lstlisting}
+\end{mdframed}
+
+In both cases a user has to compile his code and run \suaca\ on the compiled file. We are using Intel's \emph{X86 Encoder Decoder
+} library \cite{xed} to disassemble said file, which allows us to support files of the \emph{ELF}, \emph{PECOFF} and \emph{MACHO} format.\\
+After disassembling \suaca\ will perform a dependency analysis on the instructions and parse the measurement file. After that is done it will perform a simulation of the code. It won't consider the actual effect of the instructions, only their latencies, dependencies and port usage. For several reasons, which we will discuss in the following, our simulation will compute an estimate of the code's performance, not total numbers.\\
+\suaca\ is able to perform several kinds of analyses which we will discuss in \autoref{chap:functionality}. In \autoref{chap:algorithms} we will then explain in detail how the most important parts of the simulation and the dependency analyzes are done.
 
 
 \section{Intel's microarchitectures}
@@ -177,7 +238,8 @@ In
 \end{wrapfigure}
 
 
-In order to understand some of our computations one also needs some basic knowledge about Intel's microarchitectures. They use the \emph{X86} instruction set. However, they don't execute those instructions directly. They will translate them into a sequence of so called \microops, which can then be executed. Unfortunately there is little to no documentation about those \microops, neither about the functionality of an individual one nor about their interaction with each other. From our measurements we can conclude that each microarchitecture has its own \microops which makes it even harder to find reliable information.\\ \autoref{fig:NHMfull} shows a sketch of the Nehalem architecture. We can see the decoders which are responsible for the translation of the \microops, but most of this sketch is not of particular interest for us. In our simulation we will consider most of this as the ``front end'' which will only be simulated by the number of \microops\ it produces each cycle. Our interest lies in the gray dotted rectangle shown by \autoref{fig:NHMdetail}.
+In order to understand some of our computations one also needs some basic knowledge about Intel's microarchitectures. They use the \emph{X86} instruction set. However, they don't execute those instructions directly. They will translate them into a sequence of so called \microops, which can then be executed. Unfortunately there is little to no documentation about those \microops, neither about the functionality of an individual one nor about their interaction with each other. From our measurements we can conclude that each microarchitecture has its own \microops which makes it even harder to find reliable information.\\ \autoref{fig:NHMfull} shows a sketch of the Nehalem architecture. We can see the decoders which are responsible for the translation of the \microops, but most of this sketch is not of particular interest for us. In our simulation we will consider most of this as the ``front end'' which will only be simulated by the number of \microops\ it produces each cycle. Our main interest lies in the gray dotted rectangle shown by \autoref{fig:NHMdetail}.\\
+This figure shows the reservation station (or scheduler). It is responsible for the distribution of the \microops\ over the ports. As mentioned before, each cycle a certain amount of those will be loaded into the reservation station.
 
 
 \begin{wrapfigure}[15]{r}{0.6\textwidth}
@@ -186,12 +248,13 @@ In order to understand some of our computations one also needs some basic knowle
     \label{fig:NHMdetail}
 \end{wrapfigure}
 
-This figure shows the reservation station (or scheduler). It is responsible for the distribution of the \microops\ over the ports. As mentioned before, each cycle a certain amount of those will be loaded into the reservation station. How many depends on the architecture, in the case of Nehalem it's $4$. The capacity also depends on the specific architecture. The important property we can observe from this figure are the ports. Each port can be seen as a pipeline that a \microop\ can run through in order to be executed. On the ports themselves lie the actual execution units of the processor like the \emph{ALU}, \emph{MULTIPLEXER} and so on. Every port can hold a single \microop\ per cycle and they support pipelining. So they will be free again in the next cycle. The only exception from this is the \emph{DIVIDER} unit which is slow at executing and can block a port for multiple cycles.
+ How many depends on the architecture, in the case of Nehalem it's $4$. The capacity also depends on the specific architecture. The important property we can observe from this figure are the ports. Each port can be seen as a pipeline that a \microop\ can run through in order to be executed. On the ports themselves lie the actual execution units of the processor like the \emph{ALU}, \emph{MULTIPLEXER} and so on. Every port can hold a single \microop\ per cycle and they support pipelining. So they will be free again in the next cycle. The only exception from this is the \emph{DIVIDER} unit which is slow at executing and can block a port for multiple cycles.
 
 \section{Measurements}
 \label{sec:measurements}
 
 As mentioned before a crucial part of \suaca's functionality are the measurements provided by \cite{Andreas}. Consider this snippet from the XML-measurement-file file:
+
 
 \begin{lstlisting}[language=XML, basicstyle=\ttfamily\scriptsize, breaklines=false]
 <instruction ... iform="ADD_LOCK_MEMv_GPRv" ...>
@@ -230,6 +293,7 @@ We dotted out some unnecessary or redundant information. As we can see in the fi
 %----------------------------------------------------------------------------------------
 
 \chapter{Functionality of SUACA}
+\label{chap:functionality}
 In this chapter we're going to explain and show the full functionality of \suaca. First we will take a look at the command line interface and then see an example run of each available option.
 
 \section{The command line interface}
@@ -252,8 +316,8 @@ Where $[option]$ is one or several of the following:
 
 We will use the following example code to show the effects of each of those options:
 
-\begin{center}
-\begin{BVerbatim}
+\begin{mdframed}[backgroundcolor=light-gray, roundcorner=10pt,leftmargin=1, rightmargin=1, innerleftmargin=15, innertopmargin=1,innerbottommargin=1, outerlinewidth=1, linecolor=light-gray]
+\begin{lstlisting}[language={myLang}, basicstyle=\small]
    mov rax, 1
    cmp rcx, 0
    jne else
@@ -263,13 +327,14 @@ else:
    add rbx, rax
 end:
    add rbx, rbx
-\end{BVerbatim}    
-\end{center}
+\end{lstlisting}
+\end{mdframed}
 
 \section{Plain analysis}
 \label{sec:plain}
 Running \suaca\ without any of the options above will result in the following output:
 
+\begin{mdframed}[backgroundcolor=light-gray, roundcorner=10pt,leftmargin=1, rightmargin=1, innerleftmargin=15, innertopmargin=15,innerbottommargin=15, outerlinewidth=1, linecolor=light-gray]
 \begin{center}
 \begin{BVerbatim}[fontsize=\tiny]
 Block throughput: 3.00 cycles
@@ -292,6 +357,7 @@ Analysis for architecture: SNB
   6   ||    1    ||   1.0   ||         ||  1.0  ||       ||       ||       ||       ||       || add rbx, rbx
 \end{BVerbatim}
 \end{center}
+\end{mdframed}
 
 
 At the beginning one will notice the following values:
@@ -319,6 +385,7 @@ A closer look at the concrete values of this particular run reveals that the sum
 \label{sec:loop}
 As we mentioned above the major use case of \iaca\ is analyzing an innermost loop. While \iaca\ will therefore always assume a loop (and ``choose'' the number of iterations) \suaca\ will give the user the option to run the simulation in a loop with the $--loop\ x$ flag. First consider the \suaca\ run of our example program with the flag $--loop\ 200$ set:
 
+\begin{mdframed}[backgroundcolor=light-gray, roundcorner=10pt,leftmargin=1, rightmargin=1, innerleftmargin=15, innertopmargin=15,innerbottommargin=15, outerlinewidth=1, linecolor=light-gray]
 \begin{center}
 \begin{BVerbatim}[fontsize=\tiny]
 Block throughput: 2.34 cycles
@@ -341,6 +408,7 @@ Analysis for architecture: SNB
    6   ||    1    ||  15.8   ||  43.9   ||  1.0  ||       ||       ||       ||       ||       || add rbx, rbx
 \end{BVerbatim}
 \end{center}
+\end{mdframed}
 
 When running the simulation in a loop the following values will become averages per iteration:
 
@@ -354,7 +422,6 @@ More specifically they will be computed with $\frac{total\ value}{number\ of\ it
 We can observe that line $0$ has used port $0$ $0.0$ times. This just means that this instruction has used port $0$, but to a very little amount and if we remember our \hyperref[sec:plain]{first run}, which didn't use the $loop$ option, we can see that line $0$ in fact uses port $0$ at least once.\\
 When looking at the block throughput values we can see that our example program runs quite significantly faster with non-blocking ports. And this makes sense as only ports $0, 1$ and $5$ can be used by the instructions we're using. The two jump instructions are the biggest offender as they can exclusively use port $5$.\\
 We can also see that the values of the \textbf{caused to wait} column are a lot higher than those of the \textbf{had to wait} column. This is due to the fact, that several lines can be the cause of another line to be delayed as we already explained in ~\autoref{sec:plain}.
-
 
 \section{Control flow graph}
 The control flow graph is mainly used to compute the correct dependency graph. The $CFG$ of our example program can be seen in ~\autoref{fig:cfg}. The red edge only appears if the analysis runs in a loop as it represents the ``back jump'' to the start of the program that won't appear in a single iteration.
@@ -457,6 +524,7 @@ When \suaca\ is called with at least $2$ loops it will also track all ``loop dep
 As previously discussed one of the big a advantages of \suaca\ is that one can easily add new architectures that the analysis is based on.\\
 The $--arch\ x$ option gives the user the ability to choose a specific micro-architecture. For our example we will use Intel's Coffee Lake micro-architecture instead of the Sandy Bridge micro-architecture we used previously (the first two columns are left out to improve readability):
 
+\begin{mdframed}[backgroundcolor=light-gray, roundcorner=10pt,leftmargin=1, rightmargin=1, innerleftmargin=15, innertopmargin=15,innerbottommargin=15, outerlinewidth=1, linecolor=light-gray]
 \begin{center}
 \begin{BVerbatim}[fontsize=\tiny]
 Block throughput: 2.00 cycles
@@ -479,6 +547,7 @@ Analysis for architecture: CFL
   43.6   ||  90.8   ||  0.1  ||  0.2  ||       ||       ||       ||  0.7  ||  0.0  ||       || add rbx, rbx
 \end{BVerbatim}
 \end{center}
+\end{mdframed}
 
 The most significant change is that the non-blocking ports analysis no longer experiences an improvement in runtime. This is due to the larger number of ports in the Coffee Lake architecture. We can now instead observe that the three $add$ instructions, or more so their dependencies on each other, are responsible for most of the delays.
 
@@ -489,6 +558,7 @@ The most significant change is that the non-blocking ports analysis no longer ex
 
 \suaca\ can also deliver some detailed information about one particular line. This can be useful to determine how a specific instruction causes and experiences a delay. The following table shows the result of a run on our example program with $200$ iterations and details for line $0$.
 
+\begin{mdframed}[backgroundcolor=light-gray, roundcorner=10pt,leftmargin=1, rightmargin=1, innerleftmargin=15, innertopmargin=15,innerbottommargin=15, outerlinewidth=1, linecolor=light-gray]
 \begin{center}
 \begin{BVerbatim}[fontsize=\scriptsize]
 Detailed delay information for instruction: mov rax, 0x1 in line 0
@@ -520,9 +590,11 @@ Detailed delay information for instruction: mov rax, 0x1 in line 0
                  5   ||     0.0     ||    15.1
 \end{BVerbatim}
 \end{center}
+\end{mdframed}
 
 In order to get a better understanding of those values we will split the output and explain them step by step.
 
+\begin{mdframed}[backgroundcolor=light-gray, roundcorner=10pt,leftmargin=1, rightmargin=1, innerleftmargin=15, innertopmargin=15,innerbottommargin=15, outerlinewidth=1, linecolor=light-gray]
 \begin{center}
 \begin{BVerbatim}[fontsize=\scriptsize]
 Maximum latency: 1
@@ -535,10 +607,12 @@ Line || 0 -> Line || Line -> 0
  5   ||     1     ||     0
 \end{BVerbatim}
 \end{center}
+\end{mdframed}
 
 First we can see that this instruction has a maximum latency of one cycle. This value can differ from those of the table below as we have seen in ~\autoref{lst:xml}.\\
 The table itself shows the latencies \suaca\ used for the dependencies. The second column show the delay from the analyzed line to the line given in the first column and the third row shows the delay in the other direction. In our case lines $3$ and $5$ depend on line $0$ (see ~\autoref{fig:wloop}) and we can see here that those lines actually have to wait one cycle for line $0$ to be finished and line $0$ itself is independent of the other two.\\
 
+\begin{mdframed}[backgroundcolor=light-gray, roundcorner=10pt,leftmargin=1, rightmargin=1, innerleftmargin=15, innertopmargin=15,innerbottommargin=15, outerlinewidth=1, linecolor=light-gray]
 \begin{center}
 \begin{BVerbatim}[fontsize=\scriptsize]
 Delay caused by blocked ports:
@@ -550,9 +624,11 @@ Port || was delayed || has delayed
 5   ||     0.0     ||    15.1
 \end{BVerbatim}
 \end{center}
+\end{mdframed}
 
 This table now shows, that lines $3$ and $5$ actually are delayed by our analyzed line. On average line $3$ has to wait $15.2$ cycles for line $0$ to be finished while line $5$ has to wait $14.5$ cycles. Of course both of them don't cause any delay on line $0$ as there is no dependence.\\
 
+\begin{mdframed}[backgroundcolor=light-gray, roundcorner=10pt,leftmargin=1, rightmargin=1, innerleftmargin=15, innertopmargin=15,innerbottommargin=15, outerlinewidth=1, linecolor=light-gray]
 \begin{center}
 \begin{BVerbatim}[fontsize=\scriptsize]
 Delay caused by blocked ports:
@@ -564,6 +640,7 @@ Port || was delayed || has delayed
  5   ||     0.0     ||    15.1
 \end{BVerbatim}
 \end{center}
+\end{mdframed}
 
 Finally \suaca\ also tells you how much delay was caused by the ports. First consider that the $mov$ instruction in line $0$ can, in theory, use ports $0, 1$ and $5$. In our case it causes a delay of $13.5$ cycles per iteration on another instruction, because it uses port $1$. It doesn't cause any delay on the other two ports that it might use simply because it always uses port $1$ in our particular case (see ~\autoref{sec:loop}). The second column tells us that line $0$ experiences a delay of $15.1$ cycles per iteration because all three usable ports were blocked. The $mov$ instruction we're considering here only consists of a single \microop\ which leads to all three of those values being identical.\\
 More precisely the $mov$ instruction can only be delayed by blocked ports if all three of its usable ports are blocked, otherwise it would just chose the free one. So all three of those blocked ports are responsible hence the three identical values.\\
@@ -577,6 +654,7 @@ However this is not always the case as an instruction might consist of more than
 Finally \suaca\ is able to analyze different branches. As we have seen in \autoref{fig:cfg} and \autoref{fig:woloop} the ``normal'' analysis already considers branches for it's dependencies. However, as the effect of the instructions will be completely ignored in the simulation the branches won't have any other effect.\\
 With the $-b$ flag one can trigger the actual branch analysis which will perform two simulations, one for each branch. This will always consider the first $jump$ instruction and this one only. It won't consider every single possible path through a program with multiple branches. This one $jump$ instruction, as well as the $jump$ instruction that's typically in one of the two branches, will be excluded from the analysis as \suaca\ expects the processor to perform branch prediction. We will now consider the branching analysis of our example program, again with the Sandy Bridge architecture and $200$ iterations:
 
+\begin{mdframed}[backgroundcolor=light-gray, roundcorner=10pt,leftmargin=1, rightmargin=1, innerleftmargin=15, innertopmargin=15,innerbottommargin=15, outerlinewidth=1, linecolor=light-gray]
 \begin{center}
 \begin{BVerbatim}[fontsize=\tiny]
 Left branch analysis:
@@ -617,6 +695,7 @@ Line  ||   Num   ||   had   || caused  ||            Used Ports
   6   ||    1    ||  45.6   ||  45.4   ||  0.3  ||  0.3  ||       ||       ||       ||  0.4  || add rbx, rbx
 \end{BVerbatim}
 \end{center}
+\end{mdframed}
 
 This kind of information can be useful to determine which of the two branches is more favorable for the execution. It can also be used to see if there are any significant differences between the two at all in order to prevent side channel attacks.\\
 One can also use this in combination with the detailed analysis as \suaca\ will tell you the original line of all instructions in both parts of the branching analysis.
@@ -643,6 +722,7 @@ The remaining options are:
 %----------------------------------------------------------------------------------------
 
 \chapter{Algorithms}
+\label{chap:algorithms}
 
 When trying to analyze a program the user sometimes needs to fully understand how the results were calculated. Especially if he wants use them to improve his code. Therefore we will discuss \suaca's most important algorithms in the following chapter.
 
