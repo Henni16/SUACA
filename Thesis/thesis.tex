@@ -428,6 +428,7 @@ The control flow graph is mainly used to compute the correct dependency graph. T
 
 \begin{figure}
     \centering
+    \resizebox{!}{8cm}{
     \begin{tikzpicture}
     \node[mynode] (A) at (0, 0)     {0: mov rax, 0x1};	
     \node[mynode] (B) at (0, -2)    {1: cmp rcx, 0x0};
@@ -448,7 +449,7 @@ The control flow graph is mainly used to compute the correct dependency graph. T
     \Edges[](F,G);
     \Edges[style={->, bend right = 90}, color=red](G,A);
     
-    \end{tikzpicture}
+    \end{tikzpicture}}
     \caption{Control flow graph}
     \label{fig:cfg}
 \end{figure}
@@ -461,6 +462,7 @@ The dependency graph describes all register dependencies that occur in the progr
 
 \begin{figure}
 \centering
+\resizebox{\textwidth}{!}{
 \begin{tikzpicture}
     \node[mynode] (A) at (-4, 0)  {0: mov rax, 0x1};	
     \node[mynode] (B) at (-7, -2) {3: add rbx, rax};
@@ -481,6 +483,7 @@ The dependency graph describes all register dependencies that occur in the progr
     \node[mynode] (G)  at (3, -4) {4: jmp 0x5};
 
 \end{tikzpicture}
+}
 \caption{Dependency graph without loop dependencies}
 \label{fig:woloop}
 \end{figure}
@@ -491,6 +494,7 @@ When \suaca\ is called with at least $2$ loops it will also track all ``loop dep
 
 \begin{figure}
     \centering
+    \resizebox{\textwidth}{!}{
     \begin{tikzpicture}
     \node[mynode] (A) at (-4, 0)  {0: mov rax, 0x1};	
     \node[mynode] (B) at (-7, -2) {3: add rbx, rax};
@@ -513,6 +517,7 @@ When \suaca\ is called with at least $2$ loops it will also track all ``loop dep
     \node[mynode] (G)  at (3, -4) {4: jmp 0x5};
     
     \end{tikzpicture}
+}
     \caption{Dependency graph with loop dependencies}
     \label{fig:wloop}
 \end{figure}
@@ -857,6 +862,7 @@ So it is possible that an instruction is partially (i.e.\ only some of its \micr
 
 In this section we are going to discuss how exactly the ports which an instruction uses are chosen. As we've seen in \autoref{lst:xml} we know of how many \microops\ an instruction consists and which port those \microops\ want to use. As seen in \autoref{sec:simfrontend} an instruction can be loaded partially, which we will have to consider here.\\
 The following algorithm contains several crucial details to the simulation. First we will see how \suaca\ tries to contribute all \microops\ equally over all ports. It will also demonstrate the exact situations in which we will execute an instruction. Lastly it will explain how the \textbf{had to wait} and \textbf{caused to wait} columns we introduced in \autoref{sec:plain} are computed. 
+
 
 \begin{algorithm}[H]
     \SetAlgoLined
