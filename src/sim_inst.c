@@ -126,8 +126,8 @@ print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int num_por
     printf("Block throughput: %.2f cycles\n", ((double) num_cycles) / num_iterations);
     if (frontend_cycles > -1) {
         printf("Block throughput with perfect front end: %.2f cycles\n", ((double) frontend_cycles) / num_iterations);
-        printf("Block throughput with non-blocking ports: %.2f cycles\n", ((double) port_cycles) / num_iterations);
-        printf("Block throughput with perfect front end and non-blocking ports: %.2f cycles\n",
+        printf("Block throughput with infinitely usable ports: %.2f cycles\n", ((double) port_cycles) / num_iterations);
+        printf("Block throughput without dependencies: %.2f cycles\n",
                ((double) dep_cycles) / num_iterations);
     }
     printf("Microops per cycle: %.2f\n", ((double) total_num_microops) / num_cycles);

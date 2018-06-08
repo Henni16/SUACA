@@ -139,7 +139,7 @@ void put_executables_into_ports(station_t *station) {
             cur = cur->next;
             continue;
         }
-        if (!all_fathers_done(cur)) {
+        if (!station->no_dependencies && !all_fathers_done(cur)) {
             cur->cycles_delayed++;
             for (int i = 0; i < cur->fathers_todo; ++i) {
                 cur->fathers[i]->delayed_cycles++;
@@ -178,9 +178,9 @@ void put_executables_into_ports(station_t *station) {
                 for (int i = 0; i < arr_len && po->loaded_ops; ++i) {
                     if (!station->non_blocking_ports) {
                         station->ports[will_use[i]] = cur;
-                        cur->used_ports[will_use[i]]++;
-                        station->port_usage[will_use[i]]++;
                     }
+                    cur->used_ports[will_use[i]]++;
+                    station->port_usage[will_use[i]]++;
                     po->loaded_ops--;
                     station->size--;
                 }

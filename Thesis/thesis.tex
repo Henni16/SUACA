@@ -333,22 +333,22 @@ First consider the following output which will demonstrate the basic values \sua
 \begin{BVerbatim}[fontsize=\tiny]
 Block throughput: 3.00 cycles
 Block throughput with perfect front end: 3.00 cycles
-Block throughput with non-blocking ports: 3.00 cycles
-Block throughput with perfect front end and non-blocking ports: 3.00 cycles
+Block throughput with infinitely usable ports: 3.00 cycles
+Block throughput without dependencies: 3.00 cycles
 Microops per cycle: 2.33
 
 Analysis for architecture: SNB
 
- Line ||   Num   ||   had   || caused  ||                    Used Ports
-      ||   Uops  || to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||
-------------------------------------------------------------------------------------------------
-  0   ||    1    ||         ||   1.0   ||  1.0  ||       ||       ||       ||       ||       || mov rax, 0x1
-  1   ||    1    ||         ||   1.0   ||       ||  1.0  ||       ||       ||       ||       || cmp rcx, 0x0
-  2   ||    1    ||   1.0   ||   1.0   ||       ||       ||       ||       ||       ||  1.0  || jnz 0x7
-  3   ||    1    ||   1.0   ||   1.0   ||  1.0  ||       ||       ||       ||       ||       || add rbx, rax
-  4   ||    1    ||   1.0   ||         ||       ||       ||       ||       ||       ||  1.0  || jmp 0x5
-  5   ||    1    ||         ||   1.0   ||       ||  1.0  ||       ||       ||       ||       || add rbx, rax
-  6   ||    1    ||   1.0   ||         ||  1.0  ||       ||       ||       ||       ||       || add rbx, rbx
+ Line  ||   Num   ||   had   || caused  ||            Used Ports
+       ||   Uops  || to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||
+ ------------------------------------------------------------------------------------------------
+   0   ||    1    ||         ||   1.0   ||  1.0  ||       ||       ||       ||       ||       || mov rax, 0x1
+   1   ||    1    ||         ||   1.0   ||       ||  1.0  ||       ||       ||       ||       || cmp rcx, 0x0
+   2   ||    1    ||   1.0   ||   1.0   ||       ||       ||       ||       ||       ||  1.0  || jnz 0x7
+   3   ||    1    ||   1.0   ||   1.0   ||  1.0  ||       ||       ||       ||       ||       || add rbx, rax
+   4   ||    1    ||   1.0   ||         ||       ||       ||       ||       ||       ||  1.0  || jmp 0x5
+   5   ||    1    ||         ||   1.0   ||       ||  1.0  ||       ||       ||       ||       || add rbx, rax
+   6   ||    1    ||   1.0   ||         ||  1.0  ||       ||       ||       ||       ||       || add rbx, rbx
 \end{BVerbatim}
 \end{center}
 \end{mdframed}
@@ -358,9 +358,12 @@ At the beginning one will notice the following values:
 \begin{itemize}
     \item \textbf{Block throughput} is the number of cycles needed to execute the program once ($\frac{Total\ number\ of\ cycles}{Number\ of\ iterations}$). In the single iteration case the throughput equals the latency of the program.
     \item \textbf{Block throughput with perfect front end} can be used to see if the front end of the processor was the bottleneck of the execution. To compute this value \suaca\ will perform a full analysis of the program. However, it will assume that $number\ of\ \mu ops\ loaded\ per\ cycle = capacity\ of\ reservation\ station$. If the runtime experiences a speedup we can conclude that the front end was indeed the bottleneck.
-    \item \textbf{Block throughput with non-blocking ports} is computed similarly. It will perform a full analysis, but every port can be used arbitrarily. Should the runtime improve we can conclude that one of the ports has to be the bottleneck.
-    \item \textbf{Block throughput with perfect front end and non-blocking ports} is a combination of the two above. In some corner cases it might be possible that both front end and ports are responsible for a decreased runtime. This can happen if every loaded instruction is directly computed (front end bottleneck), but if the front end was faster there wouldn't be another port to run the additionally loaded instructions on. In this case none of the first values would differ from the normal \textbf{Block throughput} although they are actually both part of the bottleneck.
+    \item \textbf{Block throughput with infinitely usable ports} is computed similarly. It will perform a full analysis, but every port can be used arbitrarily. Should the runtime improve we can conclude that one of the ports has to be the bottleneck.
+    \item \textbf{Block throughput without dependencies} is again similar to the aforementioned values. This time the dependencies are disabled during the simulation. An improved throughput here indicates that the dependencies between instructions are the bottleneck. 
 \end{itemize}
+
+In some corner cases it might be possible that both front end and ports are responsible for a decreased runtime. This can happen if every loaded instruction is directly computed (front end bottleneck), but if the front end was faster there wouldn't be another port to run the additionally loaded instructions on. In this case none of the first values would differ from the normal \textbf{Block throughput} although they are actually both part of the bottleneck.\\
+Similar behavior can be observed with multiple combinations of the above mentioned version of our simulation. For this reason \suaca\ gives the user the option to toggle these special simulations in all possible combinations.\\
 
 
 In the table we can observe the following columns:
@@ -384,15 +387,15 @@ As we mentioned above the major use case of \iaca\ is analyzing an innermost loo
 \begin{BVerbatim}[fontsize=\tiny]
 Block throughput: 2.34 cycles
 Block throughput with perfect front end: 2.34 cycles
-Block throughput with non-blocking ports: 2.00 cycles
-Block throughput with perfect front end and non-blocking ports: 2.00 cycles
+Block throughput with infinitely usable ports: 2.00 cycles
+Block throughput without dependencies: 2.34 cycles
 Microops per cycle: 2.99
 
 Analysis for architecture: SNB
 
  Line  ||   Num   ||   had   || caused  ||            Used Ports
        ||   Uops  || to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||
-------------------------------------------------------------------------------------------------
+ ------------------------------------------------------------------------------------------------
    0   ||    1    ||  15.1   ||  43.2   ||  0.0  ||  1.0  ||       ||       ||       ||       || mov rax, 0x1
    1   ||    1    ||  15.8   ||  32.3   ||  0.3  ||  0.3  ||       ||       ||       ||  0.3  || cmp rcx, 0x0
    2   ||    1    ||  16.5   ||  20.8   ||       ||       ||       ||       ||       ||  1.0  || jnz 0x7
@@ -528,15 +531,15 @@ As previously discussed one of the big advantages of \suaca\ is that one can eas
 \begin{BVerbatim}[fontsize=\tiny]
 Block throughput: 2.00 cycles
 Block throughput with perfect front end: 2.00 cycles
-Block throughput with non-blocking ports: 2.00 cycles
-Block throughput with perfect front end and non-blocking ports: 2.00 cycles
+Block throughput with infinitely usable ports: 2.00 cycles
+Block throughput without dependencies: 1.75 cycles
 Microops per cycle: 3.49
 
 Analysis for architecture: CFL
 
    had   || caused  ||            Used Ports
  to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||   6   ||   7   ||
-------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------
    4.7   ||  15.9   ||  0.1  ||  0.8  ||       ||       ||       ||  0.1  ||  0.1  ||       || mov rax, 0x1
    5.4   ||  13.6   ||  0.2  ||  0.5  ||       ||       ||       ||  0.1  ||  0.2  ||       || cmp rcx, 0x0
    6.2   ||   9.8   ||  0.4  ||       ||       ||       ||       ||       ||  0.6  ||       || jnz 0x7
@@ -548,7 +551,7 @@ Analysis for architecture: CFL
 \end{center}
 \end{mdframed}
 
-The most significant change is that the non-blocking ports analysis no longer experiences an improvement in runtime. This is due to the larger number of ports in the Coffee Lake architecture. We can now instead observe that the three $add$ instructions, or more so their dependencies on each other, are responsible for most of the delays.
+The most significant change is that the non-blocking ports analysis no longer experiences an improvement in runtime. This is due to the larger number of ports in the Coffee Lake architecture. We can now instead observe that the three $add$ instructions, or more so their dependencies on each other, are responsible for most of the delays. We can conclude this from the \textbf{had to wait} and \textbf{caused to wait} values of these instructions and also the improved throughput with ignored dependencies.
 
 
 
@@ -660,38 +663,38 @@ Left branch analysis:
 
 Block throughput: 2.00 cycles
 Block throughput with perfect front end: 2.00 cycles
-Block throughput with non-blocking ports: 2.00 cycles
-Block throughput with perfect front end and non-blocking ports: 2.00 cycles
+Block throughput with infinitely usable ports: 2.00 cycles
+Block throughput without dependencies: 1.34 cycles
 Microops per cycle: 2.00
 
 Analysis for architecture: SNB
 
-Line  ||   Num   ||   had   || caused  ||            Used Ports
-      ||   Uops  || to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||
-------------------------------------------------------------------------------------------------
-  0   ||    1    ||         ||   0.3   ||  0.5  ||  0.2  ||       ||       ||       ||  0.2  || mov rax, 0x1
-  1   ||    1    ||         ||         ||  0.2  ||  0.5  ||       ||       ||       ||  0.3  || cmp rcx, 0x0
-  3   ||    1    ||  45.4   ||  45.6   ||  0.3  ||  0.3  ||       ||       ||       ||  0.4  || add rbx, rax
-  6   ||    1    ||  45.6   ||  45.4   ||  0.3  ||  0.3  ||       ||       ||       ||  0.4  || add rbx, rbx
+ Line  ||   Num   ||   had   || caused  ||            Used Ports
+       ||   Uops  || to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||
+ ------------------------------------------------------------------------------------------------
+   0   ||    1    ||         ||   0.3   ||  0.5  ||  0.2  ||       ||       ||       ||  0.2  || mov rax, 0x1
+   1   ||    1    ||         ||         ||  0.2  ||  0.5  ||       ||       ||       ||  0.3  || cmp rcx, 0x0
+   3   ||    1    ||  45.4   ||  45.6   ||  0.3  ||  0.3  ||       ||       ||       ||  0.4  || add rbx, rax
+   6   ||    1    ||  45.6   ||  45.4   ||  0.3  ||  0.3  ||       ||       ||       ||  0.4  || add rbx, rbx
 
 
 Right branch analysis:
 
 Block throughput: 2.00 cycles
 Block throughput with perfect front end: 2.00 cycles
-Block throughput with non-blocking ports: 2.00 cycles
-Block throughput with perfect front end and non-blocking ports: 2.00 cycles
+Block throughput with infinitely usable ports: 2.00 cycles
+Block throughput without dependencies: 1.34 cycles
 Microops per cycle: 2.00
 
 Analysis for architecture: SNB
 
-Line  ||   Num   ||   had   || caused  ||            Used Ports
-      ||   Uops  || to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||
-------------------------------------------------------------------------------------------------
-  0   ||    1    ||         ||   0.3   ||  0.5  ||  0.2  ||       ||       ||       ||  0.2  || mov rax, 0x1
-  1   ||    1    ||         ||         ||  0.2  ||  0.5  ||       ||       ||       ||  0.3  || cmp rcx, 0x0
-  5   ||    1    ||  45.4   ||  45.6   ||  0.3  ||  0.3  ||       ||       ||       ||  0.4  || add rbx, rax
-  6   ||    1    ||  45.6   ||  45.4   ||  0.3  ||  0.3  ||       ||       ||       ||  0.4  || add rbx, rbx
+ Line  ||   Num   ||   had   || caused  ||            Used Ports
+       ||   Uops  || to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||
+ ------------------------------------------------------------------------------------------------
+   0   ||    1    ||         ||   0.3   ||  0.5  ||  0.2  ||       ||       ||       ||  0.2  || mov rax, 0x1
+   1   ||    1    ||         ||         ||  0.2  ||  0.5  ||       ||       ||       ||  0.3  || cmp rcx, 0x0
+   5   ||    1    ||  45.4   ||  45.6   ||  0.3  ||  0.3  ||       ||       ||       ||  0.4  || add rbx, rax
+   6   ||    1    ||  45.6   ||  45.4   ||  0.3  ||  0.3  ||       ||       ||       ||  0.4  || add rbx, rbx
 \end{BVerbatim}
 \end{center}
 \end{mdframed}
@@ -707,6 +710,9 @@ suaca\ [option]\ path\_to\_file
 \]
 where $[option]$ is one or several of the following:
 \begin{itemize}
+    \item $-pf$ triggers the perfect front end analysis.
+    \item $-ip$ triggers the infinite port analysis.
+    \item $-nd$ triggers the dependency free analysis. 
     \item $-cfg$ will print the control flow graph into a file called $controlflow.dot$. The format will be graphviz readable.
     \item $-dg$ will print the dependency graph into a file called $dependency.dot$. The format will also be graphviz readable.
     \item $-p$ triggers the ``performance mode''. More specifically this will prevent the three extra analyses that are needed to generate the three additional block throughput values. In most cases however, \suaca's performance bottleneck will be the parser for the measurement files which cannot be deactivated. 

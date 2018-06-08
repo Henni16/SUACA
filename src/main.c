@@ -13,6 +13,9 @@ int print_help;
 int branch = 0;
 bool print_setup = false;
 bool perfomance = false;
+bool no_deps = false;
+bool perfect_frontend = false;
+bool infinite_ports = false;
 int num_iterations = 0;
 int detail_line = -1;
 char *setup_arch;
@@ -140,14 +143,18 @@ int parse_stuff(single_list_t *insts) {
         printf("The station file for %s could not be found\n", arch_name);
         return 0;
     }
+    if (perfect_frontend) {
+        station->load_per_cycle = station->cap;
+    }
+    station->no_dependencies = no_deps;
+    station->non_blocking_ports = infinite_ports;
     if (!perfomance) {
         frontend_test = parse_station_file(station_file, num_iterations, insts->single_loop_size);
         frontend_test->load_per_cycle = frontend_test->cap;
         port_test = parse_station_file(station_file, num_iterations, insts->single_loop_size);
         port_test->non_blocking_ports = true;
         dep_test = parse_station_file(station_file, num_iterations, insts->single_loop_size);
-        dep_test->load_per_cycle = dep_test->cap;
-        dep_test->non_blocking_ports = true;
+        dep_test->no_dependencies = true;
     }
     if (!table_info) {
         hashset_t *set = create_hashset(insts);
@@ -207,7 +214,6 @@ void graphs_and_map(single_list_t *list, int index, int branch) {
         port_cycles = perform_simulation(port_test, list, false);
         create_initial_state(dg, list, num_iterations, dep_test, table_info, false, branch, g);
         dep_cycles = perform_simulation(dep_test, list, false);
-
     }
     create_initial_state(dg, list, num_iterations, station, table_info, true, branch, g);
     free_graph(g);
@@ -252,6 +258,15 @@ void clp(int argc, char *argv[]) {
             perfomance = true;
         } else if (!strcmp(argv[i], "-b")) {
             branch = 1;
+        } else if (!strcmp(argv[i], "-pf")) {
+            perfect_frontend = true;
+            perfomance = true;
+        } else if (!strcmp(argv[i], "-ip")) {
+            infinite_ports = true;
+            perfomance = true;
+        } else if (!strcmp(argv[i], "-nd")) {
+            no_deps = true;
+            perfomance = true;
         } else if (*argv[i] == '-') {
             invalid_flag = argv[i];
         } else {

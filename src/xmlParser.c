@@ -411,6 +411,7 @@ station_t *parse_station_file(char *file_name, int num_iterations, int single_lo
     s->num_insts = single_loop_size;
     s->num_iterations = num_iterations;
     s->non_blocking_ports = false;
+    s->no_dependencies = false;
     fclose(station_file);
     return s;
 }

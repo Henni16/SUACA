@@ -32,6 +32,7 @@ typedef struct station_s {
     sim_inst_list_t *done_insts;
     execute_list_t *to_exec;
     bool non_blocking_ports;
+    bool no_dependencies;
     int *port_usage;
 } station_t;
 
