@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include "headers.h"
 #include "reg_map.h"
-#include "disas.h"
+#include "xed.h"
 #include "inst_list.h"
 #include "graph.h"
 

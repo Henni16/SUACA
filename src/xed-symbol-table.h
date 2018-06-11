@@ -20,7 +20,7 @@ END_LEGAL */
 #define XED_SYMBOL_TABLE_H
 
 #include "headers.h"
-#include "util.h"
+#include "xed-examples-util.h"
 #include "avltree.h"
 #include <stdlib.h>
 

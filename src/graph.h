@@ -3,7 +3,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include "util.h"
+#include "xed-examples-util.h"
 
 #define TMP_BUF_LEN (1024*4)
 

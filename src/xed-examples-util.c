@@ -1,4 +1,4 @@
-#include "util.h"
+#include "xed-examples-util.h"
 
 void printInsts(xed_disas_info_t* di, inst_list_t* instructions,
                 xed_uint64_t runtime_instruction_address);

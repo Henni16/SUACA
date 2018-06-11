@@ -34,7 +34,7 @@ extern "C" {
 // xed headers -- THESE MUST BE AFTER THE WINDOWS HEADERS
 
 extern "C" {
-#include "pecoff.h"
+#include "xed-disas-pecoff.h"
 }
 
 using namespace std;

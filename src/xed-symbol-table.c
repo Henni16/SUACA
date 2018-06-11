@@ -18,7 +18,7 @@ END_LEGAL */
 
 
 #include "headers.h"
-#include "util.h"
+#include "xed-examples-util.h"
 #include "xed-symbol-table.h"
 
 //////////////////////////////////////////////////////////////////////
