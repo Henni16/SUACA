@@ -45,7 +45,7 @@ void create_initial_state(graph_t *dependencies, single_list_t *insts, int num_i
     for (int i = 0; i < station->num_insts * num_iterations; i++) {
         int mod_i = i % station->num_insts;
         if (!needed[mod_i]) {
-            all[i] = newSimInst(mod_i, NULL, 0, 0, 0, 0, 0, 0);
+            all[i] = newSimInst(mod_i, NULL, 0, 0, 0, 0, 0, 0, 0);
             all[i]->not_needed = true;
             station->done_insts->arr[mod_i] = all[i];
             continue;
@@ -59,7 +59,7 @@ void create_initial_state(graph_t *dependencies, single_list_t *insts, int num_i
             if (!station->done_insts->arr[mod_i] && print_unsupported)
                 printf("Unsupported instruction found in line: %i  instruction was: %s\n", i,
                        xed_iform_enum_t2str(index));
-            all[i] = newSimInst(mod_i, NULL, 0, 0, 0, 0, 0, 0);
+            all[i] = newSimInst(mod_i, NULL, 0, 0, 0, 0, 0, 0, 0);
             all[i]->unsupported = true;
             station->done_insts->arr[mod_i] = all[i];
             continue;
@@ -69,7 +69,7 @@ void create_initial_state(graph_t *dependencies, single_list_t *insts, int num_i
         cur = newSimInst(mod_i, info->micro_ops, info->num_micro_ops,
                          dependencies->nodes[father_i]->num_fathers,
                          get_max_latency(info->latencies), dependencies->nodes[mod_i]->num_successors,
-                         station->num_ports, station->num_insts);
+                         station->num_ports, station->num_insts, info->div_cycles);
         all[i] = cur;
         cur->previous = prev;
         if (prev != NULL)
@@ -149,6 +149,7 @@ void put_executables_into_ports(station_t *station) {
         } else {
             bool fits_single;
             bool fits = true;
+            bool blame_div = false;
             port_ops_t *po = cur->micro_ops;
             hashset_t *would_like_to_use = new_hashset(station->num_ports);
             int will_use[station->num_ports];
@@ -168,8 +169,15 @@ void put_executables_into_ports(station_t *station) {
                 // check which ports are possible
                 for (int i = 0; i < station->num_ports; ++i) {
                     if (po->usable_ports[i] && !station->ports[i]) {
+                        // instruction wants to use the div pipe, but it is blocked
+                        // !blame_div because we only consider a single uop as the div op
+                        if (!i && cur->div_cycles && !cur->executed_div && station->div_port && !blame_div && station->div_port->id != cur->id) {
+                            fits_single = false;
+                            blame_div = true;
+                            continue;
+                        }
                         insert_sorted(will_use, &arr_len, i, station);
-                    } else if (po->usable_ports[i]) {
+                    } else if (po->usable_ports[i] && cur->id != station->ports[i]->id) {
                         fits_single = false;
                         insert_into_hashset(blamable, i);
                     }
@@ -177,6 +185,9 @@ void put_executables_into_ports(station_t *station) {
                 // assign the microops to the least used ports
                 for (int i = 0; i < arr_len && po->loaded_ops; ++i) {
                     if (!station->non_blocking_ports) {
+                        if (!will_use[i] && cur->div_cycles && !cur->executed_div && !station->div_port) {
+                            station->div_port = cur;
+                        }
                         station->ports[will_use[i]] = cur;
                     }
                     cur->used_ports[will_use[i]]++;
@@ -213,6 +224,11 @@ void put_executables_into_ports(station_t *station) {
                         insert_into_hashset(already_blamed, station->ports[i]->id);
                     }
                 }
+                if (blame_div) {
+                    station->div_port->div_delayed_cycles++;
+                    station->div_port->delayed_cycles++;
+                    cur->div_cycles_delayed++;
+                }
                 hashset_free(already_blamed);
                 cur->cycles_delayed++;
             }
@@ -228,11 +244,14 @@ void execute_instructions_in_ports(station_t *station) {
     sim_inst_t *cur;
     while (list) {
         cur = list->elem;
-        if (++cur->executed_cycles >= cur->latency) {
+        if (cur->div_cycles && station->div_port && station->div_port->id == cur->id && ++cur->executed_div >= cur->div_cycles) {
+            station->div_port = NULL;
+        }
+        inform_children_im_done(cur, cur->executed_cycles++);
+        if (cur->executed_cycles >= cur->latency) {
             delete_inst_from_queue(cur, station);
             add_to_sim_list(station->done_insts, cur, station->num_ports, station->num_insts);
         }
-        inform_children_im_done(cur, cur->executed_cycles);
         list = list->next;
     }
     execute_list_clear(&station->to_exec);

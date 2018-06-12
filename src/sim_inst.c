@@ -11,9 +11,10 @@ void reset_global_id() {
 }
 
 sim_inst_t *newSimInst(int line, port_ops_t *micro_ops, int num_micro_ops, int num_fathers,
-                       int latency, int num_children, int numports, int num_insts) {
+                       int latency, int num_children, int numports, int num_insts, int div_cycles) {
     sim_inst_t *ret = (sim_inst_t *) malloc(sizeof(sim_inst_t));
     ret->num_micro_ops = num_micro_ops;
+    ret->div_cycles = div_cycles;
     ret->unsupported = false;
     ret->not_needed = false;
     ret->micro_ops_loaded = 0;
@@ -24,11 +25,15 @@ sim_inst_t *newSimInst(int line, port_ops_t *micro_ops, int num_micro_ops, int n
     ret->fathers = malloc(num_fathers * sizeof(sim_inst_t *));
     ret->next = NULL;
     ret->cycles_delayed = 0;
+    ret->div_cycles_delayed = 0;
+    ret->div_delayed_cycles = 0;
     ret->delayed_cycles = 0;
     ret->latency = latency;
     ret->num_dep_children = num_children;
     ret->executed_cycles = 0;
     ret->used_ports = calloc(numports, sizeof(int));
+    ret->used_div = 0;
+    ret->executed_div = 0;
     ret->dep_children = (reg_sim_inst_t *) malloc(num_children * sizeof(reg_sim_inst_t));
     ret->dep_delays = malloc(num_insts * sizeof(delays_t));
     for (int i = 0; i < num_insts; ++i) {
@@ -97,6 +102,8 @@ void add_to_sim_list(sim_inst_list_t *list, sim_inst_t *elem, int num_ports, int
         sim_inst_t *old = list->arr[index];
         old->delayed_cycles += elem->delayed_cycles;
         old->cycles_delayed += elem->cycles_delayed;
+        old->div_cycles_delayed += elem->div_cycles_delayed;
+        old->div_delayed_cycles += elem->div_delayed_cycles;
         for (int i = 0; i < num_ports; ++i) {
             old->used_ports[i] += elem->used_ports[i];
             old->port_delays[i].delay_suffered += elem->port_delays[i].delay_suffered;
@@ -106,6 +113,7 @@ void add_to_sim_list(sim_inst_list_t *list, sim_inst_t *elem, int num_ports, int
             old->dep_delays[i].delay_caused += elem->dep_delays[i].delay_caused;
             old->dep_delays[i].delay_suffered += elem->dep_delays[i].delay_suffered;
         }
+        free(elem);
     }
 }
 
@@ -118,11 +126,21 @@ void free_sim_inst_list(sim_inst_list_t *list) {
     free(list);
 }
 
+bool divider_pipe_neccessary(sim_inst_list_t *list) {
+    for (int i = 0; i < list->size; ++i) {
+        if (list->arr[i]->div_cycles)
+            return true;
+    }
+    return false;
+}
+
 
 void
 print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int num_ports, char *arch_name, int num_iterations,
-                    int num_cycles,
-                    int total_num_microops, int frontend_cycles, int port_cycles, int dep_cycles) {
+                    int num_cycles, int total_num_microops, int frontend_cycles, int port_cycles, int dep_cycles,
+                    bool iform) {
+    int total = 0;
+    bool div_pipe = divider_pipe_neccessary(list);
     printf("Block throughput: %.2f cycles\n", ((double) num_cycles) / num_iterations);
     if (frontend_cycles > -1) {
         printf("Block throughput with perfect front end: %.2f cycles\n", ((double) frontend_cycles) / num_iterations);
@@ -134,12 +152,20 @@ print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int num_por
     printf("\nAnalysis for architecture: %s\n\n", arch_name);
     printf(" Line  ||   Num   ||   had   || caused  ||            Used Ports\n");
     printf("       ||   Uops  || to wait || to wait ||");
-    for (int i = 0; i < num_ports; ++i) {
+    if (div_pipe) {
+        printf("   %i  -  DV  ||", 0);
+    } else {
+        printf("   %i   ||", 0);
+    }
+    for (int i = 1; i < num_ports; ++i) {
         printf("   %i   ||", i);
     }
     printf("\n");
     for (int i = 0; i < (num_ports == 6 ? 96 : 114); ++i) {
         printf("-");
+    }
+    if (div_pipe) {
+        printf("------");
     }
     printf("\n");
     sim_inst_t *inst = NULL;
@@ -153,12 +179,16 @@ print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int num_por
         printf(" %i   ||", i);
         if (inst->unsupported) {
             printf("    X    ||    X    ||    X    ||");
+            if (div_pipe) {
+                printf("     ");
+            }
             for (int j = 0; j < num_ports; ++j) {
                 printf("   X   ||");
             }
             printf(" %s\n", buffer);
             continue;
         }
+        total += inst->num_micro_ops;
         print_conditional_spaces(inst->num_micro_ops);
         printf("  %i    ||", inst->num_micro_ops);
         print_conditional_spaces(((double) inst->cycles_delayed) / num_iterations);
@@ -173,13 +203,28 @@ print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int num_por
             printf("       ||");
         for (int j = 0; j < num_ports; ++j) {
             print_conditional_spaces(((double) inst->used_ports[j]) / num_iterations);
-            if (inst->used_ports[j] > 0)
+            if (!j && div_pipe) {
+                if (inst->used_ports[j] > 0) {
+                    printf("%.1f  ", ((double) inst->used_ports[j]) / num_iterations);
+                    if (inst->div_cycles) {
+                        print_conditional_spaces(inst->div_cycles);
+                        printf("%.1f ", (double)inst->div_cycles);
+                    }
+                    printf("||");
+                } else
+                    printf("           ||");
+            } else if (inst->used_ports[j] > 0)
                 printf("%.1f  ||", ((double) inst->used_ports[j]) / num_iterations);
             else
                 printf("     ||");
         }
-        printf(" %s\n", buffer);
+        printf(" %s", buffer);
+        if (iform) {
+            printf(", %s", xed_iform_enum_t2str(xed_decoded_inst_get_iform_enum(&inst_list->array[i])));
+        }
+        printf("\n");
     }
+    printf("Total number of Uops: %i\n", total);
 }
 
 
@@ -281,6 +326,13 @@ print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int line
                 printf("  Port || was delayed || has delayed\n");
                 printf(" ----------------------------------\n");
                 is_delayed = true;
+                if (divider_pipe_neccessary(list)) {
+                    printf("   DV  ||");
+                    print_conditional_spaces(((double) inst->div_delayed_cycles) / num_iterations);
+                    printf("   %.1f     ||", ((double) inst->div_delayed_cycles) / num_iterations);
+                    print_conditional_spaces(((double) inst->div_cycles_delayed) / num_iterations);
+                    printf("   %.1f    \n", ((double) inst->div_cycles_delayed) / num_iterations);
+                }
             }
             print_conditional_spaces(i);
             printf(" %i   ||", i);
@@ -305,3 +357,4 @@ void clear_father_from_list(sim_inst_t *si, int father_id) {
         }
     }
 }
+

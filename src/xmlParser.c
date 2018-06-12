@@ -276,6 +276,9 @@ bool parse_architecture(FILE *file, inst_info_t *info, int numports) {
                 parse_ports(&att, po);
             } else {
                 split_attribute(buff, &att);
+                if (!strcmp(att.attribute, "div_cycles")) {
+                    info->div_cycles = atoi(att.value);
+                }
                 if (!strcmp(att.attribute, "total_uops")) {
                     info->num_micro_ops = atoi(att.value);
                     if (att.rest) {
@@ -305,6 +308,8 @@ bool parse_architecture(FILE *file, inst_info_t *info, int numports) {
         while (fscanf(file, "%s", buff) != EOF) {
             split_attribute(buff, &att);
             if (!strcmp(att.attribute, "cycles")) {
+                cycles = atoi(att.value);
+            } else if (info->div_cycles && !strcmp(att.attribute, "maxCycles")){
                 cycles = atoi(att.value);
             } else if (!strcmp(att.attribute, "targetOp")) {
                 set_cycles(info, cycles, atoi(att.value), is_upper_bound);
@@ -412,6 +417,7 @@ station_t *parse_station_file(char *file_name, int num_iterations, int single_lo
     s->num_iterations = num_iterations;
     s->non_blocking_ports = false;
     s->no_dependencies = false;
+    s->div_port = NULL;
     fclose(station_file);
     return s;
 }
@@ -529,6 +535,7 @@ void free_info_array(inst_info_t **array) {
 inst_info_t *newInstInfo() {
     inst_info_t *info = malloc(sizeof(inst_info_t));
     info->latencies = NULL;
+    info->div_cycles = 0;
     info->micro_ops = NULL;
     info->num_micro_ops = -1;
     info->numrefs = 1;

@@ -16,6 +16,7 @@ bool perfomance = false;
 bool no_deps = false;
 bool perfect_frontend = false;
 bool infinite_ports = false;
+bool print_iforms = false;
 int num_iterations = 0;
 int detail_line = -1;
 char *setup_arch;
@@ -76,7 +77,7 @@ int main(int argc, char *argv[]) {
     }
 
     inst_list_t *instructions = build_inst_list(file_name);
-    print_list(instructions);
+    //print_list(instructions);
 
     for (size_t i = 0; i < instructions->numLists; i++) {
         if (branch) {
@@ -101,6 +102,10 @@ void help() {
     printf(" -cfg:            build controlflowgraph\n");
     printf(" -dg:             build dependencygraph\n");
     printf(" -p:              run in \"performance mode\"\n");
+    printf(" -nd:             run \"without dependencies\"\n");
+    printf(" -ip:             run \"with infintely usable ports\"\n");
+    printf(" -pf:             run \"perfect front end\"\n");
+    printf(" --iform:         also print the iforms\n");
     printf(" --arch [x]:      [x] is architecture the analysis is based on\n");
     printf(" --detail [x]:    detailed delay info for line [x]\n");
     printf(" --loop [x]:      run the analysis in a loop of [x]\n");
@@ -122,12 +127,12 @@ int perform_simulation(station_t *station, single_list_t *list, bool print) {
     }
     if (detail_line == -1 && print && !perfomance) {
         print_sim_inst_list(station->done_insts, list, station->num_ports, arch_name, num_iterations, num_cycles,
-                            total_num_microops, frontend_cycles, port_cycles, dep_cycles);
+                            total_num_microops, frontend_cycles, port_cycles, dep_cycles, print_iforms);
     } else if (print && detail_line != -1)
         print_sim_inst_details(station->done_insts, list, detail_line, station->num_ports, num_iterations);
     else if (print) {
         print_sim_inst_list(station->done_insts, list, station->num_ports, arch_name, num_iterations, num_cycles,
-                            total_num_microops, -1, -1, -1);
+                            total_num_microops, -1, -1, -1, print_iforms);
     }
     freeStation(station);
     return num_cycles;
@@ -267,6 +272,8 @@ void clp(int argc, char *argv[]) {
         } else if (!strcmp(argv[i], "-nd")) {
             no_deps = true;
             perfomance = true;
+        } else if (!strcmp(argv[i], "--iform")) {
+            print_iforms = true;
         } else if (*argv[i] == '-') {
             invalid_flag = argv[i];
         } else {

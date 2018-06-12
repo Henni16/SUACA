@@ -37,6 +37,7 @@ typedef struct port_ops_s {
 typedef struct inst_info_s {
     latency_reg_t *latencies;
     port_ops_t *micro_ops;
+    int div_cycles;
     int num_micro_ops;
     //number of references to this struct, needed because of incomplete iforms in xml file
     //when it hits 0 this can be freed

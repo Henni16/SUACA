@@ -20,6 +20,7 @@ typedef struct sim_inst_s {
     bool unsupported;
     bool not_needed;
     int latency;
+    int div_cycles;
     int num_micro_ops;
     int micro_ops_loaded;
     port_ops_t *micro_ops;
@@ -30,11 +31,13 @@ typedef struct sim_inst_s {
       for another instrunction to finish
     */
     int cycles_delayed;
+    int div_cycles_delayed;
     /*
       number of cycles the instruction caused another
       instruction to be delayed
     */
     int delayed_cycles;
+    int div_delayed_cycles;
     struct sim_inst_s *next;
     struct sim_inst_s *previous;
     //nodes that rely on this one to be finished
@@ -42,8 +45,10 @@ typedef struct sim_inst_s {
     struct reg_sim_inst_s *dep_children;
     //number of cycles that were used on each port
     int *used_ports;
+    int used_div;
     // number of cycles this instruction has been executed
     int executed_cycles;
+    int executed_div;
     // delays[i] will be the delays caused/suffered from the instruction in line i
     // note that this can exceed the number of delayed_cycles, because multiple fathers/ports can be responsible
     // for one delay
@@ -63,7 +68,7 @@ typedef struct sim_inst_list_s {
 
 
 sim_inst_t *newSimInst(int line, port_ops_t *micro_ops, int num_micro_ops, int num_fathers,
-                       int latency, int num_children, int numports, int num_insts);
+                       int latency, int num_children, int numports, int num_insts, int div_cycles);
 
 bool all_fathers_done(sim_inst_t *si);
 
@@ -81,7 +86,8 @@ void free_sim_inst_list(sim_inst_list_t *list);
 
 void
 print_sim_inst_list(sim_inst_list_t *list, single_list_t *inst_list, int num_ports, char *arch_name, int num_iterations,
-                    int num_cycles, int total_num_microops, int frontend_cycles, int port_cycles, int dep_cycles);
+                    int num_cycles, int total_num_microops, int frontend_cycles, int port_cycles, int dep_cycles,
+                    bool iform);
 
 void
 print_sim_inst_details(sim_inst_list_t *list, single_list_t *inst_list, int line, int num_ports, int num_iterations);
