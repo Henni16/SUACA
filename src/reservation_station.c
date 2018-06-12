@@ -247,7 +247,7 @@ void execute_instructions_in_ports(station_t *station) {
         if (cur->div_cycles && station->div_port && station->div_port->id == cur->id && ++cur->executed_div >= cur->div_cycles) {
             station->div_port = NULL;
         }
-        inform_children_im_done(cur, cur->executed_cycles++);
+        inform_children_im_done(cur, ++cur->executed_cycles);
         if (cur->executed_cycles >= cur->latency) {
             delete_inst_from_queue(cur, station);
             add_to_sim_list(station->done_insts, cur, station->num_ports, station->num_insts);
