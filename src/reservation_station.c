@@ -229,8 +229,10 @@ void put_executables_into_ports(station_t *station) {
                     station->div_port->delayed_cycles++;
                     cur->div_cycles_delayed++;
                 }
+                if (blame_div || already_blamed->num) {
+                    cur->cycles_delayed++;
+                }
                 hashset_free(already_blamed);
-                cur->cycles_delayed++;
             }
             hashset_free(would_like_to_use);
         }

@@ -9,6 +9,7 @@
 
 typedef struct hashset_s {
     int *elems;
+    int num;
     int size;
 } hashset_t;
 
