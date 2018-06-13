@@ -1,0 +1,139 @@
+% !TeX spellcheck = en_US
+
+In this chapter we are going to show some example runs of \iaca, \suaca\ and one of \osaca. We will evaluate the results and differences of the tools and show how an detailed analysis can be done with \suaca.
+
+\section{Bottleneck analysis}
+
+Consider the following example run of \iaca\ on the Sandy Bridge architecture:
+
+\begin{example}
+        Throughput Analysis Report
+        --------------------------
+        Block Throughput: 2.00 Cycles       Throughput Bottleneck: FrontEnd
+        
+        Port Binding In Cycles Per Iteration:
+        -------------------------------------------------------------------------
+        |  Port  |  0   -  DV  |  1   |  2   -  D   |  3   -  D   |  4   |  5   |
+        -------------------------------------------------------------------------
+        | Cycles | 2.0    0.0  | 2.0  | 0.0    0.0  | 0.0    0.0  | 0.0  | 2.0  |
+        -------------------------------------------------------------------------
+        
+        N - port number or number of cycles resource conflict caused delay, DV - Divider pipe (on port 0)
+        D - Data fetch pipe (on ports 2 and 3), CP - on a critical path
+        F - Macro Fusion with the previous instruction occurred
+        * - instruction micro-ops not bound to a port
+        ^ - Micro Fusion happened
+        # - ESP Tracking sync uop was issued
+        @ - SSE instruction followed an AVX256/AVX512 instruction, dozens of cycles penalty is expected
+        X - instruction not supported, was not accounted in Analysis
+        
+        | Num Of |              Ports pressure in cycles               |    |
+        |  Uops  |  0  - DV  |  1  |  2  -  D  |  3  -  D  |  4  |  5  |    |
+        ---------------------------------------------------------------------
+        |   1    | 1.0       |     |           |           |     |     | CP | mov rax, 0x6
+        |   1    |           | 1.0 |           |           |     |     | CP | mov rax, 0x6
+        |   1    |           |     |           |           |     | 1.0 | CP | mov rax, 0x6
+        |   1    | 1.0       |     |           |           |     |     | CP | mov rax, 0x6
+        |   1    |           | 1.0 |           |           |     |     | CP | mov rax, 0x6
+        |   1    |           |     |           |           |     | 1.0 | CP | mov rax, 0x6
+        Total Num Of Uops: 6
+\end{example}
+
+Note that we constructed this program exclusively for our purposes. In reality the processor would only execute the first instruction and completely optimize the rest away. This is fine as none of the tools will simulate this behavior and it is designed as a toy example.\\
+We can observe that the \emph{mov} instruction is able to use ports $0$, $1$ and $5$. The front end of the Sandy Bridge architecture can deliver up to four \microops\ per cycle and there are no dependencies as no register is ever read.\\
+So the clear bottleneck of this program are the three ports, because four \microops\ get loaded but only three ports are available for their execution. Unfortunately we don't know how the bottleneck analysis of \iaca\ works so we can't argue why it believes that the front end might be the bottleneck. Looking at the information we do have it does not make sense, though.\\
+
+
+Now consider \suaca's output of the same program with $200$ iterations:
+
+\begin{example}
+Block throughput: 2.00 cycles
+Block throughput with perfect front end: 2.00 cycles
+Block throughput with infinitely usable ports: 1.50 cycles
+Block throughput without dependencies: 2.00 cycles
+Microops per cycle: 3.00
+       
+Analysis for architecture: SNB
+        
+ Line  ||   Num   ||   had   || caused  ||            Used Ports
+       ||   Uops  || to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||
+ ------------------------------------------------------------------------------------------------
+   0   ||    1    ||  15.6   ||  46.7   ||  1.0  ||       ||       ||       ||       ||       || mov rax, 0x6
+   1   ||    1    ||  15.6   ||  46.7   ||       ||  1.0  ||       ||       ||       ||       || mov rax, 0x6
+   2   ||    1    ||  15.5   ||  46.7   ||       ||       ||       ||       ||       ||  1.0  || mov rax, 0x6
+   3   ||    1    ||  15.6   ||  46.7   ||  1.0  ||       ||       ||       ||       ||       || mov rax, 0x6
+   4   ||    1    ||  15.6   ||  46.7   ||       ||  1.0  ||       ||       ||       ||       || mov rax, 0x6
+   5   ||    1    ||  15.6   ||  46.7   ||       ||       ||       ||       ||       ||  1.0  || mov rax, 0x6
+Total number of Uops: 6
+\end{example}
+
+One can easily see that the port information and the block throughput is identical to \iaca's output. The major difference lies in the bottleneck analysis. \suaca\ tells you that the throughput improves quite drastically with infinitely usable ports. The two cycles make sense with the ports in consideration as we have three usable ports and six instructions, but when the each port can be used to an infinite amount each cycle this is no longer relevant. Without the port problem our we only need one and a half cycle for each iteration as we have six \microops\ and a front end that produces four of them each cycle.\\
+We can also tell \suaca\ to analyze a specific line for us:
+
+\begin{example}
+Detailed delay information for instruction: mov rax, 0x6 in line 0
+    
+            Maximum latency: 1
+            
+            Latencies for dependencies:
+            This instruction doesn't have any dependencies!
+                      
+            Delay caused by blocked ports:
+             Port || was delayed || has delayed
+             ----------------------------------
+              0   ||    46.7     ||    15.6
+              1   ||     0.0     ||    15.6
+              5   ||     0.0     ||    15.6
+\end{example}
+
+In this particular case the detailed analysis is identical for every line, because the number of loads per cycle doesn't divide the total number of \microops\ the program kind of ``rotates'' during the simulation. A high number of iterations therefore leads to, on average, equal number of all instructions.\\
+This detailed analysis shows that each line suffered a delay of $15.6$ cycles from each of its usable ports. This value is equal for all ports, because this instruction only consists of a single \microop\ and is therefore only delayed if all three ports are blocked (see algorithm \ref{alg:assign}), which will then all be held responsible. Each instruction causes a delay on the port it used.\\
+The \emph{caused to wait} value in the original output is thrice as high as the \emph{had to wait} value. This is due to the fact that there are always three instructions that are responsible for a single other instruction's delay.
+
+
+\section{OSACA}
+
+\begin{Example}
+    Throughput Analysis Report
+    --------------------------
+    X - No information for this instruction in data file
+    " - Instruction micro-ops not bound to a port
+    
+    Port Binding in Cycles Per Iteration:
+    -------------------------------------------------
+    | Port   |   0  |   1  |  2  |  3  |  4  |   5  |
+    -------------------------------------------------
+    | Cycles | 1.67 | 3.67 | 2.5 | 2.5 | 1.0 | 0.67 |
+    -------------------------------------------------
+    
+    Ports Pressure in cycles
+    |   0  |   1  |   2  |   3  |   4  |   5  |
+    -------------------------------------------
+    |      |      | 0.50 | 0.50 |      |      | vmovsd  (%r14,%r15,8), %xmm2
+    |      | 1.00 | 0.50 | 0.50 |      |      | vaddsd  16(%r14,%r15,8), %xmm2, %xmm3
+    |      | 1.00 | 0.50 | 0.50 |      |      | vaddsd  8(%rax,%r15,8), %xmm3, %xmm4
+    |      | 1.00 | 0.50 | 0.50 |      |      | vaddsd  8(%rdx,%r15,8), %xmm4, %xmm5
+    | 1.00 |      |      |      |      |      | vmulsd  %xmm5, %xmm1, %xmm6
+    |      |      | 0.50 | 0.50 | 1.00 |      | vmovsd  %xmm6, 8(%r12,%r15,8)
+    | 0.33 | 0.33 |      |      |      | 0.33 | incq    %r15
+    | 0.33 | 0.33 |      |      |      | 0.33 | cmpq    %r13, %r15
+    |      |      |      |      |      |      | jb      ..B1.17
+    Total number of estimated throughput: 4.67
+\end{Example}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

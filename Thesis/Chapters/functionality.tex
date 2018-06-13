@@ -1,0 +1,397 @@
+% !TeX spellcheck = en_US
+In this chapter we're going to explain and show the full functionality of \suaca. For each available analysis we will show an example run and explain how the results should be understood. As we want to compare the different runs with each other we will use the following example code for each of them:
+
+\begin{mdframed}[backgroundcolor=light-gray, roundcorner=10pt,leftmargin=1, rightmargin=1, innerleftmargin=15, innertopmargin=1,innerbottommargin=1, outerlinewidth=1, linecolor=light-gray]
+\begin{lstlisting}[language={myLang}, basicstyle=\small, numbers=left]
+   mov rax, 1
+   cmp rcx, 0
+   jne else
+   add rbx, rax
+   jmp end
+else:
+   add rbx, rax
+end:
+   add rbx, rbx
+\end{lstlisting}
+\end{mdframed}
+
+This code won't do anything special as it is only designed to be an example which contains two branches which both have a dependency on the previous and the following instruction.
+
+\section{Plain analysis}
+\label{sec:plain}
+
+First consider the following output which will demonstrate the basic values \suaca\ computes. It only considers a single iteration of the program.
+
+
+\begin{example}
+Block throughput: 3.00 cycles
+Block throughput with perfect front end: 3.00 cycles
+Block throughput with infinitely usable ports: 3.00 cycles
+Block throughput without dependencies: 3.00 cycles
+Microops per cycle: 2.33
+
+Analysis for architecture: SNB
+
+ Line  ||   Num   ||   had   || caused  ||            Used Ports
+       ||   Uops  || to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||
+ ------------------------------------------------------------------------------------------------
+   0   ||    1    ||         ||   1.0   ||  1.0  ||       ||       ||       ||       ||       || mov rax, 0x1
+   1   ||    1    ||         ||   1.0   ||       ||  1.0  ||       ||       ||       ||       || cmp rcx, 0x0
+   2   ||    1    ||   1.0   ||   1.0   ||       ||       ||       ||       ||       ||  1.0  || jnz 0x7
+   3   ||    1    ||   1.0   ||   1.0   ||  1.0  ||       ||       ||       ||       ||       || add rbx, rax
+   4   ||    1    ||   1.0   ||         ||       ||       ||       ||       ||       ||  1.0  || jmp 0x5
+   5   ||    1    ||         ||   1.0   ||       ||  1.0  ||       ||       ||       ||       || add rbx, rax
+   6   ||    1    ||   1.0   ||         ||  1.0  ||       ||       ||       ||       ||       || add rbx, rbx
+Total number of Uops: 7
+\end{example}
+
+
+At the beginning one will notice the following values:
+\begin{itemize}
+    \item \textbf{Block throughput} is the number of cycles needed to execute the program once ($\frac{Total\ number\ of\ cycles}{Number\ of\ iterations}$). In the single iteration case the throughput equals the latency of the program.
+    \item \textbf{Block throughput with perfect front end} can be used to see if the front end of the processor was the bottleneck of the execution. To compute this value \suaca\ will perform a full analysis of the program. However, it will assume that $number\ of\ \mu ops\ loaded\ per\ cycle = capacity\ of\ reservation\ station$. If the runtime experiences a speedup we can conclude that the front end was indeed the bottleneck.
+    \item \textbf{Block throughput with infinitely usable ports} is computed similarly. It will perform a full analysis, but every port can be used arbitrarily. Should the runtime improve we can conclude that one of the ports has to be the bottleneck.
+    \item \textbf{Block throughput without dependencies} is again similar to the aforementioned values. This time the dependencies are disabled during the simulation. An improved throughput here indicates that the dependencies between instructions are the bottleneck. 
+\end{itemize}
+
+In some corner cases it might be possible that both front end and ports are responsible for a decreased runtime. This can happen if every loaded instruction is directly computed (front end bottleneck), but if the front end was faster there wouldn't be another port to run the additionally loaded instructions on. In this case none of the first values would differ from the normal \textbf{Block throughput} although they are actually both part of the bottleneck.\\
+Similar behavior can be observed with multiple combinations of the above mentioned version of our simulation. For this reason \suaca\ gives the user the option to toggle these special simulations in all possible combinations.\\
+
+
+In the table we can observe the following columns:
+\begin{itemize}
+    \item The \textbf{had to wait} column describes the number of cycles the instruction experienced a delay from either blocked ports or a value dependence. 
+    \item The \textbf{caused to wait} column describes the number of cycles the instruction caused a delay similar to the \textbf{had to wait} value. However, it won't track transitive dependencies. So consider a program that has a dependency chain of $A \rightarrow B \rightarrow C$ (where $A$, $B$ and $C$ are instructions of your program) and $A$ is not fully computed. $A$ will cause $B$ to be delayed, resulting in an increased \textbf{caused to wait} value of $A$. $B$ will then cause $C$ to be delayed, resulting in an increased \textbf{caused to wait} value of $B$.
+    \item The \textbf{Used Ports} columns describe how many cycles this port was used. Due to the port pipelining this is equal to the number of \microops\ that were assigned to this port in all cases but the divider pipe (see \autoref{sec:dividerpipe}). If possible \suaca\ will always assign a \microop\ to the port that has been used the least during the analysis (out of the ports that this particular \microop\ is able to use) in order to achieve an even distribution of the ports. A detailed description of how those are computed can be found in ~\autoref{sec:chooseport}.
+\end{itemize}
+
+A closer look at the concrete values of this particular run reveals that the sum of the \textbf{caused to wait} column is $5$ whereas the \textbf{had to wait} column only sums up to $4$. This is due to the fact that both line $3$ and $5$ are responsible for the delay of line $6$ because of the dependence via the $rbx$ register. The exact dependencies can be found in ~\autoref{fig:wloop}. The same behavior arises when an instruction can't be executed because all ports are blocked. When $3$ different instructions $A, B$ and $C$ block the ports another instruction $D$ would like to use the \textbf{caused to wait} values of $A, B$ and $C$ are increased while only one \textbf{had to wait} value ($D$'s) will increase.
+
+
+
+
+\section{Loop analysis}
+\label{sec:loop}
+As we mentioned above the major use case of \iaca\ is analyzing an innermost loop. While \iaca\ will therefore always assume a loop and somehow determine the its number of iterations \suaca\ will give the user the option to choose them. First consider the \suaca\ run of our example program with $200$ iterations:
+
+\begin{example}
+Block throughput: 2.34 cycles
+Block throughput with perfect front end: 2.34 cycles
+Block throughput with infinitely usable ports: 2.00 cycles
+Block throughput without dependencies: 2.34 cycles
+Microops per cycle: 2.99
+
+Analysis for architecture: SNB
+
+ Line  ||   Num   ||   had   || caused  ||            Used Ports
+       ||   Uops  || to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||
+ ------------------------------------------------------------------------------------------------
+   0   ||    1    ||  15.1   ||  43.2   ||  0.0  ||  1.0  ||       ||       ||       ||       || mov rax, 0x1
+   1   ||    1    ||  15.8   ||  32.3   ||  0.3  ||  0.3  ||       ||       ||       ||  0.3  || cmp rcx, 0x0
+   2   ||    1    ||  16.5   ||  20.8   ||       ||       ||       ||       ||       ||  1.0  || jnz 0x7
+   3   ||    1    ||  15.5   ||  28.9   ||  0.7  ||  0.3  ||       ||       ||       ||       || add rbx, rax
+   4   ||    1    ||  16.8   ||  20.4   ||       ||       ||       ||       ||       ||  1.0  || jmp 0x5
+   5   ||    1    ||  15.2   ||  28.9   ||  0.3  ||  0.7  ||       ||       ||       ||       || add rbx, rax
+   6   ||    1    ||  15.8   ||  43.9   ||  1.0  ||       ||       ||       ||       ||       || add rbx, rbx
+Total number of Uops: 7
+\end{example}
+
+When running the simulation in a loop the following values will become averages per iteration:
+
+\begin{itemize}
+    \item had to wait
+    \item caused to wait
+    \item used ports
+\end{itemize} 
+
+More specifically they will be computed with $\frac{total\ value}{number\ of\ iterations}$.\\
+We can observe that line $0$ has used port $0$ $0.0$ times. This just means that this instruction has used port $0$, but to a very little amount and if we remember our \hyperref[sec:plain]{first run}, which didn't use the $loop$ option, we can see that line $0$ in fact uses port $0$ at least once.\\
+When looking at the block throughput values we can see that our example program runs quite significantly faster with infinitely usable ports. And this makes sense as only ports $0, 1$ and $5$ can be used by the instructions we're using. The two jump instructions are the biggest offender as they can exclusively use port $5$.\\
+We can also see that the values of the \textbf{caused to wait} column are a lot higher than those of the \textbf{had to wait} column. This is due to the fact that several lines can be the cause of another line to be delayed as we already explained in ~\autoref{sec:plain}.
+
+\section{Control flow graph}
+The control flow graph is mainly used to compute the correct dependency graph. The $CFG$ of our example program can be seen in ~\autoref{fig:cfg}. The red edge only appears if the analysis runs in a loop as it represents the ``back jump'' to the start of the program that won't appear in a single iteration. For the sake of readability we dashed the red edge and will do so in future graphs.
+
+\begin{figure}
+    \centering
+    \resizebox{!}{8cm}{
+    \begin{tikzpicture}
+    \node[mynode] (A) at (0, 0)     {0: mov rax, 0x1};	
+    \node[mynode] (B) at (0, -2)    {1: cmp rcx, 0x0};
+    \node[mynode] (C) at (0, -4)    {2: jnz 0x7};
+    \node[mynode] (D) at (-3, -6)   {3: add rbx, rax};
+    \node[mynode] (E) at (-3, -8)   {4: jmp 0x5};
+    \node[mynode] (F) at (1, -7)    {5: add rbx, rax};
+    \node[mynode] (G) at (0, -10)   {6: add rbx, rbx};
+    
+    
+    
+    \Edges[](A,B);
+    \Edges[](B,C);
+    \Edges[](C,D);
+    \Edges[](C,F);
+    \Edges[](D,E);
+    \Edges[](E,G);
+    \Edges[](F,G);
+    \Edges[style={->, bend right = 90, dashed}, color=red](G,A);
+    
+    \end{tikzpicture}}
+    \caption{Control flow graph}
+    \label{fig:cfg}
+\end{figure}
+
+\FloatBarrier
+
+\section{Dependency graph}
+The dependency graph describes all register dependencies that occur in the program. An edge from node $A$ to node $B$ means that the instruction represented by $B$ depends on the instruction represented by $A$. \suaca\ will only track read-after-write dependencies, as those are the ones that can actually cause an instruction to be delayed. Whenever an instruction uses a memory address \suaca\ will try to extract all used registers. It won't keep track of the stack as this would often times require runtime specific information. The detailed algorithm that is used to generate this graph can be seen in ~\autoref{sec:depanalysis}. First consider this graph that will be generated in the ``single loop case'' in \autoref{fig:woloop}.\\
+
+
+\begin{figure}
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tikzpicture}
+    \node[mynode] (A) at (-4, 0)  {0: mov rax, 0x1};	
+    \node[mynode] (B) at (-7, -2) {3: add rbx, rax};
+    \node[mynode] (C) at (-1, -2)  {5: add rbx, rax};
+    \node[mynode] (D) at (-4, -4) {6: add rbx, rbx};
+
+
+    \Edges[label=$RAX$, style=bright](A,B);
+    \Edges[label=$RAX$, style=bleft](A,C);
+    \Edges[label=$RBX$, style={->, bend right = 10}](B,D);
+    \Edges[label=$RBX$, style={->, bend left = 10}](C,D);
+
+    \node[mynode] (E)  at (3, 0)  {1: cmp rcx, 0x0};
+    \node[mynode] (F)  at (3, -2.5) {2: jnz 0x7};
+    
+    \Edges[label=$RFLAGS - zf$](E,F);
+    
+    \node[mynode] (G)  at (3, -4) {4: jmp 0x5};
+
+\end{tikzpicture}
+}
+\caption{Dependency graph without loop dependencies}
+\label{fig:woloop}
+\end{figure}
+
+
+We can see that this graph was generated with the $CFG$ in mind as there is no edge from node $3$ to node $5$. Additionally we can observe that \suaca\ does differentiate between the different flags contained in the $RFLAGS$ register as the dependence is only reasoned with the $zf$ flag.\\
+When \suaca\ is called with at least $2$ iterations it will also track all ``loop dependencies''. \autoref{fig:wloop} shows the graph with those in consideration. We can see that two edges were added and they will be colored red to indicate that they were caused by the loops.
+
+\begin{figure}
+    \centering
+    \resizebox{\textwidth}{!}{
+    \begin{tikzpicture}
+    \node[mynode] (A) at (-4, 0)  {0: mov rax, 0x1};	
+    \node[mynode] (B) at (-7, -2) {3: add rbx, rax};
+    \node[mynode] (C) at (-1, -2)  {5: add rbx, rax};
+    \node[mynode] (D) at (-4, -4) {6: add rbx, rbx};
+    
+    
+    \Edges[label=$RAX$, style=bright](A,B);
+    \Edges[label=$RAX$, style=bleft](A,C);
+    \Edges[label=$RBX$, style=bleft](B,D);
+    \Edges[label=$RBX$, color = red, style={bleft, dashed}](D, B);
+    \Edges[label=$RBX$, style=bright](C,D);
+    \Edges[label=$RBX$, color = red, style={bright, dashed}](D, C);
+    
+    \node[mynode] (E)  at (3, 0)  {1: cmp rcx, 0x0};
+    \node[mynode] (F)  at (3, -2.5) {2: jnz 0x7};
+    
+    \Edges[label=$RFLAGS - zf$](E,F);
+    
+    \node[mynode] (G)  at (3, -4) {4: jmp 0x5};
+    
+    \end{tikzpicture}
+}
+    \caption{Dependency graph with loop dependencies}
+    \label{fig:wloop}
+\end{figure}
+
+\FloatBarrier
+
+\section{Architecture selection}
+
+As previously discussed one of the big advantages of \suaca\ is that one can easily add new architectures that the analysis can be based on.\\
+\suaca\ gives the user the ability to choose a specific micro-architecture. For our example we will use Intel's Coffee Lake micro-architecture instead of the Sandy Bridge micro-architecture we used previously (the first two columns are left out to improve readability):
+
+\begin{example}
+Block throughput: 2.00 cycles
+Block throughput with perfect front end: 2.00 cycles
+Block throughput with infinitely usable ports: 2.00 cycles
+Block throughput without dependencies: 1.75 cycles
+Microops per cycle: 3.49
+
+Analysis for architecture: CFL
+
+   had   || caused  ||            Used Ports
+ to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||   6   ||   7   ||
+------------------------------------------------------------------------------------------------------------------
+   4.7   ||  15.9   ||  0.1  ||  0.8  ||       ||       ||       ||  0.1  ||  0.1  ||       || mov rax, 0x1
+   5.4   ||  13.6   ||  0.2  ||  0.5  ||       ||       ||       ||  0.1  ||  0.2  ||       || cmp rcx, 0x0
+   6.2   ||   9.8   ||  0.4  ||       ||       ||       ||       ||       ||  0.6  ||       || jnz 0x7
+  43.2   ||  48.9   ||  0.1  ||  0.2  ||       ||       ||       ||  0.7  ||  0.0  ||       || add rbx, rax
+   5.1   ||   9.1   ||  0.2  ||       ||       ||       ||       ||       ||  0.8  ||       || jmp 0x5
+  42.8   ||  51.6   ||  0.7  ||  0.1  ||       ||       ||       ||  0.2  ||  0.0  ||       || add rbx, rax
+  43.6   ||  90.8   ||  0.1  ||  0.2  ||       ||       ||       ||  0.7  ||  0.0  ||       || add rbx, rbx
+Total number of Uops: 7
+\end{example}
+
+The most significant change is that the infinitely usable ports analysis no longer experiences an improvement in runtime. This is due to the larger number of ports in the Coffee Lake architecture. We can now instead observe that the three $add$ instructions, or more so their dependencies on each other, are responsible for most of the delays. We can conclude this from the \textbf{had to wait} and \textbf{caused to wait} values of these instructions and also the improved throughput with ignored dependencies.
+
+
+
+\section{Detailed information}
+\label{sec:detail}
+
+\suaca\ can also deliver some detailed information about one particular line. This can be useful to determine how a specific instruction causes and experiences a delay. The following table shows the result of a run on our example program with $200$ iterations and details for line $0$.
+
+\begin{Example}
+Detailed delay information for instruction: mov rax, 0x1 in line 0
+
+                Maximum latency: 1
+                
+                Latencies for dependencies:
+                
+                Line || 0 -> Line || Line -> 0
+                ----------------------------------
+                 3   ||     1     ||     0
+                 5   ||     1     ||     0
+                
+                
+                Delay caused by dependencies:
+                
+                Line || was delayed || has delayed
+                ----------------------------------
+                 3   ||    15.2     ||     0.0
+                 5   ||    14.5     ||     0.0
+                
+                
+                Delay caused by blocked ports:
+                
+                Port || was delayed || has delayed
+                ----------------------------------
+                 0   ||     0.0     ||    15.1
+                 1   ||    13.5     ||    15.1
+                 5   ||     0.0     ||    15.1
+\end{Example}
+
+In order to get a better understanding of those values we will split the output and explain them step by step.
+
+\begin{Example}
+Maximum latency: 1
+
+Latencies for dependencies:
+
+Line || 0 -> Line || Line -> 0
+----------------------------------
+ 3   ||     1     ||     0
+ 5   ||     1     ||     0
+\end{Example}
+
+First we can see that this instruction has a maximum latency of one cycle. This value can differ from those of the table below as we have seen in ~\autoref{lst:xml}.\\
+The table itself shows the latencies \suaca\ used for the dependencies. The second column show the delay from the analyzed line to the line given in the first column and the third row shows the delay in the other direction. In our case lines $3$ and $5$ depend on line $0$ (see ~\autoref{fig:wloop}) and we can see here that those lines actually have to wait one cycle for line $0$ to be finished and line $0$ itself is independent of the other two.\\
+
+\begin{Example}
+Delay caused by blocked ports:
+
+Port || was delayed || has delayed
+----------------------------------
+0   ||     0.0     ||    15.1
+1   ||    13.5     ||    15.1
+5   ||     0.0     ||    15.1
+\end{Example}
+
+This table now shows that lines $3$ and $5$ actually are delayed by our analyzed line. On average, line $3$ has to wait $15.2$ cycles for line $0$ to be finished while line $5$ has to wait $14.5$ cycles. Of course both of them don't cause any delay on line $0$ as there is no dependence.\\
+
+\begin{Example}
+Delay caused by blocked ports:
+
+Port || was delayed || has delayed
+----------------------------------
+ 0   ||     0.0     ||    15.1
+ 1   ||    13.5     ||    15.1
+ 5   ||     0.0     ||    15.1
+\end{Example}
+
+Finally \suaca\ also tells you how much delay was caused by the ports. First consider that the $mov$ instruction in line $0$ can, in theory, use ports $0, 1$ and $5$. In our case it causes a delay of $13.5$ cycles per iteration on another instruction, because it uses port $1$. It doesn't cause any delay on the other two ports that it might use simply because it always uses port $1$ in our particular case (see ~\autoref{sec:loop}). The second column tells us that line $0$ experiences a delay of $15.1$ cycles per iteration because all three usable ports were blocked. The $mov$ instruction we're considering here only consists of a single \microop\ which leads to all three of those values being identical.\\
+More precisely the $mov$ instruction can only be delayed by blocked ports if all three of its usable ports are blocked, otherwise it would just chose the free one. So all three of those blocked ports are responsible hence the three identical values.\\
+However this is not always the case as an instruction might consist of more than one \microop. We will discuss this further in \autoref{sec:chooseport}.
+
+
+
+
+\section{Branch analysis}
+
+Finally \suaca\ is able to analyze different branches. As we have seen in \autoref{fig:cfg} and \autoref{fig:woloop} the ``normal'' analysis already considers branches for its dependencies. However, as the effect of the instructions will be completely ignored in the simulation the branches won't have any other effect.\\
+The actual branch analysis will perform two simulations, one for each branch. This will always consider the first $jump$ instruction and this one only. It won't consider every single possible path through a program with multiple branches. This one $jump$ instruction, as well as the $jump$ instruction that's typically in one of the two branches, will be excluded from the analysis as \suaca\ expects the processor to perform branch prediction. We will now consider the branching analysis of our example program, again with the Sandy Bridge architecture and $200$ iterations:
+
+\begin{example}
+Left branch analysis:
+
+Block throughput: 2.00 cycles
+Block throughput with perfect front end: 2.00 cycles
+Block throughput with infinitely usable ports: 2.00 cycles
+Block throughput without dependencies: 1.34 cycles
+Microops per cycle: 2.00
+
+Analysis for architecture: SNB
+
+ Line  ||   Num   ||   had   || caused  ||            Used Ports
+       ||   Uops  || to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||
+ ------------------------------------------------------------------------------------------------
+   0   ||    1    ||         ||   0.3   ||  0.5  ||  0.2  ||       ||       ||       ||  0.2  || mov rax, 0x1
+   1   ||    1    ||         ||         ||  0.2  ||  0.5  ||       ||       ||       ||  0.3  || cmp rcx, 0x0
+   3   ||    1    ||  45.4   ||  45.6   ||  0.3  ||  0.3  ||       ||       ||       ||  0.4  || add rbx, rax
+   6   ||    1    ||  45.6   ||  45.4   ||  0.3  ||  0.3  ||       ||       ||       ||  0.4  || add rbx, rbx
+Total number of Uops: 4
+
+
+Right branch analysis:
+
+Block throughput: 2.00 cycles
+Block throughput with perfect front end: 2.00 cycles
+Block throughput with infinitely usable ports: 2.00 cycles
+Block throughput without dependencies: 1.34 cycles
+Microops per cycle: 2.00
+
+Analysis for architecture: SNB
+
+ Line  ||   Num   ||   had   || caused  ||            Used Ports
+       ||   Uops  || to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||
+ ------------------------------------------------------------------------------------------------
+   0   ||    1    ||         ||   0.3   ||  0.5  ||  0.2  ||       ||       ||       ||  0.2  || mov rax, 0x1
+   1   ||    1    ||         ||         ||  0.2  ||  0.5  ||       ||       ||       ||  0.3  || cmp rcx, 0x0
+   5   ||    1    ||  45.4   ||  45.6   ||  0.3  ||  0.3  ||       ||       ||       ||  0.4  || add rbx, rax
+   6   ||    1    ||  45.6   ||  45.4   ||  0.3  ||  0.3  ||       ||       ||       ||  0.4  || add rbx, rbx
+Total number of Uops: 4
+\end{example}
+
+This kind of information can be useful to determine which of the two branches is more favorable for the execution. It can also be used to see if there are any significant differences between the two at all in order to prevent side channel attacks.\\
+One can also use this in combination with the detailed analysis as \suaca\ will tell you the original line of all instructions in both parts of the branching analysis.
+
+
+\section{The command line interface}
+The CLI of \suaca\ works as follows:\\
+\[
+suaca\ [option]\ path\_to\_file
+\]
+where $[option]$ is one or several of the following:
+\begin{itemize}
+    \item $-pf$ triggers the perfect front end analysis.
+    \item $-ip$ triggers the infinite port analysis.
+    \item $-nd$ triggers the dependency free analysis. 
+    \item $-cfg$ will print the control flow graph into a file called $controlflow.dot$. The format will be graphviz readable.
+    \item $-dg$ will print the dependency graph into a file called $dependency.dot$. The format will also be graphviz readable.
+    \item $-p$ triggers the ``performance mode''. More specifically this will prevent the three extra analyses that are needed to generate the three additional block throughput values. In most cases however, \suaca's performance bottleneck will be the parser for the measurement files which cannot be deactivated. 
+    \item $-b$ triggers the branch analysis.
+    \item $--iform$ is used to print the iforms of all instructions
+    \item ${--}arch\ x$ will consider $x$ as the underlaying micro-architecture of the analysis. At the time of writing the available options are NHM, SNB, IVB, HSW, BDW, SKL, CFL and KBL. The default value is SNB.
+    \item ${--}loop\ x$ will trigger the loop analysis. The default value of $x$ is $1$.
+    \item ${--}detail\ x$ will print detailed information about line $x$.
+     \item ${--}setup\ x\ y$ sets the default values for the architecture ($x$) and the number of iterations ($y$). Note that one always has to use both values. 
+    \item ${--}print-default$ prints the default values for architecture and number of iterations.
+\end{itemize}
+
+
+
