@@ -242,13 +242,15 @@ void put_executables_into_ports(station_t *station) {
 
 
 void execute_instructions_in_ports(station_t *station) {
+    if (station->div_port) {
+        if (++station->div_port->executed_div >= station->div_port->div_cycles) {
+            station->div_port = NULL;
+        }
+    }
     execute_list_t *list = station->to_exec;
     sim_inst_t *cur;
     while (list) {
         cur = list->elem;
-        if (cur->div_cycles && station->div_port && station->div_port->id == cur->id && ++cur->executed_div >= cur->div_cycles) {
-            station->div_port = NULL;
-        }
         inform_children_im_done(cur, ++cur->executed_cycles);
         if (cur->executed_cycles >= cur->latency) {
             delete_inst_from_queue(cur, station);

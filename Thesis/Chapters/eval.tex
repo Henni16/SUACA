@@ -4,7 +4,7 @@ In this chapter we are going to show some example runs of \iaca, \suaca\ and one
 
 \section{Bottleneck analysis}
 
-Consider the following example run of \iaca\ on the Sandy Bridge architecture:
+Consider the following example run of \iaca\ $2.3$ on the Sandy Bridge architecture:
 
 \begin{example}
         Throughput Analysis Report
@@ -88,7 +88,9 @@ Detailed delay information for instruction: mov rax, 0x6 in line 0
 
 In this particular case the detailed analysis is identical for every line, because the number of loads per cycle doesn't divide the total number of \microops\ the program kind of ``rotates'' during the simulation. A high number of iterations therefore leads to, on average, equal number of all instructions.\\
 This detailed analysis shows that each line suffered a delay of $15.6$ cycles from each of its usable ports. This value is equal for all ports, because this instruction only consists of a single \microop\ and is therefore only delayed if all three ports are blocked (see algorithm \ref{alg:assign}), which will then all be held responsible. Each instruction causes a delay on the port it used.\\
-The \emph{caused to wait} value in the original output is thrice as high as the \emph{had to wait} value. This is due to the fact that there are always three instructions that are responsible for a single other instruction's delay.
+The \emph{caused to wait} value in the original output is thrice as high as the \emph{had to wait} value. This is due to the fact that there are always three instructions that are responsible for a single other instruction's delay.\\
+
+Unfortunately, \osaca\ does not offer a bottleneck analysis which makes this comparison obsolete.
 
 
 \section{OSACA}
