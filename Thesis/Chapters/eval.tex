@@ -1,5 +1,3 @@
-% !TeX spellcheck = en_US
-
 In this chapter we are going to show some example runs of \iaca, \suaca\ and one of \osaca. We will evaluate the results and differences of the tools and show how an detailed analysis can be done with \suaca.
 
 \section{Bottleneck analysis}
@@ -67,7 +65,7 @@ Analysis for architecture: SNB
 Total number of Uops: 6
 \end{example}
 
-One can easily see that the port information and the block throughput is identical to \iaca's output. The major difference lies in the bottleneck analysis. \suaca\ tells you that the throughput improves quite drastically with infinitely usable ports. The two cycles make sense with the ports in consideration as we have three usable ports and six instructions, but when the each port can be used to an infinite amount each cycle this is no longer relevant. Without the port problem our we only need one and a half cycle for each iteration as we have six \microops\ and a front end that produces four of them each cycle.\\
+One can easily see that the port information and the block throughput is identical to \iaca's output. The major difference lies in the bottleneck analysis. \suaca\ tells you that the throughput improves quite drastically with infinitely usable ports. The two cycles make sense with the ports in consideration as we have three usable ports and six instructions, but when each port can be used to an infinite amount each cycle this is no longer relevant. Without the port problem we only need one and a half cycle for each iteration as we have six \microops\ and a front end that produces four of them each cycle.\\
 We can also tell \suaca\ to analyze a specific line for us:
 
 \begin{example}

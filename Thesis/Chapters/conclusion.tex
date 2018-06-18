@@ -1,8 +1,10 @@
-% !TeX spellcheck = en_US
 
+We have created a tool that is able to compute the port bindings, latency and throughput of an \emph{X86} assembly program. It will also give hints at the bottleneck as well as several ways to further investigate what the bottleneck might be. Read-After-Write dependencies between instructions are tracked for all register operands, including the suppressed ones and those that are used to access memory, and with respect to the control flow. It supports most currently available Intel microarchitectures and can easily be updated to support future ones.\\
 
+What \suaca\ doesn't support yet are macro op fusions as well as the data fetch pipes of certain ports.\\
+Macro op fusion usually ``eliminates'' the last jump instruction of a loop body by merging it into the prior instruction. This would probably require some hard coded information about the macro-fusible instructions of each microarchitecture.\\
+So far it is unclear why \iaca\ displays the data fetch pipes on (usually) ports $2$ and $3$. We were unable to find an example where the information of the data fetch pipes differed from the information of the respective ports. As we have not noticed any special behavior of those pipes during our measurements we have not implemented it so far.\\
 
-\section{Future work}
-
-What \suaca\ doesn't support yet are macro op fusions as well as the divider and data fetch pipes of certain ports.\\
-Macro op fusion usually ``eliminates'' the last jump instruction of a loop by 
+\suaca\ also has some limitations that either cannot be overcome without internal information or high additional effort.
+The most important one is precise information about the \microops. We could remarkably improve our computations as we would eliminate the issues faced in \autoref{sec:chooseport}. Another integral part of our computations is the algorithm of the reservation station. We assumed a greedy algorithm, which might not be perfectly accurate. Implementing the correct algorithm would also bring our results closer to reality.\\
+In theory it is possible to keep track of the memory during the dependency analysis. However, there are two major reasons not to implement it. First it would require the analysis to consider the actual effect of the instructions. Because a memory access usually uses a register and we would therefore need to know the actual values inside the registers. It is also questionable if this dependency information is particularly useful as in most cases there are no memory dependencies. Local variables will be stored inside a register by the compiler and a loop usually iterates over an array, which means that array accesses only happen once hence no dependency on the memory address itself.
