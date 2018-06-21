@@ -38,7 +38,7 @@ Consider the following example run of \iaca\ $2.3$ on the Sandy Bridge architect
 \end{example}
 
 Note that we constructed this program exclusively for our purposes. In reality the processor would only execute the first instruction and completely optimize the rest away. This is fine as none of the tools will simulate this behavior and it is designed as a toy example.\\
-We can observe that the \emph{mov} instruction is able to use ports $0$, $1$ and $5$. The front end of the Sandy Bridge architecture can deliver up to four \microops\ per cycle and there are no dependencies as no register is ever read.\\
+We can observe that the \emph{mov} instruction is able to use ports $0$, $1$ and $5$. The front end of the Sandy Bridge architecture can deliver up to four \microops\ per cycle and there are no es as no register is ever read.\\
 So the clear bottleneck of this program are the three ports, because four \microops\ get loaded but only three ports are available for their execution. Unfortunately we don't know how the bottleneck analysis of \iaca\ works so we can't argue why it believes that the front end might be the bottleneck. Looking at the information we do have it does not make sense, though.\\
 
 
@@ -109,10 +109,10 @@ for(j = 1; j < M-1; ++j){
     \end{lstlisting}
 \end{mdframed}
 
-In the following we will analyze the resulting machine code and compare the results of \iaca, \osaca\ and \suaca. We will do so with the Ivy Bridge microarchitecture in mind. First consider \osaca's analysis in \exref{osaca}. We can observe a different approach to the port bindings here. \osaca\ always tries to distribute the port pressure evenly across all ports to an extend where it doesn't take previous instructions into account. This basically means, that every instruction will always have the same port bindings no matter how the rest of the program looks like. The idea is to give the user more information about possible bindings which are hard to observe when using \iaca. However, this leads to an overestimation of the throughput as the pressure on port $1$ is much higher than it needs to be. The \emph{incq} and \emph{cmpq} instructions do not need to use port $1$ at all.
+In the following we will analyze the resulting machine code and compare the results of \iaca, \osaca\ and \suaca. We will do so with the Ivy Bridge microarchitecture in mind. First consider \osaca's analysis in \autoref{ex:osaca}. We can observe a different approach to the port bindings here. \osaca\ always tries to distribute the port pressure evenly across all ports to an extend where it doesn't take previous instructions into account. This basically means, that every instruction will always have the same port bindings no matter how the rest of the program looks like. The idea is to give the user more information about possible bindings which are hard to observe when using \iaca. However, this leads to an overestimation of the throughput as the pressure on port $1$ is much higher than it needs to be. The \emph{incq} and \emph{cmpq} instructions do not need to use port $1$ at all as they could instead use ports $0$ and even more so the very underused port $5$. 
 
 
-\begin{LabeledExample}{\osaca\ run}{osaca}
+\begin{LabeledExample}{\osaca\ run}{\label{ex:osaca}}
     Throughput Analysis Report
     --------------------------
     X - No information for this instruction in data file
@@ -140,10 +140,10 @@ In the following we will analyze the resulting machine code and compare the resu
     Total number of estimated throughput: 4.67
 \end{LabeledExample}
 
-The \osaca\ thesis states, that we can conclude that port $1$ is the bottleneck of this program, which makes sense looking at the given analysis, but we will now look into the program a bit further.
+The \osaca\ thesis states, that we can conclude that port $1$ is the bottleneck of this program, which makes sense looking at the given analysis, but we will now look into the program a bit further.\\
+\hyperref[ex:iaca]{Example \ref*{ex:iaca}} displays the output of \iaca\ $2.3$ which shows the expected behavior regarding the port $1$ problematic i.e., the \emph{incq} and \emph{cmpq} instructions exclusively use port $5$.
 
-
-\begin{LabeledExample}{\iaca\ run}{iaca}
+\begin{LabeledExample}{\iaca\ run}{\label{ex:iaca}}
   Throughput Analysis Report
   --------------------------
   Block Throughput: 3.00 Cycles       Throughput Bottleneck: FrontEnd
@@ -170,14 +170,189 @@ The \osaca\ thesis states, that we can conclude that port $1$ is the bottleneck 
   Total Num Of Uops: 12
 \end{LabeledExample}
 
-\exref{iaca}
+Two properties of this analysis remain unclear. On the one hand we do not know why those two instructions do not use port $0$ as well. It is a possible port for both of those and it is clearly pressured less. On the other hand the distribution of ports $2$ and $3$ are very strict for the first four instructions and are split for the \nth{6}. \iaca\ may have some internal information that would explain this behavior, but as far as we know this seems odd.\\
+
+\iaca\ declares the front end as the bottleneck. The front end of the Ivy Bridge architecture delivers up to four \microops\ per cycle. The example program contains of $12$ \microops\ and the throughput is exactly three cycles. So the throughput is certainly lower bounded by the front end. However, port $1$ is still pressured for three cycles. So even if the front end was faster the throughput would not improve as it is also lower bounded by the three \emph{vaddsd} instructions that have to use port $1$.\\
+This analysis does not show the dependencies at all. If we take a closer look at the first six instructions we can see that those have a dependency chain over the \emph{xmm} registers. We will now consider \suaca's analysis in order to take a closer look at the interactions between front end, ports and dependencies of our program. We shortened the instructions in the output for the sake of readability.
+
+\begin{LabeledExample}{\suaca\ run - $3000$ iterations}{\label{ex:suaca3000}}
+    Block throughput: 3.00 cycles
+    Block throughput with perfect front end: 3.00 cycles
+    Block throughput with infinitely usable ports: 3.00 cycles
+    Block throughput without dependencies: 3.00 cycles
+    Microops per cycle: 3.99
+    
+    Analysis for architecture: IVB
+    
+     Line  ||   Num   ||   had   || caused  ||            Used Ports
+           ||   Uops  || to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||
+     ------------------------------------------------------------------------------------------------
+       0   ||    1    ||   0.3   ||   1.3   ||       ||       ||  0.5  ||  0.5  ||       ||       || vmovsd xmm2, ...
+       1   ||    2    ||   2.0   ||   5.0   ||       ||  1.0  ||  0.5  ||  0.5  ||       ||       || vaddsd xmm3, ...
+       2   ||    2    ||   5.0   ||   7.7   ||       ||  1.0  ||  0.5  ||  0.5  ||       ||       || vaddsd xmm4, ...
+       3   ||    2    ||   7.0   ||  10.3   ||       ||  1.0  ||  0.5  ||  0.5  ||       ||       || vaddsd xmm5, ...
+       4   ||    1    ||  10.0   ||  14.0   ||  1.0  ||       ||       ||       ||       ||       || vmulsd xmm6, ...
+       5   ||    2    ||  14.0   ||   0.3   ||       ||       ||  0.5  ||  0.5  ||  1.0  ||       || vmovsd qword ...
+       6   ||    1    ||         ||   1.0   ||  0.2  ||       ||       ||       ||       ||  0.8  || inc r15
+       7   ||    1    ||   1.0   ||         ||  0.3  ||       ||       ||       ||       ||  0.7  || cmp r15, r13
+    Total number of Uops: 12
+\end{LabeledExample}  
+
+For the most part this looks pretty similar to the other two analyses. We can observe that the \emph{incq} and \emph{cmpq} instructions are now distributed over ports $0$ and $5$ in a way that both of those ports experience an equal pressure and that ports $2$ and $3$ are evenly used just like in \autoref{ex:osaca}.\\
+The throughput is equal to \iaca's output and the throughput values of the special analyses do not differ, because of the properties we explained above. We will now use \suaca's runtime options to gain a petter picture of the program's problems. First consider the run with only a single iteration in \autoref{ex:suacasingle}. We can see that the throughput (which would also be the latency in this particular case) is drastically higher and more important, that the dependencies are the biggest offender. This is due to the long dependency chain from the first to the sixth instruction. So in a single iteration of this program almost every instruction has to wait for its predecessor to be finished.
+
+\begin{LabeledExample}{\suaca\ run - single iteration}{\label{ex:suacasingle}}
+    Block throughput: 16.00 cycles
+    Block throughput with perfect front end: 16.00 cycles
+    Block throughput with infinitely usable ports: 16.00 cycles
+    Block throughput without dependencies: 6.00 cycles
+    Microops per cycle: 0.75
+    
+    Analysis for architecture: IVB
+    
+     Line  ||   Num   ||   had   || caused  ||            Used Ports
+           ||   Uops  || to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||
+     ------------------------------------------------------------------------------------------------
+       0   ||    1    ||         ||   1.0   ||       ||       ||  1.0  ||       ||       ||       || vmovsd xmm2, ...
+       1   ||    2    ||   1.0   ||   4.0   ||       ||  1.0  ||       ||  1.0  ||       ||       || vaddsd xmm3, ...
+       2   ||    2    ||   4.0   ||   6.0   ||       ||  1.0  ||  1.0  ||       ||       ||       || vaddsd xmm4, ...
+       3   ||    2    ||   6.0   ||   9.0   ||       ||  1.0  ||       ||  1.0  ||       ||       || vaddsd xmm5, ...
+       4   ||    1    ||   9.0   ||  13.0   ||  1.0  ||       ||       ||       ||       ||       || vmulsd xmm6, ...
+       5   ||    2    ||  13.0   ||         ||       ||       ||  1.0  ||       ||  1.0  ||       || vmovsd qword ...
+       6   ||    1    ||         ||   1.0   ||  1.0  ||       ||       ||       ||       ||       || inc r15
+       7   ||    1    ||   1.0   ||         ||       ||       ||       ||       ||       ||  1.0  || cmp r15, r13
+    Total number of Uops: 12
+\end{LabeledExample}
+
+However, there is only a single dependency between consecutive iterations. The \emph{inc} instructions writes to \emph{r15} which will be read by the following iteration multiple times, so we can simply interpret this as the start of our ``single iteration dependency chain''. Those chains make sense as the program is iterating over an array.\\
+When this program runs in a loop the different iterations will run ``side by side'', which explains why the throughput ultimately reaches a value that is lower bounded by the front end and port $1$. This is also the reason why we chose to run \autoref{ex:suaca3000} with $3000$ iterations as it takes a while until the average ultimately reaches this lower bound.\\
+Now that we know which role the dependencies play in our program we can take a closer look at the front end and the ports. In \autoref{ex:suaca200} one can see the analysis with $200$ iterations which has several interesting results in comparison to \autoref{ex:suaca3000}.
 
 
+\begin{LabeledExample}{\suaca\ run - $200$ iterations}{\label{ex:suaca200}}
+    Block throughput: 3.07 cycles
+    Block throughput with perfect front end: 3.06 cycles
+    Block throughput with infinitely usable ports: 3.06 cycles
+    Block throughput without dependencies: 3.02 cycles
+    Microops per cycle: 3.91
+    
+    Analysis for architecture: IVB
+    
+     Line  ||   Num   ||   had   || caused  ||            Used Ports
+           ||   Uops  || to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||
+     ------------------------------------------------------------------------------------------------
+       0   ||    1    ||   0.3   ||   1.3   ||       ||       ||  0.5  ||  0.5  ||       ||       || vmovsd xmm2, ...
+       1   ||    2    ||   2.0   ||   5.0   ||       ||  1.0  ||  0.5  ||  0.5  ||       ||       || vaddsd xmm3, ...
+       2   ||    2    ||   5.0   ||   7.7   ||       ||  1.0  ||  0.5  ||  0.5  ||       ||       || vaddsd xmm4, ...
+       3   ||    2    ||   7.0   ||  10.3   ||       ||  1.0  ||  0.5  ||  0.5  ||       ||       || vaddsd xmm5, ...
+       4   ||    1    ||  10.0   ||  14.0   ||  1.0  ||       ||       ||       ||       ||       || vmulsd xmm6, ...
+       5   ||    2    ||  14.0   ||   0.3   ||       ||       ||  0.5  ||  0.5  ||  1.0  ||       || vmovsd qword ...
+       6   ||    1    ||         ||   1.0   ||  0.2  ||       ||       ||       ||       ||  0.8  || inc r15
+       7   ||    1    ||   1.0   ||         ||  0.3  ||       ||       ||       ||       ||  0.7  || cmp r15, r13
+    Total number of Uops: 12
+\end{LabeledExample}
+
+We can observe that the throughput values have not reached the $3.00$ mark yet, like we discussed above. But more importantly the \emph{had to wait} and \emph{caused to wait} values did not change at all. Usually those increase when the number of iterations are increased. This is the case when the front end works faster than the execution, because our simulation will only count those values for the instructions that have been loaded into the scheduler already. So if a lot of instructions are waiting inside the scheduler the \emph{had to wait} and \emph{caused to wait} values will be very high. As this is clearly not the case here we can conclude that (after a few iterations) the scheduler is always filled to an equal amount. This actually supports \iaca's claim that the front end is the bottleneck. We argued that, should the front end's performance improve, the ports will prevent a faster execution.\\
+In \autoref{ex:pf} we can see a run of the perfect front end analysis. We used $3000$ iterations for this and all the following example runs. The only difference are the two delay values which are a bit higher.
 
 
+\begin{LabeledExample}{\suaca\ run - perfect front end}{\label{ex:pf}}
+    Block throughput: 3.00 cycles
+    Microops per cycle: 4.00
+    
+    Analysis for architecture: IVB
+    
+     Line  ||   Num   ||   had   || caused  ||            Used Ports
+           ||   Uops  || to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||
+     ------------------------------------------------------------------------------------------------
+       0   ||    1    ||   1.3   ||   1.7   ||       ||       ||  0.5  ||  0.5  ||       ||       || vmovsd xmm2, ...
+       1   ||    2    ||  12.0   ||  18.3   ||       ||  1.0  ||  0.5  ||  0.5  ||       ||       || vaddsd xmm3, ...
+       2   ||    2    ||  15.0   ||  20.3   ||       ||  1.0  ||  0.5  ||  0.5  ||       ||       || vaddsd xmm4, ...
+       3   ||    2    ||  17.0   ||  24.6   ||       ||  1.0  ||  0.5  ||  0.5  ||       ||       || vaddsd xmm5, ...
+       4   ||    1    ||  20.0   ||  24.7   ||  1.0  ||       ||       ||       ||       ||       || vmulsd xmm6, ...
+       5   ||    2    ||  24.7   ||   1.3   ||       ||       ||  0.5  ||  0.5  ||  1.0  ||       || vmovsd qword ...
+       6   ||    1    ||   0.0   ||   1.7   ||  0.2  ||       ||       ||       ||       ||  0.8  || inc r15
+       7   ||    1    ||   1.0   ||         ||  0.3  ||       ||       ||       ||       ||  0.7  || cmp r15, r13
+    Total number of Uops: 12
+\end{LabeledExample}
 
 
+The details of line three (\autoref{ex:detail}) show that this is actually due to dependencies for the most part.
 
+\begin{LabeledExample}{Details of line $3$ with perfect front end}{\label{ex:detail}}
+                                        Maximum latency: 3
+                                        
+                                        Latencies for dependencies:
+                                         Line || 3 -> Line || Line -> 3
+                                        ----------------------------------
+                                          2   ||     0     ||     3
+                                          4   ||     3     ||     0
+                                          6   ||     0     ||     1
+                                        
+                                        
+                                        Delay caused by dependencies:
+                                         Line || was delayed || has delayed
+                                        ----------------------------------
+                                          2   ||     0.0     ||    17.0
+                                          4   ||    20.0     ||     0.0
+                                          6   ||     0.0     ||     0.0
+                                        
+                                        
+                                        Delay caused by blocked ports:
+                                         Port || was delayed || has delayed
+                                        ----------------------------------
+                                          1   ||     4.0     ||     0.0
+                                          2   ||     0.3     ||     0.0
+                                          3   ||     0.3     ||     0.0
+\end{LabeledExample}
+
+In order to prove our port claim we will run \suaca\ with both a perfect front end and disabled dependencies in \autoref{ex:portsonly}. We can exactly observe the above described behavior. The throughput does not improve and the three \emph{vaddsd} instructions are heavily delayed by port $1$, whereas all the other instructions experience very little to no delay. The reason why those delay values are so small is the massive delay of the \emph{vaddsd} instructions as those will continue to be executed for so many cycles that the average delay values of the other instructions are neglected almost completely.
+
+
+\begin{LabeledExample}{\suaca\ run with pf and nd}{\label{ex:portsonly}}
+    Block throughput: 3.00 cycles
+    Microops per cycle: 4.00
+    
+    Analysis for architecture: IVB
+    
+     Line  ||   Num   ||   had   || caused  ||            Used Ports
+           ||   Uops  || to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||
+     ------------------------------------------------------------------------------------------------
+       0   ||    1    ||   0.2   ||   1.5   ||       ||       ||  0.5  ||  0.5  ||       ||       || vmovsd xmm2, ...
+       1   ||    2    ||  48.4   ||  50.9   ||       ||  1.0  ||  0.5  ||  0.5  ||       ||       || vaddsd xmm3, ...
+       2   ||    2    ||  49.4   ||  48.9   ||       ||  1.0  ||  0.5  ||  0.5  ||       ||       || vaddsd xmm4, ...
+       3   ||    2    ||  49.4   ||  49.9   ||       ||  1.0  ||  0.5  ||  0.5  ||       ||       || vaddsd xmm5, ...
+       4   ||    1    ||   0.0   ||   0.0   ||  1.0  ||       ||       ||       ||       ||       || vmulsd xmm6, ...
+       5   ||    2    ||   0.3   ||   0.5   ||       ||       ||  0.5  ||  0.5  ||  1.0  ||       || vmovsd qword ...
+       6   ||    1    ||   0.0   ||   0.0   ||       ||       ||       ||       ||       ||  1.0  || inc r15
+       7   ||    1    ||   0.0   ||   0.0   ||  1.0  ||       ||       ||       ||       ||  0.0  || cmp r15, r13
+    Total number of Uops: 12
+\end{LabeledExample}
+
+Finally \autoref{ex:deponly} shows what happens when only the dependencies are taken into consideration and it displays a much higher throughput that is probably only bounded by the capacity of the scheduler ($54$ \microops\ in Ivy Bridge). As discussed above the program basically has no loop dependencies which leads to the results we are seeing.
+
+\begin{LabeledExample}{\suaca\ run with pf and ip}{\label{ex:deponly}}
+    Block throughput: 1.50 cycles
+    Microops per cycle: 7.98
+    
+    Analysis for architecture: IVB
+    
+     Line  ||   Num   ||   had   || caused  ||            Used Ports
+           ||   Uops  || to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||
+     ------------------------------------------------------------------------------------------------
+       0   ||    1    ||   1.0   ||   2.0   ||       ||       ||  0.5  ||  0.5  ||       ||       || vmovsd xmm2, ...
+       1   ||    2    ||   2.0   ||   4.5   ||       ||  1.0  ||  0.0  ||  1.0  ||       ||       || vaddsd xmm3, ...
+       2   ||    2    ||   4.5   ||   7.5   ||       ||  1.0  ||  1.0  ||  0.0  ||       ||       || vaddsd xmm4, ...
+       3   ||    2    ||   7.5   ||  10.0   ||       ||  1.0  ||  0.0  ||  1.0  ||       ||       || vaddsd xmm5, ...
+       4   ||    1    ||  10.0   ||  14.5   ||  1.0  ||       ||       ||       ||       ||       || vmulsd xmm6, ...
+       5   ||    2    ||  14.5   ||         ||       ||       ||  1.0  ||  0.0  ||  1.0  ||       || vmovsd qword ...
+       6   ||    1    ||   0.0   ||   4.0   ||  0.5  ||       ||       ||       ||       ||  0.5  || inc r15
+       7   ||    1    ||   1.0   ||         ||       ||       ||       ||       ||       ||  1.0  || cmp r15, r13
+    Total number of Uops: 12
+\end{LabeledExample}
+
+
+All in all we can conclude that this program is very tricky and takes some serious thought to fully understand its issues. \suaca\ delivers various tools to gain insight into it and using \suaca\ we were able to get a good idea of the programs performance.
 
 
 

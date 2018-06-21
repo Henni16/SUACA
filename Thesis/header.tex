@@ -101,10 +101,10 @@
 \end{mdframed}}
 
 \newcounter{myCount}
-\newcommand{\myCount}[1]{\refstepcounter{myCount}\label{#1}}
-\newcommand{\exref}[1]{\hyperref[ex:#1]{example \ref*{ex:#1}}}
+\newcommand{\myCount}[1]{\refstepcounter{myCount}#1}
+\newcommand{\myCountautorefname}{example}
 
-\newenvironment{LabeledExample}[2]{\VerbatimEnvironment\begin{mdframed}[backgroundcolor=light-gray, roundcorner=0pt, leftmargin=0, rightmargin=0, innerleftmargin=0, innerrightmargin=0,innertopmargin=15,innerbottommargin=-10, outerlinewidth=1, linecolor=light-gray]\myCount{ex:#2}
+\newenvironment{LabeledExample}[2]{\VerbatimEnvironment\begin{mdframed}[backgroundcolor=light-gray, roundcorner=0pt, leftmargin=0, rightmargin=0, innerleftmargin=0, innerrightmargin=0,innertopmargin=5,innerbottommargin=-10, outerlinewidth=1, linecolor=light-gray]\myCount{#2}
         \begin{center}\begin{Verbatim}[samepage=true,frame=bottomline, framesep=5mm, fontsize=\tiny, label=\small{Example \arabic{myCount}: #1}, labelposition=bottomline, commandchars=\\\{\}]}{\end{Verbatim}\end{center}
 \end{mdframed}}
 

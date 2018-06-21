@@ -87,10 +87,10 @@ Where
     \item $HasSuccessor(Node)$ returns true if $numSuccessors(Node) >= 1$.
 \end{itemize}
 
-This time we'll ``climb along'' the $CFG$. If we never face a branch, i.e.\ $numSuccessors()$ never returns a value greater than $1$, this algorithm will do exactly the same as the one we have just seen.\\
+This time we'll ``climb along'' the $CFG$. If we never face a branch i.e., $numSuccessors()$ never returns a value greater than $1$, this algorithm will do exactly the same as the one we have just seen.\\
 In the case of $numSuccessors() > 1$ we will make another call of $Dep-Analysis$ on the ``right branch''. From there on there will be two analyses, one for every branch in the $CFG$. Each analysis has its own $Map$ as there can be different writes on each branch. Note that we won't join the two analyses as we would need to find the first mutual descendant.\\
 In the worst case every instruction is a branch, so we would spawn a new function for every one of them. This leads to a runtime of $\mathcal{O}(n^2*m)$.\\
-For this algorithm we assume no backbranches, i.e.\ no loops, inside the program. In practice \suaca\ will simply check for every branch if it is a backbranch and should the situation arise ignore it.
+For this algorithm we assume no backbranches i.e., no loops, inside the program. In practice \suaca\ will simply check for every branch if it is a backbranch and should the situation arise ignore it.
 
 
 \subsection{Multiple iterations}
@@ -128,7 +128,7 @@ Where
     \item $List.GetNextElement(Waiting)$ returns the successor element of \emph{Waiting} in List.
 \end{itemize}
 
-So it is possible that an instruction is partially (i.e.\ only some of its \microops) loaded into the reservation station.
+So it is possible that an instruction is partially (i.e., only some of its \microops) loaded into the reservation station.
 
 \section{Choosing the ports}
 \label{sec:chooseport}
