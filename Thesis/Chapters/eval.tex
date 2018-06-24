@@ -355,8 +355,117 @@ Finally \autoref{ex:deponly} shows what happens when only the dependencies are t
 All in all we can conclude that this program is very tricky and takes some serious thought to fully understand its issues. \suaca\ delivers various tools to gain insight into it and using \suaca\ we were able to get a good idea of the programs performance.
 
 
+\section{Flag dependencies}
+
+For our final example we will use \iaca\ $3.0$ and consider the following code snipped:
+
+\begin{mdframed}[backgroundcolor=light-gray, roundcorner=10pt,leftmargin=1, rightmargin=1, innerleftmargin=15, innertopmargin=1,innerbottommargin=1, outerlinewidth=1, linecolor=light-gray]
+    \begin{lstlisting}[language={myLang}, basicstyle=\small, numbers=left]
+    adc rax, 0x1
+    adc rbx, 0x1
+    adc rcx, 0x1
+    adc rdx, 0x1
+    adc r8,  0x1
+    adc r9,  0x1
+    adc r10, 0x1
+    adc r11, 0x1
+    \end{lstlisting}
+\end{mdframed}
+
+\FloatBarrier
+
+At first this program seems to be free of dependencies. However, every single one of those instructions reads and writes to the \emph{cf} flag of the \emph{RFLAGS} register. So there actually is a huge dependency loop that prevents any parallel execution as well as instruction reordering. \autoref{fig:cfg2} shows \suaca's dependency graph for this program, which of course also includes a self loop for every instruction.\\
+Unfortunately in \iaca\ $3.0$ the graph support was dropped so we do not know which dependencies is does use exactly for its computations, but as it computes a throughput of $3.95$ cycles we can conclude that it definitely does not know about the \emph{cf} flag. This also leads to the backend being held responsible for being the bottleneck. The full output can be seen in \autoref{ex:3.0} and the used microarchitecture was Skylake. 
+
+\begin{LabeledExample}{\iaca\ $3.0$'s output}{\label{ex:3.0}}
+    Throughput Analysis Report
+    --------------------------
+    Block Throughput: 3.95 Cycles       Throughput Bottleneck: Backend
+    Loop Count:  22
+    Port Binding In Cycles Per Iteration:
+    --------------------------------------------------------------------------------------------------
+    |  Port  |   0   -  DV   |   1   |   2   -  D    |   3   -  D    |   4   |   5   |   6   |   7   |
+    --------------------------------------------------------------------------------------------------
+    | Cycles |  4.0     0.0  |  0.0  |  0.0     0.0  |  0.0     0.0  |  0.0  |  0.0  |  4.0  |  0.0  |
+    --------------------------------------------------------------------------------------------------
+    
+    
+    | Num Of   |                    Ports pressure in cycles                         |      |
+    |  Uops    |  0  - DV    |  1   |  2  -  D    |  3  -  D    |  4   |  5   |  6   |  7   |
+    -----------------------------------------------------------------------------------------
+    |   1      | 1.0         |      |             |             |      |      |      |      | adc rax, 0x1
+    |   1      |             |      |             |             |      |      | 1.0  |      | adc rbx, 0x1
+    |   1      | 1.0         |      |             |             |      |      |      |      | adc rcx, 0x1
+    |   1      |             |      |             |             |      |      | 1.0  |      | adc rdx, 0x1
+    |   1      | 1.0         |      |             |             |      |      |      |      | adc r8, 0x1
+    |   1      |             |      |             |             |      |      | 1.0  |      | adc r9, 0x1
+    |   1      | 1.0         |      |             |             |      |      |      |      | adc r10, 0x1
+    |   1      |             |      |             |             |      |      | 1.0  |      | adc r11, 0x1
+    Total Num Of Uops: 8
+    Analysis Notes:
+    Backend allocation was stalled due to unavailable allocation resources.
+\end{LabeledExample}
+
+\setlength{\abovecaptionskip}{-30pt}
+\begin{figure}[H]
+    \centering
+    \resizebox{!}{\textheight}{
+        \begin{tikzpicture}
+        \node[mynode] (A) at (0, 0)     {0: adc rax, 0x1};	
+        \node[mynode] (B) at (0, -2.5)    {1: adc rbx, 0x1};
+        \node[mynode] (C) at (0, -5)    {2: adc rcx, 0x1};
+        \node[mynode] (D) at (0, -7.5)    {3: adc rdx, 0x1};
+        \node[mynode] (E) at (0, -10)    {4: adc r8,  0x1};
+        \node[mynode] (F) at (0, -12.5)   {5: adc r9, 0x1};
+        \node[mynode] (G) at (0, -15)   {6: adc r10, 0x1};
+        \node[mynode] (H) at (0, -17.5)   {7: adc r11, 0x1};
+        
+        \Loop[style={->, dashed, thick}, color=red, label=$RAX$, labelstyle={color=red,fill=white,draw}](A.west);
+        \Loop[style={->, dashed, thick}, color=red, label=$RBX$, labelstyle={color=red,fill=white,draw}](B.west);
+        \Loop[style={->, dashed, thick}, color=red, label=$RCX$, labelstyle={color=red,fill=white,draw}](C.west);
+        \Loop[style={->, dashed, thick}, color=red, label=$RDX$, labelstyle={color=red,fill=white,draw}](D.west);
+        \Loop[style={->, dashed, thick}, color=red, label=$R8$, labelstyle={color=red,fill=white,draw}](E.west);
+        \Loop[style={->, dashed, thick}, color=red, label=$R9$, labelstyle={color=red,fill=white,draw}](F.west);
+        \Loop[style={->, dashed, thick}, color=red, label=$R10$, labelstyle={color=red,fill=white,draw}](G.west);
+        \Loop[style={->, dashed, thick}, color=red, label=$R11$, labelstyle={color=red,fill=white,draw}](H.west);
+        \Edges[label=$RFLAGS - cf$](A,B);
+        \Edges[label=$RFLAGS - cf$](B,C);
+        \Edges[label=$RFLAGS - cf$](C,D);
+        \Edges[label=$RFLAGS - cf$](D,E);
+        \Edges[label=$RFLAGS - cf$](E,F);
+        \Edges[label=$RFLAGS - cf$](F,G);
+        \Edges[label=$RFLAGS - cf$](G,H);
+        \Edges[style={->, bend right = 90, dashed}, color=red, label=$RFLAGS - cf$](H,A);
+        
+        \end{tikzpicture}}
+    \caption{Dependency graph}
+    \label{fig:cfg2}
+\end{figure}
 
 
+As one can see in \autoref{ex:3.0suaca} \suaca's results are identical for the port pressure, but as it does include the dependency loop it computes a throughput of $8.0$ cycles. The throughput without dependencies is measured with $4.0$ cycles which makes sense the example contains $8$ \microops\ and two usable ports. We have again cut the first two columns for the sake of readability.
 
+\begin{LabeledExample}{\suaca's output for SKL with $200$ iterations}{\label{ex:3.0suaca}}
+    Block throughput: 8.00 cycles
+    Block throughput with perfect front end: 8.00 cycles
+    Block throughput with infinitely usable ports: 8.00 cycles
+    Block throughput without dependencies: 4.00 cycles
+    Microops per cycle: 1.00
+    
+    Analysis for architecture: SKL
+    
+        had   || caused  ||            Used Ports
+      to wait || to wait ||   0   ||   1   ||   2   ||   3   ||   4   ||   5   ||   6   ||   7   ||
+     ------------------------------------------------------------------------------------------------------------
+       92.2   || 177.5   ||  1.0  ||       ||       ||       ||       ||       ||       ||       || adc rax, 0x1
+       92.3   || 177.6   ||       ||       ||       ||       ||       ||       ||  1.0  ||       || adc rbx, 0x1
+       92.3   || 177.7   ||  1.0  ||       ||       ||       ||       ||       ||       ||       || adc rcx, 0x1
+       92.4   || 177.8   ||       ||       ||       ||       ||       ||       ||  1.0  ||       || adc rdx, 0x1
+       92.4   || 177.9   ||  1.0  ||       ||       ||       ||       ||       ||       ||       || adc r8, 0x1
+       92.5   || 178.1   ||       ||       ||       ||       ||       ||       ||  1.0  ||       || adc r9, 0x1
+       92.5   || 178.2   ||  1.0  ||       ||       ||       ||       ||       ||       ||       || adc r10, 0x1
+       92.6   || 177.8   ||       ||       ||       ||       ||       ||       ||  1.0  ||       || adc r11, 0x1
+    Total number of Uops: 8
+\end{LabeledExample}
 
-
+This seems to be a problem introduced in \iaca\ $3.0$ as \iaca\ $2.3$ computes a throughput of $7.62$ cycles and declares the dependency chains as the bottleneck.
