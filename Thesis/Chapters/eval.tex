@@ -1,4 +1,4 @@
-In this chapter we are going to show some example runs of \iaca, \suaca\ and one of \osaca. We will evaluate the results and differences of the tools and show how an detailed analysis can be done with \suaca.
+In this chapter we are going to compare \suaca\ to both \iaca\ and \osaca. We will evaluate the results and differences of the tools and show how a detailed analysis can be done with \suaca.
 
 \section{Bottleneck analysis}
 
@@ -37,7 +37,7 @@ Consider the following example run of \iaca\ $2.3$ on the Sandy Bridge architect
         Total Num Of Uops: 6
 \end{example}
 
-Note that we constructed this program exclusively for our purposes. In reality the processor would only execute the first instruction and completely optimize the rest away. This is fine as none of the tools will simulate this behavior and it is designed as a toy example.\\
+Note that we constructed this program exclusively for our purposes. Apart from the very first instruction the program will not have any effect. This is fine as none of the tools will simulate this behavior and it is designed as a toy example.\\
 We can observe that the \emph{mov} instruction is able to use ports $0$, $1$ and $5$. The front end of the Sandy Bridge architecture can deliver up to four \microops\ per cycle and there are no es as no register is ever read.\\
 So the clear bottleneck of this program are the three ports, because four \microops\ get loaded but only three ports are available for their execution. Unfortunately we don't know how the bottleneck analysis of \iaca\ works so we can't argue why it believes that the front end might be the bottleneck. Looking at the information we do have it does not make sense, though.\\
 
@@ -85,7 +85,7 @@ Detailed delay information for instruction: mov rax, 0x6 in line 0
 \end{example}
 
 In this particular case the detailed analysis is identical for every line, because the number of loads per cycle doesn't divide the total number of \microops\ the program kind of ``rotates'' during the simulation. A high number of iterations therefore leads to, on average, equal number of all instructions.\\
-This detailed analysis shows that each line suffered a delay of $15.6$ cycles from each of its usable ports. This value is equal for all ports, because this instruction only consists of a single \microop\ and is therefore only delayed if all three ports are blocked (see algorithm \ref{alg:assign}), which will then all be held responsible. Each instruction causes a delay on the port it used.\\
+This detailed analysis shows that each line suffered a delay of $15.6$ cycles from each of its usable ports. This value is equal for all ports, because this instruction only consists of a single \microop\ and is therefore only delayed if all three ports are blocked (see \hyperref[alg:assign]{algorithm~\ref*{alg:assign}}), which will then all be held responsible. Each instruction causes a delay on the port it used.\\
 The \emph{caused to wait} value in the original output is thrice as high as the \emph{had to wait} value. This is due to the fact that there are always three instructions that are responsible for a single other instruction's delay.\\
 
 Unfortunately, \osaca\ does not offer a bottleneck analysis which makes this comparison obsolete.
