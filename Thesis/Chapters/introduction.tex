@@ -29,26 +29,8 @@ set. However, they don't execute those instructions directly. They will translat
  %\end{wrapfigure}
  
 \section{\iaca's analysis} 
- \textbf{TODO}
- 
- 
-\section{Scope of work}
 
-Like mentioned before we will present a tool that is able to analyze \emph{X86} assembler code with respect to a specific microarchitecture. Just like \iaca\ our tool is able to find byte markers inside a compiled file and analyze the code in between. Those markers can be inserted in two different ways: inserting them by hand in the assembler code or use the \emph{iacaMarks.h} header in your \emph{C} code. First take a look at the assembly variant:
-
-\begin{mdframed}[backgroundcolor=light-gray, roundcorner=10pt,leftmargin=1, rightmargin=1, innerleftmargin=15, innertopmargin=1,innerbottommargin=1, outerlinewidth=1, linecolor=light-gray]
-    \begin{lstlisting}[language={myLang}]
-    movl $111, %ebx
-    .byte 0x64, 0x67, 0x90
-    
-    //Some code here
-    
-    movl $222, %ebx
-    .byte 0x64, 0x67, 0x90
-    \end{lstlisting}
-\end{mdframed}
-
-\iaca\ is mainly used to analyze critical parts of scientific code, which are usually inside a loop. When using a loop in \emph{C} code one can easily insert the markers defined in the \emph{iacaMarks.h} header like this:
+In order to use \iaca\ one first has to prepare the code with the two markers that are defined in the \emph{iacaMarks.h} header. As \iaca\ is mostly used to analyze innermost loops of scientific code we will show how those markers are inserted there:
 
 \begin{mdframed}[backgroundcolor=light-gray, roundcorner=10pt,leftmargin=1, rightmargin=1, innerleftmargin=15, innertopmargin=1,innerbottommargin=1, outerlinewidth=1, linecolor=light-gray]
     \begin{lstlisting}
@@ -56,20 +38,66 @@ Like mentioned before we will present a tool that is able to analyze \emph{X86} 
     
     int main(void) {
     
-    while (condition) {
-    (*@\textcolor{Green}{IACA\_START}  @*)
-    //Some code here
-    }
-    (*@\textcolor{Green}{IACA\_END}  @*)
+        while (condition) {
+        (*@\textcolor{Green}{IACA\_START}  @*)
+        //Some code here
+        }
+        (*@\textcolor{Green}{IACA\_END}  @*)
     
-    return 0;
+        return 0;
     }
     \end{lstlisting}
 \end{mdframed}
 
-In both cases a user has to compile his code and run \suaca\ on the compiled file. We are using Intel's \emph{X86 Encoder Decoder} library \cite{xed} to disassemble said file, which allows us to support files of the \emph{ELF}, \emph{PECOFF} and \emph{MACHO} format.\\
-After disassembling \suaca\ will perform a dependency analysis on the instructions and parse the measurement file. Finally it will perform a simulation of the code. It won't consider the actual effect of the instructions, only their latencies, dependencies and port usage. The instructions are first considered in program order, although instruction reordering is still possible as we will see in \autoref{sec:chooseport}. For several reasons, which we will discuss in the following, our simulation will compute an estimate of the code's performance, not total numbers.\\
-\suaca\ is able to perform several kinds of analyses which we will discuss in \autoref{chap:functionality}. In \autoref{chap:algorithms} we will then explain in detail how the most important parts of the simulation and the dependency analyzes are implemented.
+When writing assembly code one can simply insert the markers that are defined in the \emph{iacaMarks.h} header manually.\\
+In the following we will perform an analysis with \iaca. The analyzed program is not of particular interest here, but we will further discuss it later. At the moment we want to explain how \iaca's output should be understood. For this purpose consider the following example:
+
+\begin{example}
+Throughput Analysis Report
+--------------------------
+Block Throughput: 2.86 Cycles       Throughput Bottleneck: FrontEnd
+
+Port Binding In Cycles Per Iteration:
+---------------------------------------------------------------------------------------
+|  Port  |  0   -  DV  |  1   |  2   -  D   |  3   -  D   |  4   |  5   |  6   |  7   |
+---------------------------------------------------------------------------------------
+| Cycles | 1.6    0.0  | 1.4  | 0.0    0.0  | 0.0    0.0  | 0.0  | 1.4  | 1.6  | 0.0  |
+---------------------------------------------------------------------------------------
+
+N - port number or number of cycles resource conflict caused delay, DV - Divider pipe (on port 0)
+D - Data fetch pipe (on ports 2 and 3), CP - on a critical path
+F - Macro Fusion with the previous instruction occurred
+* - instruction micro-ops not bound to a port
+^ - Micro Fusion happened
+# - ESP Tracking sync uop was issued
+@ - SSE instruction followed an AVX256/AVX512 instruction, dozens of cycles penalty is expected
+X - instruction not supported, was not accounted in Analysis
+
+| Num Of |                    Ports pressure in cycles                     |    |
+|  Uops  |  0  - DV  |  1  |  2  -  D  |  3  -  D  |  4  |  5  |  6  |  7  |    |
+---------------------------------------------------------------------------------
+|   1    | 0.1       | 0.3 |           |           |     | 0.3 | 0.3 |     |    | mov rax, 0x1
+|   1    | 0.9       |     |           |           |     |     | 0.1 |     |    | cmp rcx, 0x0
+|   0F   |           |     |           |           |     |     |     |     |    | jnz 0x7
+|   1    |           | 0.3 |           |           |     | 0.5 | 0.2 |     | CP | add rbx, rax
+|   1    | 0.6       |     |           |           |     |     | 0.3 |     |    | jmp 0x5
+|   1    |           | 0.4 |           |           |     | 0.3 | 0.3 |     | CP | add rbx, rax
+|   1    |           | 0.3 |           |           |     | 0.3 | 0.4 |     | CP | add rbx, rbx
+Total Num Of Uops: 6
+\end{example}
+
+First we can see that \iaca\ computed a \emph{block throughput} of $2.86$ cycles which is the average number of cycles needed to execute the program ($\frac{Total\ number\ of\ cycles}{Number\ of\ iterations}$) and is therefore the value a programmer should try to optimize.\\
+The analysis also shows the front end and the average port bindings. The port bindings represent the sum of the port pressure values we see in the bottom table.\\
+A port is pressured whenever a \microop\ is assigned to it. Due to port pipelining the pressure values equal the number of \microops\ that were assigned to the port and will therefore add up to the number of \microops\ (apart from rounding errors). The divider pipe is an exception to this, but we will explain this in \autoref{sec:dividerpipe}.
+ 
+ 
+\section{Scope of work}
+
+Like mentioned before we will present a tool that is able to analyze \emph{X86} assembler code with respect to a specific microarchitecture. Just like \iaca\ our tool is able to find byte markers inside a compiled file and analyze the code in between.  We are using Intel's \emph{X86 Encoder Decoder} library \cite{xed} to disassemble said file, which allows us to support files of the \emph{ELF}, \emph{PECOFF} and \emph{MACHO} format.\\
+
+After disassembling \suaca\ will perform a dependency analysis on the instructions and parse the measurement file. Finally it will perform a simulation of the code. It won't consider the actual effect of the instructions, only their latencies, dependencies and port usage. The output will be very similar to \iaca' and additionally \suaca\ offers some supplementary options which can be used to further investigate the given program. During all analyses the instructions are first considered in program order, although instruction reordering is still possible as we will see in \autoref{sec:chooseport}. For several reasons, which we will discuss in the following, our simulation will compute an estimate of the code's performance, not total numbers.\\
+We will discuss all available options of \suaca\ in \autoref{chap:functionality}. In \autoref{chap:algorithms} we will then explain in detail how the most important parts of the simulation and the dependency analyzes are implemented.
+
 
 
 \section{Measurements}
