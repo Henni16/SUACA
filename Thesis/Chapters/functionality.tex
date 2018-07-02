@@ -24,7 +24,7 @@ First consider the following output which will demonstrate the basic values \sua
 
 \begin{example}
 Block throughput: 3.00 cycles
-Block throughput with perfect front end: 3.00 cycles
+Block throughput with perfect front-end: 3.00 cycles
 Block throughput with infinitely usable ports: 3.00 cycles
 Block throughput without dependencies: 3.00 cycles
 Microops per cycle: 2.33
@@ -49,13 +49,13 @@ At the beginning one will notice the following values:
 \begin{itemize}
     \item \textbf{Block throughput} is the average number of cycles needed to execute the program ($\frac{Total\ number\ of\ cycles}{Number\ of\ iterations}$).
     The latency of a program is the number of cycle needed to execute it once. One can use \suaca\ to compute the latency by running its analysis with a single iteration.
-    \item \textbf{Block throughput with perfect front end} can be used to see if the front end of the processor was the bottleneck of the execution. To compute this value \suaca\ will perform a full analysis of the program. However, it will assume that $number\ of\ \mu ops\ loaded\ per\ cycle = capacity\ of\ reservation\ station$. If the runtime experiences a speedup we can conclude that the front end was indeed the bottleneck. Note that this does not ignore the maximum capacity of the scheduler.
+    \item \textbf{Block throughput with perfect front-end} can be used to see if the front-end of the processor was the bottleneck of the execution. To compute this value \suaca\ will perform a full analysis of the program. However, it will assume that $number\ of\ \mu ops\ loaded\ per\ cycle = capacity\ of\ reservation\ station$. If the runtime experiences a speedup we can conclude that the front-end was indeed the bottleneck. Note that this does not ignore the maximum capacity of the scheduler.
     \item \textbf{Block throughput with infinitely usable ports} is computed similarly. It will perform a full analysis, but every port can be used arbitrarily each cycle. So several \microops\ can use the same port simultaneously. Should the runtime improve we can conclude that one of the ports has to be the bottleneck.
     \item \textbf{Block throughput without dependencies} is again similar to the aforementioned values. This time the dependencies are disabled during the simulation. An improved throughput here indicates that the dependencies between instructions are the bottleneck. 
 \end{itemize}
 
-In some corner cases it might be possible that both the front end and the ports are responsible for a decreased runtime. This can happen if every loaded instruction is directly computed (front end bottleneck), but if the front end was faster there wouldn't be another port to run the additionally loaded instructions on. In this case none of the first values would differ from the normal \textbf{Block throughput} although they are actually both part of the bottleneck.\\
-Similar behavior can be observed with multiple combinations of the above mentioned versions of our simulation. For this reason \suaca\ gives the user the option to toggle these special simulations in all possible combinations.\\
+In some corner cases it might be possible that both the front-end and the ports are responsible for a decreased runtime. This can happen if every loaded instruction is directly computed (front-end bottleneck), but if the front-end was faster there wouldn't be another port to run the additionally loaded instructions on. In this case none of the first values would differ from the normal \textbf{Block throughput} although they are actually both part of the bottleneck.\\
+Similar behavior can be observed with multiple combinations of the above mentioned versions of our simulation. For this reason \suaca\ gives the user the option to perform these special simulations in all possible combinations.\\
 
 
 In the table we can observe the following columns:
@@ -76,7 +76,7 @@ As we mentioned above the major use case of \iaca\ is analyzing an innermost loo
 
 \begin{example}
 Block throughput: 2.34 cycles
-Block throughput with perfect front end: 2.34 cycles
+Block throughput with perfect front-end: 2.34 cycles
 Block throughput with infinitely usable ports: 2.00 cycles
 Block throughput without dependencies: 2.34 cycles
 Microops per cycle: 2.99
@@ -217,7 +217,7 @@ As previously discussed one of the big advantages of \suaca\ is that one can eas
 
 \begin{example}
 Block throughput: 2.00 cycles
-Block throughput with perfect front end: 2.00 cycles
+Block throughput with perfect front-end: 2.00 cycles
 Block throughput with infinitely usable ports: 2.00 cycles
 Block throughput without dependencies: 1.75 cycles
 Microops per cycle: 3.49
@@ -329,7 +329,7 @@ The actual branch analysis will perform two simulations, one for each branch. Th
 Left branch analysis:
 
 Block throughput: 2.00 cycles
-Block throughput with perfect front end: 2.00 cycles
+Block throughput with perfect front-end: 2.00 cycles
 Block throughput with infinitely usable ports: 2.00 cycles
 Block throughput without dependencies: 1.34 cycles
 Microops per cycle: 2.00
@@ -349,7 +349,7 @@ Total number of Uops: 4
 Right branch analysis:
 
 Block throughput: 2.00 cycles
-Block throughput with perfect front end: 2.00 cycles
+Block throughput with perfect front-end: 2.00 cycles
 Block throughput with infinitely usable ports: 2.00 cycles
 Block throughput without dependencies: 1.34 cycles
 Microops per cycle: 2.00
@@ -370,14 +370,14 @@ This kind of information can be useful to determine which of the two branches is
 One can also use this in combination with the detailed analysis as \suaca\ will tell you the original line of all instructions in both parts of the branching analysis.
 
 
-\section{The command line interface}
+\section{The command line interface (CLI)}
 The CLI of \suaca\ works as follows:\\
 \[
 suaca\ [option]\ path\_to\_file
 \]
 where $[option]$ is one or several of the following:
 \begin{itemize}
-    \item \emph{-pf} triggers the perfect front end analysis.
+    \item \emph{-pf} triggers the perfect front-end analysis.
     \item \emph{-ip} triggers the infinite port analysis.
     \item \emph{-nd} triggers the dependency free analysis. 
     \item \emph{-cfg} will print the control flow graph into a file called $controlflow.dot$. The format will be graphviz readable.
@@ -385,7 +385,7 @@ where $[option]$ is one or several of the following:
     \item \emph{-p} triggers the ``performance mode''. More specifically this will prevent the three extra analyses that are needed to generate the three additional block throughput values. In most cases however, \suaca's performance bottleneck will be the parser for the measurement files which cannot be deactivated. 
     \item \emph{-b} triggers the branch analysis.
     \item \emph{-{}-iform} is used to print the iforms of all instructions
-    \item \emph{-{}-arch x} will consider $x$ as the underlaying micro-architecture of the analysis. At the time of writing the available options are NHM, SNB, IVB, HSW, BDW, SKL, CFL and KBL. The default value is SNB.
+    \item \emph{-{}-arch x} will consider $x$ as the underlaying micro-architecture of the analysis. At the time of writing the available options are NHM (Nehalem), SNB (Sandy Bridge), IVB (Ivy Bridge), HSW (Haswell), BDW (Broadwell), SKL (Skylake), KBL (Kaby Lake) and CFL (Coffee Lake). The default value is SNB.
     \item \emph{-{}-loop x} will trigger the loop analysis. The default value of $x$ is $1$.
     \item \emph{-{}-detail x} will print detailed information about line $x$.
      \item \emph{-{}-setup x y} sets the default values for the architecture ($x$) and the number of iterations ($y$). Note that one always has to use both values. 

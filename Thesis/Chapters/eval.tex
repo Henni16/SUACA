@@ -38,15 +38,15 @@ Consider the following example run of \iaca\ $2.3$ on the Sandy Bridge architect
 \end{example}
 
 Note that we constructed this program exclusively for our purposes. Apart from the very first instruction the program will not have any effect. This is fine as none of the tools will simulate this behavior and it is designed as a toy example.\\
-We can observe that the \emph{mov} instruction is able to use ports $0$, $1$ and $5$. The front end of the Sandy Bridge architecture can deliver up to four \microops\ per cycle and there are no es as no register is ever read.\\
-So the clear bottleneck of this program are the three ports, because four \microops\ get loaded but only three ports are available for their execution. Unfortunately we don't know how the bottleneck analysis of \iaca\ works so we can't argue why it believes that the front end might be the bottleneck. Looking at the information we do have it does not make sense, though.\\
+We can observe that the \emph{mov} instruction is able to use ports $0$, $1$ and $5$. The front-end of the Sandy Bridge architecture can deliver up to four \microops\ per cycle and there are no es as no register is ever read.\\
+So the clear bottleneck of this program are the three ports, because four \microops\ get loaded but only three ports are available for their execution. Unfortunately we don't know how the bottleneck analysis of \iaca\ works so we can't argue why it believes that the front-end might be the bottleneck. Looking at the information we do have it does not make sense, though.\\
 
 
 Now consider \suaca's output of the same program with $200$ iterations:
 
 \begin{example}
 Block throughput: 2.00 cycles
-Block throughput with perfect front end: 2.00 cycles
+Block throughput with perfect front-end: 2.00 cycles
 Block throughput with infinitely usable ports: 1.50 cycles
 Block throughput without dependencies: 2.00 cycles
 Microops per cycle: 3.00
@@ -65,7 +65,7 @@ Analysis for architecture: SNB
 Total number of Uops: 6
 \end{example}
 
-One can easily see that the port information and the block throughput is identical to \iaca's output. The major difference lies in the bottleneck analysis. \suaca\ tells you that the throughput improves quite drastically with infinitely usable ports. The two cycles make sense with the ports in consideration as we have three usable ports and six instructions, but when each port can be used to an infinite amount each cycle this is no longer relevant. Without the port problem we only need one and a half cycle for each iteration as we have six \microops\ and a front end that produces four of them each cycle.\\
+One can easily see that the port information and the block throughput is identical to \iaca's output. The major difference lies in the bottleneck analysis. \suaca\ tells you that the throughput improves quite drastically with infinitely usable ports. The two cycles make sense with the ports in consideration as we have three usable ports and six instructions, but when each port can be used to an infinite amount each cycle this is no longer relevant. Without the port problem we only need one and a half cycle for each iteration as we have six \microops\ and a front-end that produces four of them each cycle.\\
 We can also tell \suaca\ to analyze a specific line for us:
 
 \begin{example}
@@ -172,12 +172,12 @@ The \osaca\ thesis states, that we can conclude that port $1$ is the bottleneck 
 
 Two properties of this analysis remain unclear. On the one hand we do not know why those two instructions do not use port $0$ as well. It is a possible port for both of those and it is clearly pressured less. On the other hand the distribution of ports $2$ and $3$ are very strict for the first four instructions and are split for the \nth{6}. \iaca\ may have some internal information that would explain this behavior, but as far as we know this seems odd.\\
 
-\iaca\ declares the front end as the bottleneck. The front end of the Ivy Bridge architecture delivers up to four \microops\ per cycle. The example program contains of $12$ \microops\ and the throughput is exactly three cycles. So the throughput is certainly lower bounded by the front end. However, port $1$ is still pressured for three cycles. So even if the front end was faster the throughput would not improve as it is also lower bounded by the three \emph{vaddsd} instructions that have to use port $1$.\\
-This analysis does not show the dependencies at all. If we take a closer look at the first six instructions we can see that those have a dependency chain over the \emph{xmm} registers. We will now consider \suaca's analysis in order to take a closer look at the interactions between front end, ports and dependencies of our program. We shortened the instructions in the output for the sake of readability.
+\iaca\ declares the front-end as the bottleneck. The front-end of the Ivy Bridge architecture delivers up to four \microops\ per cycle. The example program contains of $12$ \microops\ and the throughput is exactly three cycles. So the throughput is certainly lower bounded by the front-end. However, port $1$ is still pressured for three cycles. So even if the front-end was faster the throughput would not improve as it is also lower bounded by the three \emph{vaddsd} instructions that have to use port $1$.\\
+This analysis does not show the dependencies at all. If we take a closer look at the first six instructions we can see that those have a dependency chain over the \emph{xmm} registers. We will now consider \suaca's analysis in order to take a closer look at the interactions between front-end, ports and dependencies of our program. We shortened the instructions in the output for the sake of readability.
 
 \begin{LabeledExample}{\suaca\ run - $3000$ iterations}{\label{ex:suaca3000}}
     Block throughput: 3.00 cycles
-    Block throughput with perfect front end: 3.00 cycles
+    Block throughput with perfect front-end: 3.00 cycles
     Block throughput with infinitely usable ports: 3.00 cycles
     Block throughput without dependencies: 3.00 cycles
     Microops per cycle: 3.99
@@ -203,7 +203,7 @@ The throughput is equal to \iaca's output and the throughput values of the speci
 
 \begin{LabeledExample}{\suaca\ run - single iteration}{\label{ex:suacasingle}}
     Block throughput: 16.00 cycles
-    Block throughput with perfect front end: 16.00 cycles
+    Block throughput with perfect front-end: 16.00 cycles
     Block throughput with infinitely usable ports: 16.00 cycles
     Block throughput without dependencies: 6.00 cycles
     Microops per cycle: 0.75
@@ -225,13 +225,13 @@ The throughput is equal to \iaca's output and the throughput values of the speci
 \end{LabeledExample}
 
 However, there is only a single dependency between consecutive iterations. The \emph{inc} instructions writes to \emph{r15} which will be read by the following iteration multiple times, so we can simply interpret this as the start of our ``single iteration dependency chain''. Those chains make sense as the program is iterating over an array.\\
-When this program runs in a loop the different iterations will run ``side by side'', which explains why the throughput ultimately reaches a value that is lower bounded by the front end and port $1$. This is also the reason why we chose to run \autoref{ex:suaca3000} with $3000$ iterations as it takes a while until the average ultimately reaches this lower bound.\\
-Now that we know which role the dependencies play in our program we can take a closer look at the front end and the ports. In \autoref{ex:suaca200} one can see the analysis with $200$ iterations which has several interesting results in comparison to \autoref{ex:suaca3000}.
+When this program runs in a loop the different iterations will run ``side by side'', which explains why the throughput ultimately reaches a value that is lower bounded by the front-end and port $1$. This is also the reason why we chose to run \autoref{ex:suaca3000} with $3000$ iterations as it takes a while until the average ultimately reaches this lower bound.\\
+Now that we know which role the dependencies play in our program we can take a closer look at the front-end and the ports. In \autoref{ex:suaca200} one can see the analysis with $200$ iterations which has several interesting results in comparison to \autoref{ex:suaca3000}.
 
 
 \begin{LabeledExample}{\suaca\ run - $200$ iterations}{\label{ex:suaca200}}
     Block throughput: 3.07 cycles
-    Block throughput with perfect front end: 3.06 cycles
+    Block throughput with perfect front-end: 3.06 cycles
     Block throughput with infinitely usable ports: 3.06 cycles
     Block throughput without dependencies: 3.02 cycles
     Microops per cycle: 3.91
@@ -252,11 +252,11 @@ Now that we know which role the dependencies play in our program we can take a c
     Total number of Uops: 12
 \end{LabeledExample}
 
-We can observe that the throughput values have not reached the $3.00$ mark yet, like we discussed above. But more importantly the \emph{had to wait} and \emph{caused to wait} values did not change at all. Usually those increase when the number of iterations are increased. This is the case when the front end works faster than the execution, because our simulation will only count those values for the instructions that have been loaded into the scheduler already. So if a lot of instructions are waiting inside the scheduler the \emph{had to wait} and \emph{caused to wait} values will be very high. As this is clearly not the case here we can conclude that (after a few iterations) the scheduler is always filled to an equal amount. This actually supports \iaca's claim that the front end is the bottleneck. We argued that, should the front end's performance improve, the ports will prevent a faster execution.\\
-In \autoref{ex:pf} we can see a run of the perfect front end analysis. We used $3000$ iterations for this and all the following example runs. The only difference are the two delay values which are a bit higher.
+We can observe that the throughput values have not reached the $3.00$ mark yet, like we discussed above. But more importantly the \emph{had to wait} and \emph{caused to wait} values did not change at all. Usually those increase when the number of iterations are increased. This is the case when the front-end works faster than the execution, because our simulation will only count those values for the instructions that have been loaded into the scheduler already. So if a lot of instructions are waiting inside the scheduler the \emph{had to wait} and \emph{caused to wait} values will be very high. As this is clearly not the case here we can conclude that (after a few iterations) the scheduler is always filled to an equal amount. This actually supports \iaca's claim that the front-end is the bottleneck. We argued that, should the front-end's performance improve, the ports will prevent a faster execution.\\
+In \autoref{ex:pf} we can see a run of the perfect front-end analysis. We used $3000$ iterations for this and all the following example runs. The only difference are the two delay values which are a bit higher.
 
 
-\begin{LabeledExample}{\suaca\ run - perfect front end}{\label{ex:pf}}
+\begin{LabeledExample}{\suaca\ run - perfect front-end}{\label{ex:pf}}
     Block throughput: 3.00 cycles
     Microops per cycle: 4.00
     
@@ -279,7 +279,7 @@ In \autoref{ex:pf} we can see a run of the perfect front end analysis. We used $
 
 The details of line three (\autoref{ex:detail}) show that this is actually due to dependencies for the most part.
 
-\begin{LabeledExample}{Details of line $3$ with perfect front end}{\label{ex:detail}}
+\begin{LabeledExample}{Details of line $3$ with perfect front-end}{\label{ex:detail}}
                                         Maximum latency: 3
                                         
                                         Latencies for dependencies:
@@ -306,7 +306,7 @@ The details of line three (\autoref{ex:detail}) show that this is actually due t
                                           3   ||     0.3     ||     0.0
 \end{LabeledExample}
 
-In order to prove our port claim we will run \suaca\ with both a perfect front end and disabled dependencies in \autoref{ex:portsonly}. We can exactly observe the above described behavior. The throughput does not improve and the three \emph{vaddsd} instructions are heavily delayed by port $1$, whereas all the other instructions experience very little to no delay. The reason why those delay values are so small is the massive delay of the \emph{vaddsd} instructions as those will continue to be executed for so many cycles that the average delay values of the other instructions are neglected almost completely.
+In order to prove our port claim we will run \suaca\ with both a perfect front-end and disabled dependencies in \autoref{ex:portsonly}. We can exactly observe the above described behavior. The throughput does not improve and the three \emph{vaddsd} instructions are heavily delayed by port $1$, whereas all the other instructions experience very little to no delay. The reason why those delay values are so small is the massive delay of the \emph{vaddsd} instructions as those will continue to be executed for so many cycles that the average delay values of the other instructions are neglected almost completely.
 
 
 \begin{LabeledExample}{\suaca\ run with pf and nd}{\label{ex:portsonly}}
@@ -447,7 +447,7 @@ As one can see in \autoref{ex:3.0suaca} \suaca's results are identical for the p
 
 \begin{LabeledExample}{\suaca's output for SKL with $200$ iterations}{\label{ex:3.0suaca}}
     Block throughput: 8.00 cycles
-    Block throughput with perfect front end: 8.00 cycles
+    Block throughput with perfect front-end: 8.00 cycles
     Block throughput with infinitely usable ports: 8.00 cycles
     Block throughput without dependencies: 4.00 cycles
     Microops per cycle: 1.00
