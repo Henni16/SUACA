@@ -38,7 +38,7 @@ Consider the following example run of \iaca\ $2.3$ on the Sandy Bridge architect
 \end{example}
 
 Note that we constructed this program exclusively for our purposes. Apart from the very first instruction the program will not have any effect. This is fine as none of the tools will simulate this behavior and it is designed as a toy example.\\
-We can observe that the \emph{mov} instruction is able to use ports $0$, $1$ and $5$. The front-end of the Sandy Bridge architecture can deliver up to four \microops\ per cycle and there are no es as no register is ever read.\\
+We can observe that the \emph{mov} instruction is able to use ports $0$, $1$ and $5$. The front-end of the Sandy Bridge architecture can deliver up to four \microops\ per cycle and there are no dependencies as no register is ever read.\\
 So the clear bottleneck of this program are the three ports, because four \microops\ get loaded but only three ports are available for their execution. Unfortunately we don't know how the bottleneck analysis of \iaca\ works so we can't argue why it believes that the front-end might be the bottleneck. Looking at the information we do have it does not make sense, though.\\
 
 
@@ -140,7 +140,7 @@ In the following we will analyze the resulting machine code and compare the resu
     Total number of estimated throughput: 4.67
 \end{LabeledExample}
 
-The \osaca\ thesis states, that we can conclude that port $1$ is the bottleneck of this program, which makes sense looking at the given analysis, but we will now look into the program a bit further.\\
+The \osaca\ thesis states, that we can conclude that port $1$ is the bottleneck of this program, which makes sense looking at the given analysis. We will now look into the program a bit further.\\
 \hyperref[ex:iaca]{Example \ref*{ex:iaca}} displays the output of \iaca\ $2.3$ which shows the expected behavior regarding the port $1$ problematic i.e., the \emph{incq} and \emph{cmpq} instructions exclusively use port $5$.
 
 \begin{LabeledExample}{\iaca\ run}{\label{ex:iaca}}
@@ -170,7 +170,7 @@ The \osaca\ thesis states, that we can conclude that port $1$ is the bottleneck 
   Total Num Of Uops: 12
 \end{LabeledExample}
 
-Two properties of this analysis remain unclear. On the one hand we do not know why those two instructions do not use port $0$ as well. It is a possible port for both of those and it is clearly pressured less. On the other hand the distribution of ports $2$ and $3$ are very strict for the first four instructions and are split for the \nth{6}. \iaca\ may have some internal information that would explain this behavior, but as far as we know this seems odd.\\
+Two properties of this analysis remain unclear. On the one hand, we do not know why those two instructions do not use port $0$ as well. It is a possible port for both of those and it is clearly pressured less. On the other hand the distribution of ports $2$ and $3$ are very strict for the first four instructions and are split for the \nth{6}. \iaca\ may have some internal information that would explain this behavior, but as far as we know this seems odd.\\
 
 \iaca\ declares the front-end as the bottleneck. The front-end of the Ivy Bridge architecture delivers up to four \microops\ per cycle. The example program contains of $12$ \microops\ and the throughput is exactly three cycles. So the throughput is certainly lower bounded by the front-end. However, port $1$ is still pressured for three cycles. So even if the front-end was faster the throughput would not improve as it is also lower bounded by the three \emph{vaddsd} instructions that have to use port $1$.\\
 This analysis does not show the dependencies at all. If we take a closer look at the first six instructions we can see that those have a dependency chain over the \emph{xmm} registers. We will now consider \suaca's analysis in order to take a closer look at the interactions between front-end, ports and dependencies of our program. We shortened the instructions in the output for the sake of readability.
@@ -252,7 +252,7 @@ Now that we know which role the dependencies play in our program we can take a c
     Total number of Uops: 12
 \end{LabeledExample}
 
-We can observe that the throughput values have not reached the $3.00$ mark yet, like we discussed above. But more importantly the \emph{had to wait} and \emph{caused to wait} values did not change at all. Usually those increase when the number of iterations are increased. This is the case when the front-end works faster than the execution, because our simulation will only count those values for the instructions that have been loaded into the scheduler already. So if a lot of instructions are waiting inside the scheduler the \emph{had to wait} and \emph{caused to wait} values will be very high. As this is clearly not the case here we can conclude that (after a few iterations) the scheduler is always filled to an equal amount. This actually supports \iaca's claim that the front-end is the bottleneck. We argued that, should the front-end's performance improve, the ports will prevent a faster execution.\\
+We can observe that the throughput values have not reached the $3.00$ mark yet, like we discussed above. But more importantly the \emph{had to wait} and \emph{caused to wait} values did not change at all. Usually those increase when the number of iterations is increased. This is the case when the front-end works faster than the execution, because our simulation will only count those values for the instructions that have been loaded into the scheduler already. So if a lot of instructions are waiting inside the scheduler the \emph{had to wait} and \emph{caused to wait} values will be very high. As this is clearly not the case here we can conclude that (after a few iterations) the scheduler is always filled to an equal amount. This actually supports \iaca's claim that the front-end is the bottleneck. We argued that, should the front-end's performance improve, the ports will prevent a faster execution.\\
 In \autoref{ex:pf} we can see a run of the perfect front-end analysis. We used $3000$ iterations for this and all the following example runs. The only difference are the two delay values which are a bit higher.
 
 
@@ -375,7 +375,7 @@ For our final example we will use \iaca\ $3.0$ and consider the following code s
 \FloatBarrier
 
 At first this program seems to be free of dependencies. However, every single one of those instructions reads and writes to the \emph{cf} flag of the \emph{RFLAGS} register. So there actually is a huge dependency loop that prevents any parallel execution as well as instruction reordering. \autoref{fig:cfg2} shows \suaca's dependency graph for this program, which of course also includes a self loop for every instruction.\\
-Unfortunately in \iaca\ $3.0$ the graph support was dropped so we do not know which dependencies is does use exactly for its computations, but as it computes a throughput of $3.95$ cycles we can conclude that it definitely does not know about the \emph{cf} flag. This also leads to the backend being held responsible for being the bottleneck. The full output can be seen in \autoref{ex:3.0} and the used microarchitecture was Skylake. 
+Unfortunately in \iaca\ $3.0$ the graph support was dropped so we do not know which dependencies is does use exactly for its computations, but as it computes a throughput of $3.95$ cycles we can conclude that it definitely does not know about the \emph{cf} flag. This also leads to the backend being held responsible for being the bottleneck. The full output can be seen in \autoref{ex:3.0}. We used the Skylake microarchitecture for this example. 
 
 \begin{LabeledExample}{\iaca\ $3.0$'s output}{\label{ex:3.0}}
     Throughput Analysis Report

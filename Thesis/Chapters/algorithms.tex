@@ -41,9 +41,9 @@ Where
 
 This algorithm will iterate over all instructions in program order. For each instruction $i$ it will then iterate over all of its operands. For each operand it will check if it is accessed via read or write. If it is read the algorithm will add an edge from the last written access to the current line. If it is written to the algorithm will map the register to the current line.\\
 
-The runtime of this algorithm can be described as $\mathcal{O}(n*m)$ where $n$ is the number of instructions and $m$ the maximum number of operands that occur in the program.\\
+The runtime of this algorithm is $\mathcal{O}(n*m)$ where $n$ is the number of instructions and $m$ the maximum number of operands that occur in the program.\\
 
-Note that we consider every operand as a register. In practice an operand can of course be a memory address. In this case \suaca\ will extract all registers from that address and treat them as a read operand. \suaca\ does not support memory dependencies so far as we would need to keep track of the whole memory. As we have seen in \autoref{fig:wloop} \suaca\ is able to differentiate between the different flags. For readability we ignore the special case of the \emph{RFLAGS} register here.
+Note that we consider every operand as a register. In practice, an operand can of course be a memory address. In this case \suaca\ will extract all registers from that address and treat them as a read operand. \suaca\ does not support memory dependencies so far as we would need to keep track of the whole memory. As we have seen in \autoref{fig:wloop} \suaca\ is able to differentiate between the different flags. For readability we ignore the special case of the \emph{RFLAGS} register here.
 
 Now we want to take a look at the control flow sensitive algorithm \suaca\ actually uses. 
 \newpage
@@ -85,7 +85,7 @@ Where
 \begin{itemize}
     \item $numSuccessors(Node)$ returns the number of successors of $Node$ in its underlying graph.
     \item $Successor(Node, i)$ returns the $i$th successor of $Node$ in the Graph $Node$ belongs to.
-    \item $HasSuccessor(Node)$ returns true if $numSuccessors(Node) >= 1$.
+    \item $HasSuccessor(Node)$ returns true if $numSuccessors(Node) \geq 1$.
 \end{itemize}
 
 This time we'll ``climb along'' the $CFG$. If we never face a branch i.e., $numSuccessors()$ never returns a value greater than $1$, this algorithm will do exactly the same as the one we have just seen.\\
@@ -96,7 +96,7 @@ For this algorithm we assume no backbranches i.e., no loops, inside the program.
 
 \subsection{Multiple iterations}
 
-When telling \suaca\ to run the program in multiple loops we need to adjust the dependency analysis algorithm as there can arise some ``loop dependencies''. To solve this, we will simply consider the program twice. So we will append a copy of the program to itself, compute the $CFG$ and then run the algorithm above. Because we know the original length of our program we can extract all ``loop dependencies'' from the resulting dependency graph.
+When telling \suaca\ to run the program in multiple loops we need to adjust the dependency analysis algorithm as this can cause some ``loop dependencies''. To solve this, we will simply consider the program twice. So we will append a copy of the program to itself, compute the $CFG$ and then run the algorithm we introduced before. Because we know the original length of our program we can extract all ``loop dependencies'' from the resulting dependency graph.
 
 
 \section{Simulation of the front-end}
@@ -139,7 +139,7 @@ So it is possible that an instruction is partially (i.e., only some of its \micr
 \label{sec:chooseport}
 
 In this section we are going to discuss how exactly the ports which an instruction uses are chosen. As we've seen in \autoref{sec:measurements} we know of how many \microops\ an instruction consists and which ports those \microops\ can use. As seen in \autoref{sec:simfrontend}, an instruction can be loaded partially, which we will have to consider here.\\
-The following algorithm contains several crucial details to the simulation. First we will see how \suaca\ tries to distribute all \microops\ equally over all ports. It will also demonstrate the exact situations in which we will execute an instruction. Lastly it will explain how the \textbf{had to wait} and \textbf{caused to wait} columns we introduced in \autoref{sec:plain} are computed. 
+The following algorithm contains several crucial details to the simulation. First we will see how \suaca\ tries to distribute all \microops\ equally over all ports. It also demonstrates the exact situations in which we will execute an instruction. Lastly it explains how the \textbf{had to wait} and \textbf{caused to wait} columns we introduced in \autoref{sec:plain} are computed. 
 \newpage
 
 \begin{algorithm}[H]
@@ -203,7 +203,7 @@ The following algorithm contains several crucial details to the simulation. Firs
     }
 \end{algorithm}
 
-So this algorithm iterates over all instructions in program order as long as the current instruction is at least partially loaded. For each instruction it will first check if all of its dependencies have been resolved. If not it can't be executed and the delay counters have to be increased. Notice that we have separate counters for the cumulative delays and the special delays, which are only needed for the detailed analysis (\autoref{sec:detail}). We will see the same behavior for the ports and this explains why the special delays won't always sum up to the cumulative ones.\\
+This algorithm iterates over all instructions in program order as long as the current instruction is at least partially loaded. For each instruction it will first check if all of its dependencies have been resolved. If not, it can't be executed and the delay counters have to be increased. Notice that we have separate counters for the cumulative delays and the special delays, which are only needed for the detailed analysis (\autoref{sec:detail}). We will see the same behavior for the ports and this explains why the special delays won't always sum up to the cumulative ones.\\
 If all dependencies have been resolved \suaca\ will try to assign all \microops\ of the instruction to a port. To achieve this the algorithm will iterate over all \microops\ that have been loaded into the reservation station. Note that this will ignore all \microops\ that have been put into a port already. So if all \microops\ of an instruction are currently in the port pipeline this algorithm will basically just put the instruction into the execution list.\\ 
 The function \textbf{\emph{assign\_to\_ports(\microop, Instruction)}} is described in \hyperref[alg:assign]{algorithm~\ref*{alg:assign}}. This function will iterate over all ports in prior usage order and assign the \microop\ if possible. More precisely \emph{PortQueue} contains all ports and is sorted by usage throughout the whole simulation. If possible it will assign the \microop\ to the port and return a success. If no usable port was free it will return a fail.\\
 We can observe that this is a greedy algorithm that is obviously not optimal in regards to the distribution of all \microops\ over the ports. However, we assume that this greedy algorithm comes close to what the reservation stations are doing in reality.\\

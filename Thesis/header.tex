@@ -64,6 +64,8 @@
 }
 \usepackage{makeidx}          % wir wollen auch einen Index
 \usepackage{hyperref}
+\renewcommand{\sectionautorefname}{Section}
+\renewcommand{\chapterautorefname}{Chapter}
 \usepackage{float}
 %\renewcommand*{\figureautorefname}{figure}
 \usepackage{tikz}
@@ -104,7 +106,7 @@
 
 \newcounter{myCount}
 \newcommand{\myCount}[1]{\refstepcounter{myCount}#1}
-\newcommand{\myCountautorefname}{example}
+\newcommand{\myCountautorefname}{Example}
 
 \newenvironment{LabeledExample}[2]{\VerbatimEnvironment\begin{mdframed}[backgroundcolor=light-gray, roundcorner=0pt, leftmargin=0, rightmargin=0, innerleftmargin=0, innerrightmargin=0,innertopmargin=5,innerbottommargin=-10, outerlinewidth=1, linecolor=light-gray]\myCount{#2}
         \begin{center}\begin{Verbatim}[samepage=true,frame=bottomline, framesep=5mm, fontsize=\tiny, label=\small{Example \arabic{myCount}: #1}, labelposition=bottomline, commandchars=\\\{\}]}{\end{Verbatim}\end{center}
