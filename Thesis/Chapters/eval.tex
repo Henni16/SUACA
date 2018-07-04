@@ -39,7 +39,7 @@ Consider the following example run of \iaca\ $2.3$ on the Sandy Bridge architect
 
 Note that we constructed this program exclusively for our purposes. Apart from the very first instruction the program will not have any effect. This is fine as none of the tools will simulate this behavior and it is designed as a toy example.\\
 We can observe that the \emph{mov} instruction is able to use ports $0$, $1$ and $5$. The front-end of the Sandy Bridge architecture can deliver up to four \microops\ per cycle and there are no dependencies as no register is ever read.\\
-So the clear bottleneck of this program are the three ports, because four \microops\ get loaded but only three ports are available for their execution. Unfortunately we don't know how the bottleneck analysis of \iaca\ works so we can't argue why it believes that the front-end might be the bottleneck. Looking at the information we do have it does not make sense, though.\\
+So the clear bottleneck of this program are the three ports, because four \microops\ get loaded but only three ports are available for their execution. Unfortunately we do not know how the bottleneck analysis of \iaca\ works so we cannot argue why it believes that the front-end might be the bottleneck. Looking at the information we do have it does not make sense, though.\\
 
 
 Now consider \suaca's output of the same program with $200$ iterations:
@@ -84,7 +84,7 @@ Detailed delay information for instruction: mov rax, 0x6 in line 0
               5   ||     0.0     ||    15.6
 \end{example}
 
-In this particular case the detailed analysis is identical for every line, because the number of loads per cycle doesn't divide the total number of \microops\ the program kind of ``rotates'' during the simulation. A high number of iterations therefore leads to, on average, equal number of all instructions.\\
+In this particular case the detailed analysis is identical for every line, because the number of loads per cycle does not divide the total number of \microops\ the program kind of ``rotates'' during the simulation. A high number of iterations therefore leads to, on average, equal number of all instructions.\\
 This detailed analysis shows that each line suffered a delay of $15.6$ cycles from each of its usable ports. This value is equal for all ports, because this instruction only consists of a single \microop\ and is therefore only delayed if all three ports are blocked (see \hyperref[alg:assign]{algorithm~\ref*{alg:assign}}), which will then all be held responsible. Each instruction causes a delay on the port it used.\\
 The \emph{caused to wait} value in the original output is thrice as high as the \emph{had to wait} value. This is due to the fact that there are always three instructions that are responsible for a single other instruction's delay.\\
 
@@ -109,7 +109,7 @@ for(j = 1; j < M-1; ++j){
     \end{lstlisting}
 \end{mdframed}
 
-In the following we will analyze the resulting machine code and compare the results of \iaca, \osaca\ and \suaca. We will do so with the Ivy Bridge microarchitecture in mind. First consider \osaca's analysis in \autoref{ex:osaca}. We can observe a different approach to the port bindings here. \osaca\ always tries to distribute the port pressure evenly across all ports to an extend where it doesn't take previous instructions into account. This basically means, that every instruction will always have the same port bindings no matter how the rest of the program looks like. The idea is to give the user more information about possible bindings which are hard to observe when using \iaca. However, this leads to an overestimation of the throughput as the pressure on port $1$ is much higher than it needs to be. The \emph{incq} and \emph{cmpq} instructions do not need to use port $1$ at all as they could instead use ports $0$ and even more so the very underused port $5$. 
+In the following we will analyze the resulting machine code and compare the results of \iaca, \osaca\ and \suaca. We will do so with the Ivy Bridge microarchitecture in mind. First consider \osaca's analysis in \autoref{ex:osaca}. We can observe a different approach to the port bindings here. \osaca\ always tries to distribute the port pressure evenly across all ports to an extend where it does not take previous instructions into account. This basically means, that every instruction will always have the same port bindings no matter how the rest of the program looks like. The idea is to give the user more information about possible bindings which are hard to observe when using \iaca. However, this leads to an overestimation of the throughput as the pressure on port $1$ is much higher than it needs to be. The \emph{incq} and \emph{cmpq} instructions do not need to use port $1$ at all as they could instead use ports $0$ and even more so the very underused port $5$. 
 
 
 \begin{LabeledExample}{\osaca\ run}{\label{ex:osaca}}
