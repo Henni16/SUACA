@@ -80,6 +80,7 @@ Now we want to take a look at the control flow sensitive algorithm \suaca\ actua
         }
     }
 \end{algorithm}
+\vspace{5pt}
 
 Where
 \begin{itemize}
@@ -125,7 +126,7 @@ We will now briefly discuss how our simulation actually performs those loads.\ne
         }
     }
 \end{algorithm}
-
+\vspace{5pt}
 Where
 \begin{itemize}
     \item load\microops(Waiting, $x$) loads up to $x$ \microops\ of \emph{Waiting} and returns the number of \microops\ that were actually loaded.
@@ -202,6 +203,7 @@ The following algorithm contains several crucial details to the simulation. Firs
         \Return $false$\;
     }
 \end{algorithm}
+\vspace{5pt}
 
 This algorithm iterates over all instructions in program order as long as the current instruction is at least partially loaded. For each instruction it will first check if all of its dependencies have been resolved. If not, it cannot be executed and the delay counters have to be increased. Notice that we have separate counters for the cumulative delays and the special delays, which are only needed for the detailed analysis (\autoref{sec:detail}). We will see the same behavior for the ports and this explains why the special delays will not always sum up to the cumulative ones.\\
 If all dependencies have been resolved \suaca\ will try to assign all \microops\ of the instruction to a port. To achieve this the algorithm will iterate over all \microops\ that have been loaded into the reservation station. Note that this will ignore all \microops\ that have been put into a port already. So if all \microops\ of an instruction are currently in the port pipeline this algorithm will basically just put the instruction into the execution list.\\ 
@@ -246,6 +248,7 @@ Ultimately we will consider the rest of the algorithm starting in \autoref{line:
         Executionlist.clear()\;
     }
 \end{algorithm}
+\newpage
 
 This part is rather simple. Every instruction knows its latency and how many cycles it has been executed. This value gets increased and if the latency is hit it will be removed from the Instructionqueue. The most interesting part here is the function \textbf{\emph{inform\_children\_im\_done(Instruction)}}. As we have seen in \autoref{sec:measurements} the children of an instruction do not necessarily have to wait for the instruction to finish. Sometimes they only need part of the results, which are available earlier. So this function will iterate over all children and check if the execution is advanced enough and if so ``release the dependency''. Finally we have to clear the execution list as we will fill it again in the next cycle.
 
@@ -267,7 +270,7 @@ Lastly we want to briefly discuss how a whole cycle is performed. \suaca\ will r
         }
     }
 \end{algorithm}
-
+\vspace{5pt}
 The interesting observation here is that an instruction can actually get loaded, put into a port and then executed within a single cycle, due to the order of the function calls.\\
 This function will be executed in a loop as long as there are instructions to be executed. After said loop \suaca\ will generate its output.
 
