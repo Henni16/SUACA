@@ -19,9 +19,11 @@ bool *compute_needed_instructions(graph_t *cfg, int branch, single_list_t *list)
     while (cur) {
         if (!branched && cur->num_successors > 1) {
             branched = true;
+            needed[cur_line] = true;
             cur_line = cur->successors[branch].line;
         } else {
-            if (!is_branch_instruction(&list->array[cur_line]))
+            // this line would throw away the jumps at the end of a block
+            //if (!is_branch_instruction(&list->array[cur_line]))
                 needed[cur_line] = true;
             if (cur->num_successors)
                 cur_line = cur->successors[0].line;

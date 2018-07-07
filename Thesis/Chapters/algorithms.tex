@@ -1,9 +1,9 @@
 When trying to analyze a program, the user sometimes needs to fully understand how the results were calculated. Especially if he aims to use them to improve his code. Therefore we will discuss \suaca's most important algorithms in this chapter. We will first explain the individual steps and fit them together in the end.
 
-\section{Dependency analysis}
+\section{Dependency Analysis}
 \label{sec:depanalysis}
 
-\subsection{Single iteration}
+\subsection{Single Iteration}
 
 Here we want to take a look at the algorithm that computes the dependency graph. \\
 First we want to discuss a simpler version that ignores the control flow of the program.
@@ -12,17 +12,17 @@ First we want to discuss a simpler version that ignores the control flow of the 
     \SetAlgoLined
     \caption{Dependency analysis without control flow}
     \label{alg:depsingle}
-    \SetKwFunction{dep}{Dep-Analysis}
+    \SetKwFunction{dep}{dep\_analysis}
     \SetKwProg{Fn}{Function}{:}{\textbf{end}}
-    \Fn{\dep{Instructionlist InstList}}{
-        Map $:=$ map from Register to line\;
+    \Fn{\dep{instructionlist inst\_list}}{
+        Map $:=$ map from register to line\;
         DG $:=$ Graph that has the same nodes as CFG, but no edges\;
-        \ForEach{Instruction $i$ in InstList} {
-             \ForEach{Register-Operand $r$ in Operands($i$)} {
-                 \eIf{IsRead($r$)} {
-                     DG.addEdge(Map[$r$], LineOf($i$))\;
+        \ForEach{instruction $i$ in inst\_list} {
+             \ForEach{register\_operand $r$ in operands($i$)} {
+                 \eIf{is\_read($r$)} {
+                     DG.add\_edge(Map[$r$], line\_of($i$))\;
                  }{
-                    Map[$r$] = LineOf(i)\;
+                    Map[$r$] = line\_of(i)\;
                 }
             }
         }
@@ -34,16 +34,17 @@ First we want to discuss a simpler version that ignores the control flow of the 
 
 Where
 \begin{itemize}
-    \item $Operands(i)$ returns a list of all operands of instruction $i$.
-    \item $IsRead(r)$ returns true if the operand $r$ will be read and false if it will be written to.
-    \item $LineOf(i)$ returns the line of instruction $i$ in the original program.
+    \item \emph{Map} maps each register to the last line with a write access.
+    \item \emph{operands(i)} returns a list of all operands of instruction $i$. A register that is first read then written to will be contained twice. The order will be first read then write access.
+    \item \emph{is\_read(r)} returns true if the operand $r$ will be read and false if it will be written to.
+    \item \emph{line\_of(i)} returns the line of instruction $i$ in the original program.
 \end{itemize}
 
-This algorithm will iterate over all instructions in program order. For each instruction $i$ it will then iterate over all of its operands. For each operand it will check if it is accessed via read or write. If it is read the algorithm will add an edge from the last written access to the current line. If it is written to the algorithm will map the register to the current line.\\
+This algorithm will iterate over all instructions in program order. For each instruction $i$ it will then iterate over all of its operands. For each operand it will check if it is accessed via read or write. If it is written to, the algorithm will map the register to the current line. If it is read, the algorithm will add an edge from the last write access to the current line.\\
 
 The runtime of this algorithm is $\mathcal{O}(n*m)$ where $n$ is the number of instructions and $m$ the maximum number of operands that occur in the program.\\
 
-Note that we consider every operand as a register. In practice, an operand can of course be a memory address. In this case \suaca\ will extract all registers from that address and treat them as a read operand. \suaca\ does not support memory dependencies so far as we would need to keep track of the whole memory. As we have seen in \autoref{fig:wloop} \suaca\ is able to differentiate between the different flags. For readability we ignore the special case of the \emph{RFLAGS} register here.
+Note that we consider every operand as a register. In practice, an operand can of course be a memory address. In this case \suaca\ will extract all registers from that address and treat them as read operands. \suaca\ does not support memory dependencies so far as we would need to keep track of the whole memory. As we have seen in \autoref{fig:wloop}, \suaca\ is able to differentiate between the different flags. For readability we ignore the special case of the \emph{RFLAGS} register here.
 
 Now we want to take a look at the control flow sensitive algorithm \suaca\ actually uses. 
 \newpage
@@ -52,30 +53,31 @@ Now we want to take a look at the control flow sensitive algorithm \suaca\ actua
     \SetAlgoLined
     \caption{Control flow sensitive dependency analysis}
     \label{alg:dep}
-    \SetKwFunction{deps}{Dep-Analysis-Start}
-    \SetKwFunction{dep}{Dep-Analysis}
+    \SetKwFunction{deps}{dep\_analysis\_start}
+    \SetKwFunction{dep}{dep\_analysis}
     \SetKwProg{Fn}{Function}{:}{\textbf{end}}
     \Fn{\deps{CFG}}{
-        Map $:=$ map from Register to line\;
-        DG $:=$ Graph that has the same nodes as CFG, but no edges\;
-        Node $:=$ Startnode of CFG\;
+        Map $:=$ map from register to line\;
+        DG $:=$ graph that has the same nodes as CFG, but no edges\;
+        Node $:=$ startnode of CFG\;
         \dep{CFG, DG, Map, Node}\;
         \Return DG\;
     }
     \SetKwProg{Fn}{Function}{:}{\textbf{end}}
     \Fn{\dep{CFG, DG, Father-Map, Node}}{
         Map $:=$ copy of Father-Map\;
-        \While{HasSuccessor(Node)} {
-            \ForEach{Register-Operand $r$ in Operands($i$)} {
-                \eIf{IsRead($r$)} {
-                    DG.addEdge(Map[$r$], LineOf($i$))\;
+        \While{true} {
+            \ForEach{register\_operand $r$ in operands(instruction\_of(Node))} {
+                \eIf{is\_read($r$)} {
+                    DG.add\_edge(Map[$r$], line\_of($i$))\;
                 }{
-                    Map[$r$] = LineOf(i)\;
+                    Map[$r$] = line\_of(i)\;
                 }
             }
-            Node $\leftarrow$ Successor(Node, 0)\;
-            \If{numSuccessors(Node) $>$ 1} {
-                \dep{CFG, DG, Map, Successor(Node, 1)}\; 
+            \If{num\_successors(CFG, Node) = 0}{\Return;}
+            Node = successor(CFG, Node, 0)\;
+            \If{num\_successors(CFG, Node) $>$ 1} {
+                \dep{CFG, DG, Map, successor(CFG, Node, 1)}\; 
             }
         }
     }
@@ -84,59 +86,55 @@ Now we want to take a look at the control flow sensitive algorithm \suaca\ actua
 
 Where
 \begin{itemize}
-    \item $numSuccessors(Node)$ returns the number of successors of $Node$ in its underlying graph.
-    \item $Successor(Node, i)$ returns the $i$th successor of $Node$ in the Graph $Node$ belongs to.
-    \item $HasSuccessor(Node)$ returns true if $numSuccessors(Node) \geq 1$.
+    \item \emph{DG} has a Node for every instruction in the program. Just like the CFG.
+    \item \emph{instruction\_of(Node)} returns the instruction that Node represents.
+    \item \emph{num\_successors(Graph, Node)} returns the number of successors of \emph{Node} in the Graph.
+    \item \emph{successor(Graph, Node, i)} returns the $i^{th}$ successor of $Node$ in the Graph.
 \end{itemize}
 
-This time we will ``climb along'' the $CFG$. If we never face a branch i.e., $numSuccessors()$ never returns a value greater than $1$, this algorithm will do exactly the same as the one we have just seen.\\
-In the case of $numSuccessors() > 1$ we will make another call of $Dep-Analysis$ on the ``right branch''. From there on there will be two analyses, one for every branch in the $CFG$. Each analysis has its own $Map$ as there can be different writes on each branch. Note that we will not join the two analyses as we would need to find the first mutual descendant.\\
+This time we will ``climb along'' the $CFG$. If we never face a branch i.e., \emph{num\_successors()} never returns a value greater than $1$, this algorithm will do exactly the same as the one we have just seen.\\
+In the case of \emph{num\_successors()} $> 1$ we will make another call of \emph{dep\_analysis()} on the ``right branch''. From there on, there will be two analyses, one for every branch in the $CFG$. Each analysis has its own $Map$ as there can be different writes on each branch. Note that we will not join the two analyses as we would need to find the first mutual descendant.\\
 In the worst case every instruction is a branch, so we would spawn a new function for every one of them. This leads to a runtime of $\mathcal{O}(n^2*m)$.\\
 For this algorithm we assume no backbranches i.e., no loops, inside the program. In practice \suaca\ will simply check for every branch if it is a backbranch and should the situation arise ignore it.
 
 
-\subsection{Multiple iterations}
+\subsection{Multiple Iterations}
 
 When telling \suaca\ to run the program in multiple loops we need to adjust the dependency analysis algorithm as this can cause some ``loop dependencies''. To solve this, we will simply consider the program twice. So we will append a copy of the program to itself, compute the $CFG$ and then run the algorithm we introduced before. Because we know the original length of our program we can extract all ``loop dependencies'' from the resulting dependency graph.
 
 
-\section{Simulation of the front-end}
+\section{Simulation of the Front-End}
 \label{sec:simfrontend}
 
 Although our main task is to simulate the reservation station we still want to consider the front-end in our analysis. Depending on the microarchitecture the front-end is able to produce a certain amount of \microops\ every cycle. For example the Sandy Bridge architecture will produce at most $4$ \microops\ per cycle. However, we still have to consider the capacity of the reservation station as the front-end might be faster than the execution itself. The reservation station of the Sandy Bridge architecture has a maximum capacity of $54$ \microops.\\
-We will now briefly discuss how our simulation actually performs those loads.\newpage
+We will now briefly discuss how our simulation actually performs those loads.
+\newpage
 
 \begin{algorithm}[H]
     \SetAlgoLined
     \caption{Load instructions into reservation station}
     \SetKwFunction{dep}{load\_instructions}
     \SetKwProg{Fn}{Function}{:}{\textbf{end}}
-    \Fn{\dep{}}{
-        List $:=$ Global list of all instructions\;
-        Waiting $:=$ First element of List that is not fully loaded\;
+    \Fn{\dep{instruction\_queue queue}}{
+        Waiting $:=$ first element of queue that is not fully loaded\;
         Loadable $:= max(Loads\ per\ cycle, remaining\ space\ in\ station)$\;
         \While{Loadable $> 0$} {
-            loaded $:=$ load\microops(Waiting, Loadable)\;
-            Loadable $\leftarrow$ Loadable $-$ loaded\;
-            \eIf{fullyLoaded(Waiting)} {
-                Waiting $\leftarrow$ List.GetNextElement(Waiting)\;
-            } {
-                break\;
-            }
+            loaded $:=$ load\_\microops(Waiting, Loadable)\;
+            Loadable = Loadable $-$ loaded\;
         }
     }
 \end{algorithm}
 \vspace{5pt}
 Where
 \begin{itemize}
-    \item load\microops(Waiting, $x$) loads up to $x$ \microops\ of \emph{Waiting} and returns the number of \microops\ that were actually loaded.
-    \item $fullyLoaded(Waiting)$ returns true if all \microops\ of \emph{Waiting} have been loaded into the reservation station.
-    \item $List.GetNextElement(Waiting)$ returns the successor element of \emph{Waiting} in List.
+    \item \emph{queue} is a queue of all instructions that still have to be executed.
+    \item \emph{Waiting} is initially set by searching for the first element in queue that has not been loaded into the scheduler by the front-end.
+    \item \emph{load\_\microops(Waiting, $x$)} loads $x$ \microops\ of \emph{Waiting} and returns the number of \microops\ that were actually loaded.
 \end{itemize}
 
 So it is possible that an instruction is partially (i.e., only some of its \microops) loaded into the reservation station.
 
-\section{Choosing the ports}
+\section{Choosing the Ports}
 \label{sec:chooseport}
 
 In this section we are going to discuss how exactly the ports which an instruction uses are chosen. As we have seen in \autoref{sec:measurements} we know of how many \microops\ an instruction consists and which ports those \microops\ can use. As seen in \autoref{sec:simfrontend}, an instruction can be loaded partially, which we will have to consider here.\\
@@ -145,12 +143,13 @@ The following algorithm contains several crucial details to the simulation. Firs
 
 \begin{algorithm}[H]
     \SetAlgoLined
-    \caption{Chose ports for loaded instructions}
+    \caption{Choose ports for loaded instructions}
+    \label{alg:choose}
     \SetKwFunction{dep}{choose\_ports}
     \SetKwProg{Fn}{Function}{:}{\textbf{end}}
-    \Fn{\dep{Instruction $:=$ Head of Instructionqueue}}{
+    \Fn{\dep{instruction\_queue queue}}{
         \While{loaded\_\microops(Instruction) $> 0$} {
-            \eIf{$!all\_fathers\_done(Instruction)$} {
+            \eIf{\textbf{not} all\_dependencies\_resolved(Instruction)} {
                 Instruction.has\_to\_wait++\;
                 \ForEach{Father $\in$ direct\_predecessors(Instruction)} {
                     Father.caused\_to\_wait++\;
@@ -159,11 +158,11 @@ The following algorithm contains several crucial details to the simulation. Firs
                 }
             } {
                 Executable $:= true$\;
-                \If{!is\_fully\_loaded(Instruction)}{Executable $\leftarrow false$\;}
+                \If{\textbf{not} is\_fully\_loaded(Instruction)}{Executable $= false$\;}
                 \ForEach{\microop\ $\mu$ $\in$ loaded\microops(Instruction)} {
                     Success $:=$ assign\_to\_ports($\mu$)\;
-                    \If{!Success} {
-                        Executable $\leftarrow false$\;
+                    \If{\textbf{not} Success} {
+                        Executable $= false$\;
                     }
                 }
                 \eIf{Executable} {
@@ -171,7 +170,7 @@ The following algorithm contains several crucial details to the simulation. Firs
                 }{
                     Blamed $:=$ Set of instructions\; \label{line:else}
                     \ForEach{p $\in$ blocked\_ports(Instruction)} {
-                        \If{!Blamed.contains(p.using\_instruction())} {
+                        \If{\textbf{not} Blamed.contains(p.using\_instruction())} {
                             p.using\_instruction().caused\_to\_wait++\;
                             p.using\_instruction().caused\_to\_wait\_port(p)\;
                             Instruction.had\_to\_wait\_port(p)\;
@@ -181,20 +180,20 @@ The following algorithm contains several crucial details to the simulation. Firs
                     Instruction.has\_to\_wait++\;
                 }          
             }
-            Instruction $\leftarrow$ Instructionqueue.next(Instruction)\;
+            Instruction $=$ queue.next(Instruction)\;
         }
     }
 \end{algorithm}
 
 ~\\[-1em]
 \begin{algorithm}[H]
-    \label{alg:assign}
     \SetAlgoLined
     \caption{Assign \microop\ to port}
+    \label{alg:assign}
     \SetKwFunction{dep}{assign\_to\_ports}
     \SetKwProg{Fn}{Function}{:}{\textbf{end}}
     \Fn{\dep{\microop\ $\mu$}}{
-        \ForEach{p $\in$ PortQueue} {
+        \ForEach{p $\in$ port\_queue} {
             \If{$\mu$.can\_use(p) \textbf{and} p.is\_free()} {
                 p.uses($\mu$)\;
                 \Return $true$\;
@@ -205,15 +204,16 @@ The following algorithm contains several crucial details to the simulation. Firs
 \end{algorithm}
 \vspace{5pt}
 
-This algorithm iterates over all instructions in program order as long as the current instruction is at least partially loaded. For each instruction it will first check if all of its dependencies have been resolved. If not, it cannot be executed and the delay counters have to be increased. Notice that we have separate counters for the cumulative delays and the special delays, which are only needed for the detailed analysis (\autoref{sec:detail}). We will see the same behavior for the ports and this explains why the special delays will not always sum up to the cumulative ones.\\
-If all dependencies have been resolved \suaca\ will try to assign all \microops\ of the instruction to a port. To achieve this the algorithm will iterate over all \microops\ that have been loaded into the reservation station. Note that this will ignore all \microops\ that have been put into a port already. So if all \microops\ of an instruction are currently in the port pipeline this algorithm will basically just put the instruction into the execution list.\\ 
-The function \textbf{\emph{assign\_to\_ports(\microop, Instruction)}} is described in \hyperref[alg:assign]{algorithm~\ref*{alg:assign}}. This function will iterate over all ports in prior usage order and assign the \microop\ if possible. More precisely \emph{PortQueue} contains all ports and is sorted by usage throughout the whole simulation. If possible it will assign the \microop\ to the port and return a success. If no usable port was free it will return a fail.\\
+\autoref{alg:choose} iterates over all instructions in program order as long as the current instruction is at least partially loaded into the scheduler. For each instruction it will first check if all of its dependencies have been resolved i.e., all predecessors in the dependency graph have finished their execution (or at least produced the needed results). If not, it cannot be executed and the delay counters have to be increased. Notice that we have separate counters for the cumulative delays and the special delays (e.g. caused\_to\_wait\_depedency, caused\_to\_wait\_port(p)), which are only needed for the detailed analysis (\autoref{sec:detail}). We will see the same behavior for the ports and this explains why the special delays will not always sum up to the cumulative ones.\\
+If all dependencies have been resolved, \suaca\ will try to assign all \microops\ of the instruction to a port. To achieve this the algorithm will iterate over all \microops\ that have been loaded into the reservation station. Note that this will ignore all \microops\ that have been put into a port already. So if all \microops\ of an instruction are currently in the port pipeline this algorithm will basically just put the instruction into the execution list.\\ 
+The function \emph{assign\_to\_ports(\microop, Instruction)} is described in \autoref{alg:assign}. This function will iterate over all ports in prior usage order and assign the \microop\ if possible. More precisely \emph{port\_queue} contains all ports and is sorted by usage throughout the whole simulation. If possible it will assign the \microop\ to the port and return a success. If no usable port was free it will return a fail.\\
 We can observe that this is a greedy algorithm that is obviously not optimal in regards to the distribution of all \microops\ over the ports. However, we assume that this greedy algorithm comes close to what the reservation stations are doing in reality.\\
-If the assignment or the load of a single \microop\ failed the flag \emph{Executable} will be set to \emph{false}. As we can see in \autoref{line:if} the instruction will only be added to the execution list (which we will further discuss in \autoref{sec:execute}) if this flag is set. This means that an instruction is only executed if all of its \microops\ could be assigned to a port. We are doing this, because of our measurements. As we have seen in \autoref{sec:measurements} those will always contain the best case for latency. The biggest problem we face here is the missing information about the \microops. We do not know anything about the dependencies between them and so we do not know if there is an order in which those have to be executed, or if they can be executed simultaneously. So we have to assume a delay as soon as a single \microop\ is denied a port although that might not actually be the case in reality. This means that we will potentially overestimate the latency of a single instruction or the whole program. It is possible though that \suaca\ will actually underestimate the latency of a program as one can note in the following examples.\\
+If the assignment or the load of a single \microop\ failed the flag \emph{Executable} will be set to \emph{false}. As we can see in \autoref{line:if} the instruction will only be added to the execution list (which we will further discuss in \autoref{sec:execute}) if this flag is set. This means that an instruction will not be executed as soon as a single port was blocked. Note that an instruction can not block itself i.e., if all blocked ports were blocked by a \microop\ of the same instruction this function will still return \emph{true}. We did not include this special case here for the sake of readability.\\
+We have to be this strict, because of our measurements. As we have seen in \autoref{sec:measurements} those will always contain the best case for latency. The biggest problem we face here is the missing information about the \microops. We do not know anything about the dependencies between them and so we do not know if there is an order in which those have to be executed, or if they can be executed simultaneously. So we have to assume a delay as soon as a single \microop\ is denied a port although that might not actually be the case in reality. This means that we will potentially overestimate the latency of a single instruction or the whole program. It is possible though that \suaca\ will actually underestimate the latency of a program as one can note in the following examples.\\
 
 
-Consider two instructions \emph{X} and \emph{Y}. \emph{X} consists of two \microops\ one of which can use port $0$ the other can use port $1$. \emph{Y} only consists of one which can use port $1$. \emph{X} is in front of \emph{Y} in program order, both are fully loaded, not dependent on each other and have a latency of $2$ cycles.\\
-What \suaca\ ``does not know'' is that the second \microop\ (port $1$) of \emph{X} depends on the first (port $0$). So the simulation will do the following: In the first cycle it will assign \emph{X} to ports $0$ and $1$. There is no port left for \emph{Y} so it will not be added to the execution list. This will happen in the second cycle and as \emph{Y}'s latency was two cycles \suaca\ will compute a total latency of three cycles (as \emph{X} was executed in the first and second).\\
+Consider two instructions \emph{X} and \emph{Y}. \emph{X} consists of two \microops\, one of which can use port $0$, and the other can use port $1$. \emph{Y} only consists of one \microop\ which can use port~$1$. \emph{X} is in front of \emph{Y} in program order, both are fully loaded, not dependent on each other and have a latency of $2$ cycles.\\
+For this example we assume that the second \microop\ (port $1$) of \emph{X} depends on the first (port $0$). The problem is that \suaca\ does not have this information. So the simulation will do the following: In the first cycle it will assign \emph{X} to ports $0$ and $1$. There is no port left for \emph{Y} so it will not be added to the execution list. This will happen in the second cycle and as \emph{Y}'s latency was two cycles \suaca\ will compute a total latency of three cycles (as \emph{X} was executed in the first and second).\\
 However, in reality \emph{X} will not block port $1$ in the first cycle as this particular \microop\ depends on the one that uses port $0$. So in the first cycle \emph{X} will only use port $0$. \emph{Y} can then freely use port $1$. In the second cycle \emph{X} can then use port $1$. No port was ever blocked so there simply will be no delay, both instructions could be executed simultaneously. So the ``real latency'' of our example would be two cycles.\\
 
 Now we will consider the same example but with switched instruction order of \emph{X} and \emph{Y}. In this case \suaca\ will first assign \emph{Y}'s \microop\ to port $1$. It will then try to assign \emph{X}, but it will only be able to assign the first \microop\ to port $0$ as port $1$ is blocked. As discussed before \emph{X} will therefore not be added to the execution list. In the second cycle the leftover of \emph{X} will be assigned to a port and the execution will start. As the latency was two cycles the simulation will stop after the third cycle.\\
@@ -224,11 +224,11 @@ In reality \emph{Y} will be denied port $1$ in the second cycle as it will be us
 
 Note that it is still impossible that the latency of a single instruction is underestimated as we will always simulate the execution of at least as many cycles as we measured under a best case scenario. Also an important detail is, that it is impossible for an instruction to block itself. So if multiple \microops\ of a single instruction need to use the same port this will not cause a delay. This is again due to the measurements as the delay caused by ``inner instructional port blockings'' is already included in the best case runtime. We did not include this in the pseudo code above for the sake of readability.\\
 
-Ultimately we will consider the rest of the algorithm starting in \autoref{line:else}. This part will increase the counters similar to what we have seen at the start of the algorithm. Notable here is the function \textbf{\emph{blocked\_ports(Instruction)}} that will return all ports that have been blocked during the assignment phase as well as the \textbf{\emph{Blamed}} set which ensures that every instructions is held responsible at most once. We need this as we want to count the number of cycles that an instruction caused a delay and not the number of blocked ports in a particular cycle.
+Ultimately we will consider the rest of the algorithm starting in \autoref{line:else}. This part will increase the counters similarly to what we have seen at the start of the algorithm. Notable here is the function \emph{blocked\_ports(Instruction)} that will return all ports that have been blocked during the assignment phase as well as the \emph{Blamed} set which ensures that every instructions is held responsible at most once. We need this as we want to count the number of cycles that an instruction caused a delay and not the number of blocked ports in a particular cycle.
 
+\newpage
 
-
-\section{Executing applicable instructions}
+\section{Executing Applicable Instructions}
 \label{sec:execute}
 
 \begin{algorithm}[H]
@@ -237,34 +237,34 @@ Ultimately we will consider the rest of the algorithm starting in \autoref{line:
     \label{alg:execute}
     \SetKwFunction{dep}{execute\_instructions}
     \SetKwProg{Fn}{Function}{:}{\textbf{end}}
-    \Fn{\dep{}}{
+    \Fn{\dep{instruction\_queue queue}}{
         \ForEach{I $\in$ Executionlist} {
             I.executed\_cycles$++$\;
             \If{I.executed\_cycles $=$ I.latency} {
-                Instructionqueue.remove(I)\;
+                queue.remove(I)\;
             }
             inform\_children\_im\_done(I)\;
         }
         Executionlist.clear()\;
     }
 \end{algorithm}
+
+
+This part is rather simple. Every instruction knows its latency and how many cycles it has been executed. This value gets increased and if the latency is hit it will be removed from the instructionqueue. The most interesting part here is the function \emph{inform\_children\_im\_done(Instruction)}. As we have seen in \autoref{sec:measurements} the children of an instruction do not necessarily have to wait for the instruction to finish. Sometimes they only need part of the results, which are available earlier. So this function will iterate over all children and check if the execution is advanced enough and if so ``release the dependency'' in a way that the \emph{all\_dependencies\_resolved()} function in \autoref{alg:assign} will consider the instruction as finished. Finally we have to clear the execution list as we will fill it again in the next cycle.
+
+\section{Performing a Cycle}
+
+Lastly we want to briefly discuss how a whole cycle is performed. \suaca\ will run each of the three simulation algorithms we explained above. It will then free up all ports that were used during the cycle, in order to enable the port pipelining. It also passes the queue that contains all instructions that still have to be executed to the three functions. A short pseudo code representation can be found below.
 \newpage
-
-This part is rather simple. Every instruction knows its latency and how many cycles it has been executed. This value gets increased and if the latency is hit it will be removed from the Instructionqueue. The most interesting part here is the function \textbf{\emph{inform\_children\_im\_done(Instruction)}}. As we have seen in \autoref{sec:measurements} the children of an instruction do not necessarily have to wait for the instruction to finish. Sometimes they only need part of the results, which are available earlier. So this function will iterate over all children and check if the execution is advanced enough and if so ``release the dependency''. Finally we have to clear the execution list as we will fill it again in the next cycle.
-
-\section{Performing a cycle}
-
-Lastly we want to briefly discuss how a whole cycle is performed. \suaca\ will run each of the three simulation algorithms we explained above. It will then free up all ports, that were used during the cycle, in order to enable the port pipelining. A short pseudo code representation can be found below.
-
 \begin{algorithm}[H]
     \SetAlgoLined
     \caption{Perform a whole cycle}
     \SetKwFunction{dep}{perform\_cycle}
     \SetKwProg{Fn}{Function}{:}{\textbf{end}}
-    \Fn{\dep{}}{
-        load\_instructions()\;
-        choose\_ports()\;
-        execute\_instructions()\;
+    \Fn{\dep{instruction\_queue queue}}{
+        load\_instructions(queue)\;
+        choose\_ports(queue)\;
+        execute\_instructions(queue)\;
         \ForEach{p $\in$ Ports} {
             p.clear()\;
         }
@@ -275,7 +275,7 @@ The interesting observation here is that an instruction can actually get loaded,
 This function will be executed in a loop as long as there are instructions to be executed. After said loop \suaca\ will generate its output.
 
 
-\section{The divider pipe}
+\section{The Divider Pipe}
 \label{sec:dividerpipe}
 
 Instructions that perform a division of some kind have to use the divider pipe, which is located on port $0$. \suaca's output will only show the divider pipe if one of the instructions needs it. We have to consider it when choosing the ports for the instructions during \hyperref[alg:assign]{algorithm~\ref*{alg:assign}}, because the division \microops\ cannot be pipelined. More precisely our measurements contain a ``div-cycle'' property for the corresponding instructions, which tells us how many cycles the divider pipe will be blocked. Because the divider pipe is located on port $0$ each of those instructions has to have at least one \microop\ that uses port $0$ exclusively. \suaca\ will block the divider pipe as soon as this particular \microop\ is assigned to port $0$. As long as it is blocked all future division \microops\ are denied port $0$. After ``div-cycle'' many cycles the divider pipe will be available again.\\
