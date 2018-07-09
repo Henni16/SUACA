@@ -92,7 +92,7 @@ Unfortunately, \osaca\ does not offer a bottleneck analysis which makes this com
 
 \section{Complete Analysis}
 
-Now we are going to analyze the example provided by the \osaca\ thesis \cite{osaca-thesis}. First consider the underlaying \emph{C} code which represents a 2D-5pt stencil:
+Now we are going to analyze the example provided by the \osaca\ thesis~\cite{osaca-thesis}. First consider the underlaying \emph{C} code which represents a 2D-5pt stencil:
 
 
 \begin{mdframed}[backgroundcolor=light-gray, roundcorner=10pt,leftmargin=1, rightmargin=1, innerleftmargin=15, innertopmargin=1,innerbottommargin=1, outerlinewidth=1, linecolor=light-gray]
@@ -139,7 +139,7 @@ In the following we will analyze the resulting machine code and compare the resu
     Total number of estimated throughput: 4.67
 \end{LabeledExample}
 
-The \osaca\ thesis states,that we can conclude that port $1$ is the bottleneck of this program, which makes sense looking at the given analysis. We will now look into the program a bit further.\\
+The \osaca\ thesis states, that we can conclude that port $1$ is the bottleneck of this program, which makes sense looking at the given analysis. We will now look into the program a bit further.\\
 \autoref{ex:iaca} displays the output of \iaca\ $2.3$ which shows the expected behavior regarding the overused port $1$ i.e., the \emph{incq} and \emph{cmpq} instructions exclusively use port $5$.
 
 \begin{LabeledExample}{\iaca\ run}{\label{ex:iaca}}

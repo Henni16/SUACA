@@ -3,7 +3,6 @@
 
 //TODO set table file here
 #define TABLE "../../tables/result_reduced.xml"
-//#define TABLE "../../tables/intel.xml"
 #define STATION_LOC "../../tables/"
 #define CONFIG_LOC "../../tables/suaca.config"
 

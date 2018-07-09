@@ -77,7 +77,6 @@ int main(int argc, char *argv[]) {
     }
 
     inst_list_t *instructions = build_inst_list(file_name);
-    //print_list(instructions);
 
     for (size_t i = 0; i < instructions->numLists; i++) {
         if (branch) {
