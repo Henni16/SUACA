@@ -1,0 +1,86 @@
+\usetheme[progressbar=frametitle]{metropolis}
+\usepackage{appendixnumberbeamer}
+
+\usepackage[dvipsnames]{xcolor}
+\definecolor{light-gray}{gray}{0.95}
+\usepackage{listings}
+\lstset{
+    escapeinside={(*@}{@*)},
+    language=C,
+    basicstyle=\ttfamily,
+    keywordstyle=\color{blue}\ttfamily,
+    stringstyle=\color{red}\ttfamily,
+    commentstyle=\color{green}\ttfamily,
+    morecomment=[l][\color{magenta}]{\#}
+}
+
+\usepackage{xspace}
+\newcommand{\themename}{\textbf{\textsc{metropolis}}\xspace}
+
+
+\newcommand{\suaca}{\textbf{SUACA}}
+\newcommand{\iaca}{\textbf{IACA}}
+\newcommand{\osaca}{\textbf{OSACA}}
+\newcommand{\microop}{$\mu$op}
+\newcommand{\microops}{$\mu$ops}
+
+\setlength{\headheight}{15pt}
+\usepackage{listings}
+\lstdefinelanguage{myLang}
+{
+    % list of keywords
+    morekeywords={
+        movl,
+        byte,
+        mov,
+        cmp,
+        jne,
+        add,
+        jmp,
+        else,
+        end,
+        adc
+    },
+    sensitive=false, % keywords are not case-sensitive
+    morecomment=[l]{//}, % l is for line comment
+}
+\lstset{showspaces=false,showstringspaces=false,breaklines=true,breakindent=0pt,
+        prebreak={},
+        postbreak=\mbox{{ }},
+    escapeinside={(*@}{@*)},
+    language=C,
+    basicstyle=\ttfamily,
+    keywordstyle=\color{blue}\ttfamily,
+    stringstyle=\color{red}\ttfamily,
+    commentstyle=\color{green}\ttfamily,
+    morecomment=[l][\color{magenta}]{\#}
+}
+\usepackage{mdframed}
+\usepackage{pgfplots}
+\usepackage{fancyvrb}
+\usepackage{multirow}
+\usepackage{adjustbox}
+\usepackage{tikz}
+\usetikzlibrary{calc}
+
+
+\newenvironment{mytab}[1]{\begin{mdframed}[backgroundcolor=light-gray, roundcorner=10pt,leftmargin=1, rightmargin=1, innerleftmargin=15, innertopmargin=15,innerbottommargin=15, outerlinewidth=1, linecolor=light-gray]\scriptsize#1\\ \phantom{lol}\\
+       \begin{adjustbox}{width=\textwidth} \begin{tabular}}{\end{tabular}\end{adjustbox}
+\end{mdframed}}
+
+\newenvironment{myexample}{\VerbatimEnvironment\begin{mdframed}[backgroundcolor=light-gray, roundcorner=10pt,leftmargin=1, rightmargin=1, innerleftmargin=15, innertopmargin=15,innerbottommargin=15, outerlinewidth=1, linecolor=light-gray]\begin{adjustbox}{width=\textwidth}
+        \begin{BVerbatim}[fontsize=\tiny]}{\end{BVerbatim}\end{adjustbox}
+    \end{mdframed}}
+
+\newenvironment{myExample}{\VerbatimEnvironment\begin{mdframed}[backgroundcolor=light-gray, roundcorner=10pt,leftmargin=1, rightmargin=1, innerleftmargin=15, innertopmargin=15,innerbottommargin=15, outerlinewidth=1, linecolor=light-gray]
+        \begin{BVerbatim}[fontsize=\scriptsize]}{\end{BVerbatim}
+\end{mdframed}}
+
+\newcounter{myCount}
+\newcommand{\myCount}[1]{\refstepcounter{myCount}#1}
+\newcommand{\myCountautorefname}{Example}
+
+\newenvironment{LabeledExample}[2]{\VerbatimEnvironment\begin{mdframed}[backgroundcolor=light-gray, roundcorner=0pt, leftmargin=0, rightmargin=0, innerleftmargin=0, innerrightmargin=0,innertopmargin=5,innerbottommargin=-10, outerlinewidth=1, linecolor=light-gray]\myCount{#2}
+        \begin{center}\begin{Verbatim}[samepage=true,frame=bottomline, framesep=5mm, fontsize=\tiny, label=\small{Example \arabic{myCount}: #1}, labelposition=bottomline, commandchars=\\\{\}]}{\end{Verbatim}\end{center}
+\end{mdframed}}
+
