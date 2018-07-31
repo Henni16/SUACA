@@ -64,8 +64,8 @@
 \usetikzlibrary{calc}
 
 
-\newenvironment{mytab}[1]{\begin{mdframed}[backgroundcolor=light-gray, roundcorner=10pt,leftmargin=1, rightmargin=1, innerleftmargin=15, innertopmargin=15,innerbottommargin=15, outerlinewidth=1, linecolor=light-gray]\scriptsize#1\\ \phantom{lol}\\
-       \begin{adjustbox}{width=\textwidth} \begin{tabular}}{\end{tabular}\end{adjustbox}
+\newenvironment{mytab}[1]{\begin{mdframed}[backgroundcolor=light-gray, roundcorner=10pt,leftmargin=1, rightmargin=1, innerleftmargin=15, innertopmargin=15,innerbottommargin=15, outerlinewidth=1, linecolor=light-gray]\scriptsize#1
+     \begin{center}  \begin{adjustbox}{width=\textwidth} \begin{tabular}}{\end{tabular}\end{adjustbox}\end{center}
 \end{mdframed}}
 
 \newenvironment{myexample}{\VerbatimEnvironment\begin{mdframed}[backgroundcolor=light-gray, roundcorner=10pt,leftmargin=1, rightmargin=1, innerleftmargin=15, innertopmargin=15,innerbottommargin=15, outerlinewidth=1, linecolor=light-gray]\begin{adjustbox}{width=\textwidth}
