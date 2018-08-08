@@ -37,7 +37,7 @@
 \begin{itemize}[<+- | alert@+>]
     \item Intel® Architecture Code Analyzer
     \item Static analyzing tool for assembly code (usually a loop) on Intel processors
-    \item Computes port pressure, block throughput and critical path
+    \item Computes port pressure, block throughput, bottleneck and critical path
     \item Allows you to analyze code perfomance on a specific machine!
     \item Provides an estimate of performance\only<6>{, \alert{i.e. no absolute results}}
 \end{itemize}
@@ -131,6 +131,11 @@
 
 \begin{frame}[fragile]{Comparison}
 \begin{mdframed}[backgroundcolor=light-gray, roundcorner=10pt,leftmargin=1, rightmargin=1, innerleftmargin=15, innertopmargin=5,innerbottommargin=5, outerlinewidth=1, linecolor=light-gray]
+    \begin{minipage}{0.05\textwidth}
+        \rotatebox{90}{\textbf{I\\A\\C\\A\\}} \vspace{75pt} \\
+        \rotatebox{90}{\textbf{S\\U\\A\\C\\A}}
+    \end{minipage}
+    \begin{minipage}{0.9\textwidth}
     \centering
     \begin{adjustbox}{height=0.17\textheight,width=0.9\textwidth} \begin{tabular}
             {|r|c|c c|c|c c|c c|c|c|c|}
@@ -160,6 +165,7 @@
             5&mov rax, 0x6 & 1 & $15.6$ & $46.7$ &       &       &       &       &       & $1.0$ \\
             \hline
     \end{tabular}\end{adjustbox}
+\end{minipage}
 \end{mdframed}
 \end{frame}
 
@@ -198,7 +204,27 @@ for(j = 1; j < M-1; ++j){
     vmovsd  \%xmm6, 8(\%r12,\%r15,8)          &       &       & $0.5$ & $0.5$ & $1.0$ &       \\
     incq    \%r15                             & $0.3$ & $0.3$ &       &       &       & $0.3$ \\
     cmpq    \%r13, \%r15                      & $0.3$ & $0.3$ &       &       &       & $0.3$ \\
-    jb      ..B1.17                           &       &       &       &       &       &       \\
+    \hline
+\end{mytab}
+\end{frame}
+
+\begin{frame}[fragile]{\iaca's Output}
+\begin{mytab}{
+        Block throughput: 3.00 cycles\\
+        Throughput Bottleneck: FrontEnd
+    }{|r|c|c c|c|c c|c c|c|c|c|}
+    \hline
+    \multicolumn{1}{|c|}{\multirow{2}{*}{\textbf{Instruction}}}&\textbf{Num Of} & \multicolumn{9}{|c|}{Ports pressure in cycles} &\multirow{2}{*}{\textbf{CP}}\\
+    \cline{3-11}
+    &$\boldsymbol{\mu}$\textbf{ops} & 0 & DV & 1 & 2 & D & 3 & D & 4 & 5 & \\ \cline{1-12}
+    vmovsd xmm2, ... & 1 &       &       &       & $1.0$ & $1.0$ &       &       &       &       & \\
+    vaddsd xmm3, ... & 2 &       &       & $1.0$ &       &       & $1.0$ & $1.0$ &       &       & $\surd$\\
+    vaddsd xmm4, ... & 2 &       &       & $1.0$ & $1.0$ & $1.0$ &       &       &       &       & $\surd$\\
+    vaddsd xmm5, ... & 2 &       &       & $1.0$ &       &       & $1.0$ & $1.0$ &       &       & $\surd$\\
+    mulsd xmm6, ...  & 1 & $1.0$ &       &       &       &       &       &       &       &       & \\
+    vmovsd qword ... & 2 &       &       &       & $0.5$ &       & $0.5$ &       & $1.0$ &       & \\
+    inc r15          & 1 &       &       &       &       &       &       &       &       & $1.0$ & \\
+    cmp r15, r13     & 1 &       &       &       &       &       &       &       &       & $1.0$ & \\
     \hline
 \end{mytab}
 \end{frame}
@@ -229,8 +255,13 @@ for(j = 1; j < M-1; ++j){
 
 \begin{frame}[fragile]{Comparison}
 \begin{mdframed}[backgroundcolor=light-gray, roundcorner=10pt,leftmargin=1, rightmargin=1, innerleftmargin=15, innertopmargin=5,innerbottommargin=5, outerlinewidth=1, linecolor=light-gray]
+    \begin{minipage}{0.05\textwidth}
+        \rotatebox{90}{\textbf{O\\S\\A\\C\\A\\}} \vspace{55pt} \\
+        \rotatebox{90}{\textbf{S\\U\\A\\C\\A}}
+    \end{minipage}
+    \begin{minipage}{0.9\textwidth}
     \centering
-     \begin{adjustbox}{height=0.2\textheight,width=0.85\textwidth} \begin{tabular}
+     \begin{adjustbox}{height=0.2\textheight,width=0.95\textwidth} \begin{tabular}
             {|r|c|c|c|c|c|c|}
             \hline
             \multicolumn{1}{|c|}{\multirow{2}{*}{\textbf{Instruction}}} & \multicolumn{6}{|c|}{Ports pressure in cycles}\\
@@ -244,10 +275,9 @@ for(j = 1; j < M-1; ++j){
             vmovsd  \%xmm6, 8(\%r12,\%r15,8)          &       &       & $0.5$ & $0.5$ & $1.0$ &       \\
             incq    \%r15                             & $0.3$ & $0.3$ &       &       &       & $0.3$ \\
             cmpq    \%r13, \%r15                      & $0.3$ & $0.3$ &       &       &       & $0.3$ \\
-            jb      ..B1.17                           &       &       &       &       &       &       \\
             \hline
     \end{tabular}\end{adjustbox}\\ \vspace{0.5cm}
-    \begin{adjustbox}{height=0.17\textheight,width=0.85\textwidth} \begin{tabular}
+    \begin{adjustbox}{height=0.17\textheight,width=0.95\textwidth} \begin{tabular}
             {|c|c|c|c|c|c|c|c|c|c|c|}
             \hline
             \multicolumn{1}{|c|}{\multirow{2}{*}{\textbf{Line}}}&\multicolumn{1}{|c|}{\multirow{2}{*}{\textbf{Instruction}}}&\textbf{Num Of}& \textbf{had} & \textbf{caused} & \multicolumn{6}{|c|}{Ports pressure in cycles}\\
@@ -263,6 +293,8 @@ for(j = 1; j < M-1; ++j){
             7&cmp r15, r13     & 1 & $1.0$  &        & $0.3$ &       &       &       &       & $0.7$ \\
             \hline
             \end{tabular}\end{adjustbox}
+        
+    \end{minipage}
         \end{mdframed}
 \end{frame}
 
