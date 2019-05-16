@@ -1,4 +1,7 @@
-/*BEGIN_LEGAL
+/*
+This file has been edited.
+
+BEGIN_LEGAL
 
 Copyright (c) 2016-2017 Intel Corporation
 
